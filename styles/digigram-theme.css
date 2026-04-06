@@ -1,0 +1,193 @@
+/*
+ * DigiGram — এক জায়গায় রঙ, গ্রেডিয়েন্ট, ছায়া ও সেকশন স্টাইল।
+ * পরিবর্তন: শুধু এখানে ভেরিয়েবল/ক্লাস এডিট করুন।
+ */
+
+:root {
+  --dg-font: "Hind Siliguri", sans-serif;
+
+  --dg-ink: #0f172a;
+  --dg-ink-muted: #475569;
+  --dg-muted: #64748b;
+
+  --dg-teal: #0d9488;
+  --dg-teal-bright: #2dd4bf;
+  --dg-sky: #0ea5e9;
+  --dg-blue: #2563eb;
+
+  --dg-brand-bg: #0f172a;
+  --dg-brand-primary: #2dd4bf;
+  --dg-brand-secondary: #38bdf8;
+
+  /* পেজ — একটানা ভার্টিক্যাল ফ্লো (স্ক্রোলে “ছেঁড়া” লাগে না) */
+  --dg-page-a: #eceff4;
+  --dg-page-b: #eef3f6;
+  --dg-page-c: #ecf5f4;
+  --dg-page-d: #f0f3f8;
+
+  --dg-surface: #ffffff;
+  --dg-surface-glass: rgba(255, 255, 255, 0.78);
+
+  --dg-border: rgba(148, 163, 184, 0.26);
+  --dg-border-strong: rgba(148, 163, 184, 0.4);
+
+  --dg-radius-lg: 1.75rem;
+  --dg-radius-xl: 2.25rem;
+  --dg-radius-2xl: 2.5rem;
+
+  --dg-shadow-soft: 0 16px 48px -26px rgba(15, 23, 42, 0.16);
+  --dg-shadow-card: 0 22px 60px -32px rgba(15, 23, 42, 0.2);
+  --dg-shadow-lift: 0 28px 72px -36px rgba(15, 23, 42, 0.26);
+
+  --dg-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --dg-duration: 320ms;
+
+  /* টিকার — হেডার ও পেজের মাঝে ব্রিজ (কালো নয়, নীল-স্লেট) */
+  --dg-ticker-a: #243047;
+  --dg-ticker-b: #1a2740;
+  --dg-ticker-c: #1e2f52;
+}
+
+.dg-page-canvas {
+  color: var(--dg-ink);
+  background-color: var(--dg-page-b);
+  background-image:
+    radial-gradient(ellipse 115% 65% at 50% -22%, rgba(45, 212, 191, 0.1), transparent 58%),
+    radial-gradient(ellipse 52% 42% at 96% 22%, rgba(56, 189, 248, 0.08), transparent 52%),
+    radial-gradient(ellipse 48% 38% at 4% 68%, rgba(37, 99, 235, 0.045), transparent 50%),
+    linear-gradient(180deg, var(--dg-page-a) 0%, var(--dg-page-b) 32%, var(--dg-page-c) 64%, var(--dg-page-d) 100%);
+}
+
+@media (min-width: 1024px) {
+  .dg-page-canvas {
+    background-attachment: fixed;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dg-page-canvas {
+    background-attachment: scroll;
+  }
+}
+
+/* হেডার থেকে কনটেন্টে নরম হ্যান্ডঅফ */
+.dg-content-stack {
+  position: relative;
+  z-index: 0;
+}
+
+.dg-content-stack::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 4.5rem;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.42) 0%,
+    rgba(255, 255, 255, 0) 100%
+  );
+}
+
+.dg-ticker-bar {
+  background: linear-gradient(90deg, var(--dg-ticker-a), var(--dg-ticker-b), var(--dg-ticker-c));
+  border-bottom: 1px solid rgba(45, 212, 191, 0.14);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.dg-section-x {
+  padding-left: max(0.5rem, env(safe-area-inset-left));
+  padding-right: max(0.5rem, env(safe-area-inset-right));
+}
+
+/* হিরো প্যানেল — পেজের সাথে মিশে, খুব সাদা বক্স নয় */
+.dg-hero-panel {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: var(--dg-radius-2xl);
+  border: 1px solid var(--dg-border);
+  background: color-mix(in srgb, var(--dg-surface) 88%, transparent);
+  box-shadow: var(--dg-shadow-card);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  transition: border-color var(--dg-duration) var(--dg-ease), box-shadow var(--dg-duration) var(--dg-ease);
+}
+
+.dg-hero-panel:hover {
+  border-color: color-mix(in srgb, var(--dg-teal) 22%, var(--dg-border));
+}
+
+.dg-hero-panel__mesh {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0.95;
+  background:
+    radial-gradient(ellipse 75% 50% at 16% 0%, rgba(45, 212, 191, 0.09), transparent 55%),
+    radial-gradient(ellipse 55% 45% at 94% 10%, rgba(56, 189, 248, 0.07), transparent 50%),
+    radial-gradient(ellipse 45% 35% at 50% 100%, rgba(37, 99, 235, 0.04), transparent 50%);
+}
+
+.dg-services-slab {
+  position: relative;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.2) 0%,
+    rgba(236, 245, 244, 0.45) 55%,
+    rgba(237, 242, 248, 0.5) 100%
+  );
+}
+
+.dg-divider-fade {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(13, 148, 136, 0.18) 50%, transparent);
+}
+
+.glass-card {
+  background: var(--dg-surface-glass);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid color-mix(in srgb, var(--dg-surface) 55%, var(--dg-border-strong));
+}
+
+.header-glass {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.94) 0%,
+    rgba(248, 250, 252, 0.9) 100%
+  );
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.text-gradient-brand {
+  background: linear-gradient(135deg, var(--dg-teal) 0%, var(--dg-sky) 48%, var(--dg-blue) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.dg-card-surface {
+  border: 1px solid var(--dg-border);
+  background: color-mix(in srgb, var(--dg-surface) 92%, transparent);
+  box-shadow: var(--dg-shadow-soft);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: transform var(--dg-duration) var(--dg-ease), box-shadow var(--dg-duration) var(--dg-ease),
+    border-color var(--dg-duration) var(--dg-ease);
+}
+
+.dg-card-surface:hover {
+  border-color: color-mix(in srgb, var(--dg-teal) 28%, var(--dg-border));
+  box-shadow: var(--dg-shadow-lift);
+}
+
+.dg-bottom-nav {
+  background: color-mix(in srgb, var(--dg-ticker-b) 92%, transparent);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.28);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}

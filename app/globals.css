@@ -1,0 +1,29 @@
+@import url('https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700;800&display=swap');
+
+@import "../styles/digigram-theme.css";
+
+@import "tailwindcss";
+
+@theme {
+  --color-brand-bg: var(--dg-brand-bg);
+  --color-brand-primary: var(--dg-brand-primary);
+  --color-brand-secondary: var(--dg-brand-secondary);
+  --font-bengali: var(--dg-font);
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 5.5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+body {
+  background-color: var(--dg-page-b);
+  font-family: var(--dg-font);
+  -webkit-font-smoothing: antialiased;
+}
