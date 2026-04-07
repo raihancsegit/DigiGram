@@ -1,14 +1,16 @@
-"use client"
+"use client";
+
 import { motion } from 'framer-motion';
 import { Megaphone, ChevronRight, Radio } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import { useMemo } from 'react';
+import { ALL_NEWS } from '@/lib/content/newsData';
 
-const newsData = [
-    { id: 1, text: "পবা ইউনিয়নে আগামীকাল ফ্রি রক্তদান কর্মসূচি অনুষ্ঠিত হবে। আমাদের টিমের সাথে যোগাযোগ করুন।", union: "পবা" },
-    { id: 2, text: "রাজশাহী জেলায় নতুন কৃষি ভর্তুকি ঘোষণা করা হয়েছে। আবেদনের শেষ তারিখ ৩০ এপ্রিল।", union: "গ্লোবাল" },
-    { id: 3, text: "DigiGram পোর্টালে নতুন স্মার্ট স্কুল মডিউল যুক্ত করা হয়েছে। আজই আপনার স্কুলের তথ্য আপডেট করুন।", union: "গ্লোবাল" },
-];
+const newsData = ALL_NEWS.map(n => ({
+    id: n.id,
+    text: n.excerpt || n.title,
+    union: n.isGlobal ? 'গ্লোবাল' : n.union
+}));
 
 export default function NewsTicker() {
     const { selected } = useSelector((state) => state.location);

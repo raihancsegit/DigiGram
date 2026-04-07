@@ -29,17 +29,6 @@ export default function LocationModal() {
         const up = getUpazilaById(selected.upazilaId);
         list = up?.unions ?? [];
         title = "ইউনিয়ন";
-    } else if (step === 4) {
-        const up = getUpazilaById(selected.upazilaId);
-        const un = up?.unions?.find((x) => x.slug === selected.unionSlug || x.name === selected.union);
-        list = un?.wards ?? [];
-        title = "ওয়ার্ড";
-    } else {
-        const up = getUpazilaById(selected.upazilaId);
-        const un = up?.unions?.find((x) => x.slug === selected.unionSlug || x.name === selected.union);
-        const ward = un?.wards?.find((w) => w.id === selected.wardId || w.name === selected.ward);
-        list = ward?.villages ?? [];
-        title = "গ্রাম (ঐচ্ছিক)";
     }
 
     const handleSelect = (raw) => {
@@ -51,15 +40,8 @@ export default function LocationModal() {
         } else if (step === 3) {
             const un = raw;
             dispatch(setStepData({ level: "union", value: un.name, unionSlug: un.slug }));
-        } else if (step === 4) {
-            const ward = raw;
-            dispatch(setStepData({ level: "ward", value: ward.name, wardId: ward.id }));
-        } else {
-            const village = raw;
-            dispatch(setStepData({ level: "village", value: village }));
             dispatch(toggleModal());
-            const slug = store.getState().location.selected.unionSlug;
-            if (slug) router.push(paths.unionPortal(slug));
+            router.push(paths.unionPortal(un.slug));
         }
     };
 
@@ -101,7 +83,7 @@ export default function LocationModal() {
 
                 <div className="p-6 overflow-y-auto flex-1">
                     <p className="text-xs font-extrabold uppercase tracking-wider text-[color:var(--dg-teal)] mb-1">
-                        ধাপ {step} / ৫
+                        ধাপ {step} / ৩
                     </p>
                     <p className="text-sm font-bold text-slate-600 mb-4">{title} বেছে নিন</p>
 
@@ -152,48 +134,8 @@ export default function LocationModal() {
                                     </button>
                                 </li>
                             ))}
-
-                        {step === 4 &&
-                            list.map((ward) => (
-                                <li key={ward.id}>
-                                    <button
-                                        type="button"
-                                        onClick={() => handleSelect(ward)}
-                                        className="w-full flex justify-between items-center p-4 border border-slate-200 rounded-2xl hover:bg-teal-50/80 hover:border-teal-200 transition-colors text-left"
-                                    >
-                                        <div>
-                                            <span className="font-extrabold text-slate-800 block">{ward.name}</span>
-                                            <span className="text-xs font-bold text-slate-400">মেম্বার: {ward.member.name}</span>
-                                        </div>
-                                        <ChevronRight size={18} className="text-slate-400 shrink-0" />
-                                    </button>
-                                </li>
-                            ))}
-
-                        {step === 5 &&
-                            list.map((v) => (
-                                <li key={v}>
-                                    <button
-                                        type="button"
-                                        onClick={() => handleSelect(v)}
-                                        className="w-full flex justify-between items-center p-4 border border-slate-200 rounded-2xl hover:bg-teal-50/80 hover:border-teal-200 transition-colors text-left"
-                                    >
-                                        <span className="font-bold text-slate-800">{v}</span>
-                                        <ChevronRight size={18} className="text-slate-400" />
-                                    </button>
-                                </li>
-                            ))}
                     </ul>
 
-                    {step === 5 && (
-                        <button
-                            type="button"
-                            onClick={skipVillage}
-                            className="mt-4 w-full py-3 rounded-2xl text-sm font-extrabold text-[color:var(--dg-teal)] border border-teal-200 hover:bg-teal-50 transition-colors"
-                        >
-                            গ্রাম ছাড়াই পোর্টালে যান
-                        </button>
-                    )}
                 </div>
             </div>
         </div>
