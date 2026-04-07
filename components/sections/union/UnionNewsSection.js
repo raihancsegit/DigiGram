@@ -29,6 +29,39 @@ export default function UnionNewsSection({ unionName = 'দামকুড়া', 
     const CARDS_TO_SHOW = 3;
     const TOTAL_NEWS = unionNews.length;
 
+    // Helper to get category-specific styles
+    const getCardStyles = (category) => {
+        switch (category) {
+            case 'জানাজা':
+                return {
+                    container: 'bg-slate-900 border-slate-800 text-white shadow-xl',
+                    accent: 'bg-teal-500',
+                    title: 'text-white',
+                    excerpt: 'text-slate-400',
+                    meta: 'text-slate-500',
+                    tag: 'bg-teal-500/20 text-teal-300 border-teal-500/30'
+                };
+            case 'হারানো-প্রাপ্তি':
+                return {
+                    container: 'bg-amber-50 border-amber-200 text-slate-800 shadow-md',
+                    accent: 'bg-amber-500',
+                    title: 'text-slate-900',
+                    excerpt: 'text-slate-600',
+                    meta: 'text-slate-400',
+                    tag: 'bg-amber-100 text-amber-700 border-amber-200'
+                };
+            default:
+                return {
+                    container: 'bg-white/80 border-slate-200/60 text-slate-800 shadow-sm',
+                    accent: 'bg-teal-600/10 group-hover:bg-teal-600',
+                    title: 'text-slate-800 group-hover:text-teal-700',
+                    excerpt: 'text-slate-500',
+                    meta: 'text-slate-400',
+                    tag: 'bg-slate-100 text-teal-700 border-slate-200/50'
+                };
+        }
+    };
+
     const nextSlide = () => {
         if (TOTAL_NEWS > CARDS_TO_SHOW) {
             setCurrentIndex((prev) => (prev + 1) % (TOTAL_NEWS - CARDS_TO_SHOW + 1));
@@ -40,7 +73,6 @@ export default function UnionNewsSection({ unionName = 'দামকুড়া', 
             setCurrentIndex((prev) => (prev - 1 + (TOTAL_NEWS - CARDS_TO_SHOW + 1)) % (TOTAL_NEWS - CARDS_TO_SHOW + 1));
         }
     };
-
 
     return (
         <section className="py-16 bg-transparent overflow-hidden">
@@ -87,50 +119,53 @@ export default function UnionNewsSection({ unionName = 'দামকুড়া', 
                     animate={{ x: `calc(-${currentIndex * (100 / CARDS_TO_SHOW)}% - ${currentIndex * 1.5}rem)` }}
                     transition={{ type: "spring", stiffness: 200, damping: 26 }}
                 >
-                    {unionNews.map((news) => (
-                        <div 
-                            key={news.id} 
-                            className="w-full md:w-[calc(33.333%-1rem)] shrink-0"
-                        >
-                            <Link href={`/news/${news.slug}`} className="group block h-full">
-                                <div className="bg-white/80 backdrop-blur-sm h-full rounded-[32px] border border-slate-200/60 p-8 shadow-sm hover:shadow-2xl hover:shadow-slate-200/50 hover:border-teal-200 transition-all duration-500 relative flex flex-col">
-                                    
-                                    {/* Sidebar Accent */}
-                                    <div className="absolute left-0 top-12 bottom-12 w-1.5 bg-teal-600/10 group-hover:bg-teal-600 transition-colors rounded-r-full" />
-
-                                    <div className="pl-4">
-                                        <div className="flex items-center justify-between mb-6">
-                                            <div className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-400 tracking-widest">
-                                                <Calendar size={14} className="text-teal-500" />
-                                                {news.date}
-                                            </div>
-                                            <span className="px-3 py-1 rounded-full bg-slate-100 text-teal-700 text-[9px] font-black uppercase border border-slate-200/50">
-                                                {news.category}
-                                            </span>
-                                        </div>
-
-                                        <h3 className="text-xl font-black text-slate-800 leading-snug mb-4 group-hover:text-teal-700 transition-colors line-clamp-2">
-                                            {news.title}
-                                        </h3>
+                    {unionNews.map((news) => {
+                        const styles = getCardStyles(news.category);
+                        return (
+                            <div 
+                                key={news.id} 
+                                className="w-full md:w-[calc(33.333%-1rem)] shrink-0"
+                            >
+                                <Link href={`/news/${news.slug}`} className="group block h-full">
+                                    <div className={`backdrop-blur-sm h-full rounded-[32px] border p-8 shadow-sm hover:shadow-2xl hover:shadow-slate-200/50 hover:border-teal-200 transition-all duration-500 relative flex flex-col ${styles.container}`}>
                                         
-                                        <p className="text-slate-500 text-sm font-medium leading-relaxed mb-8 line-clamp-3">
-                                            {news.excerpt}
-                                        </p>
+                                        {/* Sidebar Accent */}
+                                        <div className={`absolute left-0 top-12 bottom-12 w-1.5 transition-colors rounded-r-full ${styles.accent}`} />
 
-                                        <div className="mt-auto flex items-center justify-between pt-6 border-t border-slate-100/50">
-                                            <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400">
-                                                <MapPin size={12} className="text-teal-500" />
-                                                {news.village}
+                                        <div className="pl-4">
+                                            <div className="flex items-center justify-between mb-6">
+                                                <div className={`flex items-center gap-2 text-[10px] font-black uppercase tracking-widest ${styles.meta}`}>
+                                                    <Calendar size={14} className="text-teal-500" />
+                                                    {news.date}
+                                                </div>
+                                                <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase border ${styles.tag}`}>
+                                                    {news.category}
+                                                </span>
                                             </div>
-                                            <div className="flex items-center gap-2 text-xs font-black text-teal-600 opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all">
-                                                দেখুন <ArrowRight size={14} />
+
+                                            <h3 className={`text-xl font-black leading-snug mb-4 transition-colors line-clamp-2 ${styles.title}`}>
+                                                {news.title}
+                                            </h3>
+                                            
+                                            <p className={`text-sm font-medium leading-relaxed mb-8 line-clamp-3 ${styles.excerpt}`}>
+                                                {news.excerpt}
+                                            </p>
+
+                                            <div className="mt-auto flex items-center justify-between pt-6 border-t border-slate-100/10">
+                                                <div className={`flex items-center gap-1.5 text-[10px] font-bold ${styles.meta}`}>
+                                                    <MapPin size={12} className="text-teal-500" />
+                                                    {news.village}
+                                                </div>
+                                                <div className="flex items-center gap-2 text-xs font-black text-teal-600 opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all">
+                                                    দেখুন <ArrowRight size={14} />
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                            </Link>
-                        </div>
-                    ))}
+                                </Link>
+                            </div>
+                        );
+                    })}
                 </motion.div>
             </div>
 

@@ -12,6 +12,7 @@ import {
 import { applyLocationSnapshot } from '@/lib/store/features/locationSlice';
 import { paths } from '@/lib/constants/paths';
 import { layout } from '@/lib/theme';
+import PowerWatchSection from '../community/PowerWatchSection';
 
 export default function WardPortalClient({ ctx, ward }) {
     const dispatch = useDispatch();
@@ -120,6 +121,10 @@ export default function WardPortalClient({ ctx, ward }) {
                         </div>
                     </div>
                 </motion.section>
+
+                <div className="mb-10">
+                    <PowerWatchSection />
+                </div>
 
                 {/* Main 2-col Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">

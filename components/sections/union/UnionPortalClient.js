@@ -14,8 +14,6 @@ import { SERVICE_CATEGORIES } from '@/lib/constants/serviceCategories';
 import { paths } from '@/lib/constants/paths';
 import { layout } from '@/lib/theme';
 import UnionNewsSection from './UnionNewsSection';
-import { CommunityBulletin } from '../home';
-import PowerWatchSection from '../community/PowerWatchSection';
 
 export default function UnionPortalClient({ ctx }) {
     const dispatch = useDispatch();
@@ -127,10 +125,6 @@ export default function UnionPortalClient({ ctx }) {
                     </div>
                 </motion.section>
 
-                <div className="space-y-10 mb-12">
-                    <CommunityBulletin />
-                    <PowerWatchSection />
-                </div>
 
                 {/* Main Dashboard Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-12">
