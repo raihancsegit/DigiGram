@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Zap, ZapOff, Clock, MapPin, AlertTriangle, RefreshCw, Info } from 'lucide-react';
+import { Zap, Clock, MapPin, AlertTriangle, Info, RotateCcw, AlertCircle } from 'lucide-react';
 
 export default function PowerWatchSection() {
     const { selected } = useSelector((s) => s.location);
@@ -81,9 +81,9 @@ export default function PowerWatchSection() {
                                     className={`w-full sm:w-auto px-10 py-5 rounded-[24px] font-black text-white shadow-2xl transition-all active:scale-[0.98] flex items-center justify-center gap-3 ${status === 'online' ? 'bg-slate-900 shadow-slate-900/20 hover:bg-slate-800' : 'bg-amber-600 shadow-amber-600/20 hover:bg-amber-700'}`}
                                 >
                                     {isReporting ? (
-                                        <RefreshCw size={20} className="animate-spin" />
+                                        <RotateCcw size={20} className="animate-spin" />
                                     ) : (
-                                        <RefreshCw size={20} />
+                                        <RotateCcw size={20} />
                                     )}
                                     {status === 'online' ? 'বিদ্যুৎ নেই? রিপোর্ট করুন' : 'বিদ্যুৎ এসেছে? রিপোর্ট দিন'}
                                 </button>
@@ -108,7 +108,7 @@ export default function PowerWatchSection() {
                                     {status === 'online' ? (
                                         <Zap size={120} strokeWidth={2.5} className="drop-shadow-[0_0_30px_rgba(255,255,255,0.4)]" />
                                     ) : (
-                                        <ZapOff size={120} strokeWidth={2.5} className="drop-shadow-[0_0_30px_rgba(255,255,255,0.4)]" />
+                                        <AlertCircle size={120} strokeWidth={2.5} className="drop-shadow-[0_0_30px_rgba(255,255,255,0.4)]" />
                                     )}
                                     
                                     {/* Pulse effect */}
@@ -123,7 +123,7 @@ export default function PowerWatchSection() {
                                 className="absolute -top-4 -right-4 bg-white p-4 rounded-3xl shadow-xl border border-slate-100 flex items-center gap-3 z-20"
                             >
                                 <div className="p-2 rounded-xl bg-teal-50 text-teal-600">
-                                    <RefreshCw size={18} />
+                                    <RotateCcw size={18} />
                                 </div>
                                 <div className="pr-2">
                                     <p className="text-[10px] font-black text-slate-400 leading-none">ভেরিফিকেশন</p>

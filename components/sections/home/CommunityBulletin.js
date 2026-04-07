@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from 'framer-motion';
-import { AlertCircle, Bell, ExternalLink, Mosque, Search, ArrowRight } from 'lucide-react';
+import { AlertCircle, Bell, ExternalLink, Search, ArrowRight, Home } from 'lucide-react';
 import Link from 'next/link';
 import { ALL_NEWS } from '@/lib/content/newsData';
 
@@ -50,7 +50,7 @@ export default function CommunityBulletin() {
                                             ? 'bg-white/10 text-white' 
                                             : 'bg-amber-50 text-amber-600'
                                         }`}>
-                                            {item.category === 'জানাজা' ? <Mosque size={24} /> : <Search size={24} />}
+                                            {item.category === 'জানাজা' ? <Home size={24} /> : <Search size={24} />}
                                         </div>
                                         
                                         <div className="min-w-0">
