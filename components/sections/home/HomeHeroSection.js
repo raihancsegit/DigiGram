@@ -1,13 +1,15 @@
 "use client"
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Sparkles, Send, ArrowRight, Mic, ShieldCheck, MapPin } from 'lucide-react';
+import { Search, Sparkles, Send, ArrowRight, Mic, ShieldCheck, MapPin, Globe, Home } from 'lucide-react';
 import { FEATURED_FOR_HERO } from '@/lib/constants/serviceCategories';
 import { paths } from '@/lib/constants/paths';
+import { openModal } from '@/lib/store/features/locationSlice';
 
 export default function HomeHeroSection() {
+    const dispatch = useDispatch();
     const { selected } = useSelector((s) => s.location);
     const words = ["ব্লাড ডোনার", "জরুরি ডাক্তার", "ইউনিয়ন সেবা", "স্মার্ট স্কুল", "কৃষি তথ্য"];
     const [index, setIndex] = useState(0);
@@ -49,12 +51,20 @@ export default function HomeHeroSection() {
                                 {selected.unionSlug ? (
                                     <Link
                                         href={paths.unionPortal(selected.unionSlug)}
-                                        className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-gradient-to-r from-teal-600 to-sky-600 text-white text-[11px] font-extrabold shadow-md hover:brightness-105 transition-all w-full sm:w-auto justify-center"
+                                        className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-gradient-to-r from-teal-600 to-sky-600 text-white text-[11px] font-extrabold shadow-md hover:brightness-105 transition-all w-full sm:w-auto mt-2 sm:mt-0 justify-center"
+                                    >
+                                        <Home size={14} className="shrink-0" />
+                                        {selected.union} ইউনিয়ন পোর্টাল ও স্থানীয় সেবা
+                                    </Link>
+                                ) : (
+                                    <button
+                                        onClick={() => dispatch(openModal())}
+                                        className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-teal-600 text-white text-[11px] font-extrabold shadow-md hover:bg-teal-700 transition-all w-full sm:w-auto mt-2 sm:mt-0 justify-center animate-bounce-slow"
                                     >
                                         <MapPin size={14} className="shrink-0" />
-                                        {selected.union} — ইউনিয়ন পোর্টাল (সব সেবা)
-                                    </Link>
-                                ) : null}
+                                        আপনার ইউনিয়ন সিলেক্ট করুন
+                                    </button>
+                                )}
                             </motion.div>
 
                             <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold text-[color:var(--dg-ink)] leading-[1.08] tracking-tight mb-3">
@@ -65,7 +75,8 @@ export default function HomeHeroSection() {
                             <p className="text-base sm:text-lg text-[color:var(--dg-ink-muted)] font-semibold max-w-xl mx-auto lg:mx-0 mb-8 leading-relaxed">
                                 <span className="text-[color:var(--dg-ink)]">“সেবা, শিক্ষা ও সমৃদ্ধির ডিজিটাল সেতুবন্ধন।”</span>
                                 <span className="block mt-2 text-[color:var(--dg-muted)] font-medium text-[15px]">
-                                    আপনার ইউনিয়ন ও গ্রামের পোর্টাল—সেশনে সেভ, এক ট্যাপে সেবা।
+                                    পুরো উপজেলার গ্লোবাল সেবা এবং আপনার নিজের ইউনিয়নের বিশেষ স্থানীয় সেবা—সবই এখন এক জায়গায়।
+                                    {!selected.unionSlug && <span className="text-teal-600 font-bold block mt-1">আপনার এলাকা সিলেক্ট করে স্থানীয় সেবাগুলোর সুবিধা নিন।</span>}
                                 </span>
                             </p>
 
@@ -167,19 +178,19 @@ export default function HomeHeroSection() {
                                                 <card.icon size={26} strokeWidth={2.4} />
                                             </div>
                                             <div className="flex-1 min-w-0 text-left">
-                                                <div className="flex items-center gap-2 flex-wrap">
+                                                <div className="flex items-center gap-2 flex-wrap mb-1">
                                                     <h4 className="font-extrabold text-slate-800 text-sm tracking-tight">{card.title}</h4>
-                                                    {card.free ? (
-                                                        <span className="text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
-                                                            ফ্রি
+                                                    {card.level === 'union' ? (
+                                                        <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-teal-100 text-teal-700 flex items-center gap-1">
+                                                            ইউনিয়ন
                                                         </span>
                                                     ) : (
-                                                        <span className="text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
-                                                            প্রিমিয়াম
+                                                        <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-sky-100 text-sky-700 flex items-center gap-1">
+                                                            গ্লোবাল
                                                         </span>
                                                     )}
                                                 </div>
-                                                <p className="text-slate-500 text-xs font-semibold mt-0.5">{card.subtitle}</p>
+                                                <p className="text-slate-500 text-xs font-semibold">{card.subtitle}</p>
                                             </div>
                                             <ArrowRight size={18} className="text-slate-300 shrink-0 group-hover:text-[color:var(--dg-teal)] transition-colors" />
                                         </Link>
