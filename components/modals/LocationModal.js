@@ -29,11 +29,16 @@ export default function LocationModal() {
         const up = getUpazilaById(selected.upazilaId);
         list = up?.unions ?? [];
         title = "ইউনিয়ন";
+    } else if (step === 4) {
+        const up = getUpazilaById(selected.upazilaId);
+        const un = up?.unions?.find((x) => x.slug === selected.unionSlug || x.name === selected.union);
+        list = un?.wards ?? [];
+        title = "ওয়ার্ড";
     } else {
         const up = getUpazilaById(selected.upazilaId);
         const un = up?.unions?.find((x) => x.slug === selected.unionSlug || x.name === selected.union);
-        // Flatten villages from all wards
-        list = un?.wards?.reduce((acc, w) => [...acc, ...(w.villages || [])], []) ?? [];
+        const ward = un?.wards?.find((w) => w.id === selected.wardId || w.name === selected.ward);
+        list = ward?.villages ?? [];
         title = "গ্রাম (ঐচ্ছিক)";
     }
 
@@ -46,6 +51,9 @@ export default function LocationModal() {
         } else if (step === 3) {
             const un = raw;
             dispatch(setStepData({ level: "union", value: un.name, unionSlug: un.slug }));
+        } else if (step === 4) {
+            const ward = raw;
+            dispatch(setStepData({ level: "ward", value: ward.name, wardId: ward.id }));
         } else {
             const village = raw;
             dispatch(setStepData({ level: "village", value: village }));
@@ -93,7 +101,7 @@ export default function LocationModal() {
 
                 <div className="p-6 overflow-y-auto flex-1">
                     <p className="text-xs font-extrabold uppercase tracking-wider text-[color:var(--dg-teal)] mb-1">
-                        ধাপ {step} / ৪
+                        ধাপ {step} / ৫
                     </p>
                     <p className="text-sm font-bold text-slate-600 mb-4">{title} বেছে নিন</p>
 
@@ -146,6 +154,23 @@ export default function LocationModal() {
                             ))}
 
                         {step === 4 &&
+                            list.map((ward) => (
+                                <li key={ward.id}>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleSelect(ward)}
+                                        className="w-full flex justify-between items-center p-4 border border-slate-200 rounded-2xl hover:bg-teal-50/80 hover:border-teal-200 transition-colors text-left"
+                                    >
+                                        <div>
+                                            <span className="font-extrabold text-slate-800 block">{ward.name}</span>
+                                            <span className="text-xs font-bold text-slate-400">মেম্বার: {ward.member.name}</span>
+                                        </div>
+                                        <ChevronRight size={18} className="text-slate-400 shrink-0" />
+                                    </button>
+                                </li>
+                            ))}
+
+                        {step === 5 &&
                             list.map((v) => (
                                 <li key={v}>
                                     <button
@@ -160,7 +185,7 @@ export default function LocationModal() {
                             ))}
                     </ul>
 
-                    {step === 4 && (
+                    {step === 5 && (
                         <button
                             type="button"
                             onClick={skipVillage}
