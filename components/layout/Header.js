@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, useLayoutEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useSelector, useDispatch } from 'react-redux';
 import { MapPin, Bell, UserCircle, ChevronDown, Clock, BookOpen, Sparkles, LogOut, User, Search, Menu } from 'lucide-react';
 import { openModal } from '@/lib/store/features/locationSlice';
@@ -11,6 +12,7 @@ import { paths } from '@/lib/constants/paths';
 
 export default function Header() {
     const dispatch = useDispatch();
+    const router = useRouter();
     const { selected } = useSelector((state) => state.location);
     const { user, isAuthenticated } = useSelector((state) => state.auth);
     const [currentTime, setCurrentTime] = useState(new Date());

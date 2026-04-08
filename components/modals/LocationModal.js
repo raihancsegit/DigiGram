@@ -3,6 +3,7 @@
 import { useDispatch, useSelector, useStore } from "react-redux";
 import { useRouter } from "next/navigation";
 import { X, ChevronLeft, ChevronRight, MapPin } from "lucide-react";
+import { motion } from "framer-motion";
 import { toggleModal, setStepData, goBack } from "@/lib/store/features/locationSlice";
 import { RAJSHAHI_GEO, getUpazilaById } from "@/lib/constants/locations";
 import { paths } from "@/lib/constants/paths";
