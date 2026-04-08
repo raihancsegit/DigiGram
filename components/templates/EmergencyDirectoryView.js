@@ -1,4 +1,8 @@
+'use client';
+
 import Link from 'next/link';
+import { Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { ArrowLeft, Phone, MapPin, Clock, ShieldAlert, Stethoscope, Flame, Car, Building2 } from 'lucide-react';
 import {
     emergencyDirectoryContext,
@@ -64,7 +68,22 @@ function PhoneBlock({ phones }) {
 }
 
 export default function EmergencyDirectoryView({ slug }) {
+    return (
+        <Suspense fallback={<div className="py-20 text-center font-bold text-[color:var(--dg-muted)]">Loading Emergency Directory...</div>}>
+            <EmergencyDirectoryContent slug={slug} />
+        </Suspense>
+    );
+}
+
+function EmergencyDirectoryContent({ slug }) {
+    const searchParams = useSearchParams();
+    const unionQuery = searchParams.get('u');
+    const isUnionLocked = !!unionQuery;
+    
     const ctx = emergencyDirectoryContext;
+
+    // Use dynamic title based on context
+    const displayUnionName = isUnionLocked ? `${unionQuery} ইউনিয়ন (ফিল্টারকৃত)` : 'সকল ইউনিয়ন (গ্লোবাল)';
 
     return (
         <div className="dg-section-x px-2 md:px-6 py-8 md:py-10 pb-36">
@@ -86,8 +105,8 @@ export default function EmergencyDirectoryView({ slug }) {
                     </span>
                 </div>
 
-                <h1 className="text-3xl sm:text-4xl md:text-[2.5rem] font-extrabold text-[color:var(--dg-ink)] tracking-tight leading-tight mb-4">
-                    জরুরি সেবা ও নম্বর — {ctx.union}
+                <h1 className="text-3xl sm:text-4xl md:text-[2.5rem] font-extrabold text-[color:var(--dg-ink)] tracking-tight leading-tight mb-4 capitalize">
+                    জরুরি সেবা ও নম্বর — {displayUnionName}
                 </h1>
                 <p className="text-sm font-bold text-[color:var(--dg-teal)] mb-2">
                     {ctx.district} · {ctx.upazila}

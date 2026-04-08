@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, Suspense, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
     Search, Droplet, MapPin, 
@@ -13,9 +14,32 @@ import { ALL_DONORS } from '@/lib/content/donorData';
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
 
 export default function BloodBankView() {
+    return (
+        <Suspense fallback={<div className="py-20 text-center font-bold text-slate-400">Loading Blood Bank...</div>}>
+            <BloodBankContent />
+        </Suspense>
+    );
+}
+
+function BloodBankContent() {
+    const searchParams = useSearchParams();
+    const unionQuery = searchParams.get('u');
+
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedGroup, setSelectedGroup] = useState('All');
-    const [selectedUnion, setSelectedUnion] = useState('All');
+    
+    // Set initial union to the query param if it exists, otherwise 'All'
+    const [selectedUnion, setSelectedUnion] = useState(unionQuery || 'All');
+
+    // If there is a union query, we consider the filter "locked" to that union
+    const isUnionLocked = !!unionQuery;
+
+    // Optional: if unionQuery changes, update the selection
+    useEffect(() => {
+        if (unionQuery) {
+            setSelectedUnion(unionQuery);
+        }
+    }, [unionQuery]);
 
     // Get unique unions for filter
     const unions = useMemo(() => {
@@ -92,12 +116,17 @@ export default function BloodBankView() {
                     <div className="w-full lg:w-72">
                         <div className="relative group">
                             <div className="absolute inset-y-0 left-6 flex items-center pointer-events-none">
-                                <MapPin size={22} className="text-slate-400 group-focus-within:text-rose-500 transition-colors" />
+                                <MapPin size={22} className={`transition-colors ${isUnionLocked ? 'text-teal-500' : 'text-slate-400 group-focus-within:text-rose-500'}`} />
                             </div>
                             <select
                                 value={selectedUnion}
                                 onChange={(e) => setSelectedUnion(e.target.value)}
-                                className="w-full pl-16 pr-6 py-5 bg-slate-50 border border-slate-100 rounded-[24px] text-slate-800 font-bold focus:outline-none focus:ring-4 focus:ring-rose-500/10 focus:border-rose-500/30 transition-all appearance-none cursor-pointer capitalize text-lg"
+                                disabled={isUnionLocked}
+                                className={`w-full pl-16 pr-6 py-5 border rounded-[24px] font-bold focus:outline-none transition-all appearance-none text-lg capitalize ${
+                                    isUnionLocked 
+                                    ? 'bg-teal-50/50 border-teal-100 text-teal-800 cursor-not-allowed opacity-80' 
+                                    : 'bg-slate-50 border-slate-100 text-slate-800 cursor-pointer focus:ring-4 focus:ring-rose-500/10 focus:border-rose-500/30'
+                                }`}
                             >
                                 <option value="All">সব ইউনিয়ন</option>
                                 {unions.filter(u => u !== 'All').map(u => <option key={u} value={u}>{u}</option>)}
