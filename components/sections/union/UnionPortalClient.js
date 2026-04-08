@@ -14,6 +14,7 @@ import { SERVICE_CATEGORIES } from '@/lib/constants/serviceCategories';
 import { paths } from '@/lib/constants/paths';
 import { layout } from '@/lib/theme';
 import UnionNewsSection from './UnionNewsSection';
+import { Activity, BellRing, Navigation } from 'lucide-react';
 
 export default function UnionPortalClient({ ctx }) {
     const dispatch = useDispatch();
@@ -57,8 +58,16 @@ export default function UnionPortalClient({ ctx }) {
     ];
 
     return (
-        <div className="dg-section-x px-2 md:px-6 pb-32 pt-4 md:pt-8 bg-slate-50/50">
-            <div className="max-w-[1200px] mx-auto" style={{ maxWidth: layout.servicesMaxPx }}>
+        <div className="bg-[#F8FAFC] pb-32">
+            
+            {/* Edge-to-Edge Hero Background Area */}
+            <div className="relative pt-6 md:pt-10 pb-32 md:pb-40 px-4 md:px-6 bg-slate-900 overflow-hidden border-b border-slate-800 rounded-b-[48px] md:rounded-b-[80px]">
+                <div className="absolute inset-0 opacity-40">
+                    <div className="absolute top-0 right-0 w-96 h-96 bg-teal-500 rounded-full blur-[120px] translate-x-1/3 -translate-y-1/4" />
+                    <div className="absolute bottom-0 left-0 w-96 h-96 bg-sky-500 rounded-full blur-[120px] -translate-x-1/3 translate-y-1/4" />
+                </div>
+                
+                <div className="max-w-[1200px] mx-auto relative z-10">
                 
                 {/* Upper Navigation */}
                 <div className="flex items-center justify-between gap-3 mb-6">
@@ -85,46 +94,66 @@ export default function UnionPortalClient({ ctx }) {
                 <motion.section 
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="relative overflow-hidden rounded-[32px] md:rounded-[48px] border-4 border-white bg-gradient-to-br from-slate-900 via-slate-800 to-teal-900 text-white shadow-xl mb-10"
+                    className="relative mt-8"
                 >
-                    <div className="absolute inset-0 opacity-40 bg-[radial-gradient(ellipse_80%_60%_at_20%_0%,rgba(45,212,191,0.4),transparent)] pointer-events-none" />
-                    <div className="relative p-8 sm:p-12 md:p-16 flex flex-col md:flex-row md:items-center justify-between gap-8">
-                        <div className="flex-1">
-                            <div className="flex flex-wrap items-center gap-2 text-teal-300/90 text-xs font-black uppercase tracking-[0.2em] mb-4">
-                                <Sparkles size={14} />
-                                {district.name} · {upazila.name}
-                            </div>
+                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
+                        <div className="flex-1 text-white">
+                            <motion.div 
+                                initial={{ opacity: 0, x: -20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                className="flex flex-wrap items-center gap-2 mb-6"
+                            >
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-500/20 border border-teal-500/30 text-teal-300 text-[10px] font-black uppercase tracking-[0.2em] backdrop-blur-md">
+                                    <Sparkles size={12} />
+                                    {district.name} · {upazila.name}
+                                </span>
+                            </motion.div>
                             <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tight leading-[1.1] mb-6">
                                 {union.name} <span className="text-teal-400">ইউনিয়ন</span>
                             </h1>
                             <div className="flex flex-wrap gap-3">
-                                <div className="inline-flex items-center gap-2 rounded-2xl bg-white/10 px-4 py-2 text-xs font-bold backdrop-blur-md border border-white/10">
+                                <div className="inline-flex items-center gap-2 rounded-2xl bg-white/10 px-4 py-2 text-xs font-bold backdrop-blur-md border border-white/5 shadow-lg shadow-black/20">
                                     <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                                     স্মার্ট পোর্টাল একটিভ
                                 </div>
-                                <div className="inline-flex items-center gap-2 rounded-2xl bg-teal-500/20 text-teal-100 px-4 py-2 text-xs font-bold border border-teal-500/20">
-                                    <CheckCircle2 size={14} className="text-teal-400" />
+                                <div className="inline-flex items-center gap-2 rounded-2xl bg-teal-500/20 text-teal-100 px-4 py-2 text-xs font-bold border border-teal-500/20 shadow-lg shadow-black/20">
+                                    <MapPin size={14} className="text-teal-400" />
                                     {union.wards?.length || 0}টি ওয়াড · {allVillages.length}টি গ্রাম
                                 </div>
                             </div>
                         </div>
 
                         {/* Quick Action Card inside Hero */}
-                        <div className="hidden lg:block shrink-0 p-6 rounded-[32px] bg-white/5 backdrop-blur-xl border border-white/10 w-72">
-                            <p className="text-[10px] font-black uppercase text-teal-300 mb-4 tracking-widest text-center">জরুরি যোগাযোগ</p>
-                            <div className="flex items-center gap-4 p-4 rounded-2xl bg-white/10 border border-white/5 mb-3">
-                                <div className="p-3 rounded-full bg-teal-500 shadow-lg shadow-teal-500/30">
+                        <motion.div 
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            transition={{ delay: 0.2 }}
+                            className="hidden lg:block shrink-0 p-6 rounded-[32px] bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-xl border border-white/10 w-72 shadow-2xl relative overflow-hidden group"
+                        >
+                            <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none group-hover:scale-110 transition-transform">
+                                <Phone size={100} />
+                            </div>
+                            <p className="text-[10px] font-black uppercase text-teal-300 mb-4 tracking-widest relative z-10 flex items-center gap-2">
+                                <BellRing size={12} />
+                                জরুরি যোগাযোগ
+                            </p>
+                            <div className="flex items-center gap-4 p-4 rounded-2xl bg-white/10 border border-white/5 mb-2 relative z-10 hover:bg-white/15 transition-colors cursor-pointer active:scale-95">
+                                <div className="p-3 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 shadow-lg shadow-teal-500/30">
                                     <Phone size={20} className="text-white" />
                                 </div>
                                 <div>
-                                    <p className="text-[10px] font-bold text-teal-200">হেল্পলাইন</p>
-                                    <p className="text-lg font-black tracking-tighter leading-none">৩৩৩</p>
+                                    <p className="text-[10px] font-bold text-teal-200">জাতীয় হেল্পলাইন</p>
+                                    <p className="text-xl font-black tracking-tighter leading-none text-white mt-1">৩৩৩</p>
                                 </div>
                             </div>
-                        </div>
+                        </motion.div>
                     </div>
                 </motion.section>
+            </div>
+        </div>
 
+            {/* Main Content Area - Pulled up to overlap hero */}
+            <div className="max-w-[1200px] mx-auto px-4 -mt-24 relative z-20">
 
                 {/* Main Dashboard Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-12">
@@ -136,17 +165,17 @@ export default function UnionPortalClient({ ctx }) {
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                             {stats.map((s, i) => (
                                 <motion.div 
-                                    initial={{ opacity: 0, scale: 0.9 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    transition={{ delay: i * 0.1 }}
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: i * 0.1 + 0.3 }}
                                     key={s.label} 
-                                    className="p-5 rounded-3xl bg-white border border-slate-200/60 shadow-sm hover:shadow-md transition-shadow"
+                                    className="p-5 rounded-[24px] bg-white border border-slate-100 shadow-xl shadow-slate-200/50 hover:shadow-2xl hover:border-teal-200 transition-all hover:-translate-y-1 group"
                                 >
-                                    <div className={`w-10 h-10 rounded-2xl ${s.bg} flex items-center justify-center mb-3`}>
-                                        <s.icon className={s.color} size={20} />
+                                    <div className={`w-12 h-12 rounded-2xl ${s.bg} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
+                                        <s.icon className={s.color} size={24} />
                                     </div>
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">{s.label}</p>
-                                    <p className="text-lg font-black text-slate-800">{s.value}</p>
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1.5">{s.label}</p>
+                                    <p className="text-xl font-black text-slate-800 tracking-tight">{s.value}</p>
                                 </motion.div>
                             ))}
                         </div>
@@ -167,30 +196,31 @@ export default function UnionPortalClient({ ctx }) {
                                 {pagedWards.map((ward, idx) => (
                                     <motion.div
                                         key={ward.id}
-                                        initial={{ opacity: 0, y: 10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ delay: idx * 0.08 }}
+                                        initial={{ opacity: 0, x: -20 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        transition={{ delay: idx * 0.08 + 0.4 }}
                                     >
                                         <Link
                                             href={`/u/${union.slug}/w/${ward.id}`}
-                                            className="block border border-slate-200 rounded-[24px] overflow-hidden group hover:border-teal-300 hover:shadow-lg transition-all duration-300"
+                                            className="block border border-slate-100 rounded-[24px] overflow-hidden group hover:border-teal-300 hover:shadow-xl transition-all duration-300 bg-white"
                                         >
                                             {/* Ward Header */}
-                                            <div className="flex items-center justify-between p-5 bg-gradient-to-r from-slate-50 to-white">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center text-white font-black text-lg shadow-md shadow-teal-200 shrink-0">
+                                            <div className="flex items-center justify-between p-5 bg-gradient-to-r from-slate-50 to-white relative overflow-hidden">
+                                                <div className="absolute right-0 top-0 w-32 h-32 bg-teal-50 rounded-full blur-[40px] group-hover:bg-teal-100 transition-colors pointer-events-none" />
+                                                <div className="flex items-center gap-4 relative z-10">
+                                                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center text-white font-black text-lg shadow-lg shadow-teal-200 shrink-0 group-hover:scale-110 transition-transform">
                                                         {wardPage * WARDS_PER_PAGE + idx + 1}
                                                     </div>
                                                     <div>
-                                                        <h3 className="font-black text-slate-800 text-base group-hover:text-teal-700 transition-colors">{ward.name}</h3>
-                                                        <p className="text-xs font-bold text-slate-400 mt-0.5">{ward.villages?.length || 0}টি গ্রাম</p>
+                                                        <h3 className="font-black text-slate-800 text-lg group-hover:text-teal-700 transition-colors leading-tight">{ward.name}</h3>
+                                                        <p className="text-[11px] font-bold text-slate-400 mt-1 uppercase tracking-widest">{ward.villages?.length || 0}টি গ্রাম</p>
                                                     </div>
                                                 </div>
 
-                                                <div className="flex items-center gap-3">
+                                                <div className="flex items-center gap-3 relative z-10">
                                                     {/* Member Badge */}
                                                     {ward.member && (
-                                                        <div className="hidden sm:flex items-center gap-3 bg-white border border-slate-100 rounded-2xl px-4 py-2 shadow-sm">
+                                                        <div className="hidden sm:flex items-center gap-3 bg-white border border-slate-100 rounded-2xl px-4 py-2 shadow-sm group-hover:border-teal-100 transition-colors">
                                                             <div className="w-8 h-8 rounded-full bg-teal-50 flex items-center justify-center border border-teal-100">
                                                                 <UserCircle size={20} className="text-teal-600" />
                                                             </div>
@@ -200,20 +230,20 @@ export default function UnionPortalClient({ ctx }) {
                                                             </div>
                                                         </div>
                                                     )}
-                                                    <div className="w-9 h-9 rounded-full bg-teal-50 border border-teal-100 flex items-center justify-center shrink-0 group-hover:bg-teal-500 group-hover:border-teal-500 transition-all">
-                                                        <ArrowUpRight size={16} className="text-teal-600 group-hover:text-white transition-colors" />
+                                                    <div className="w-10 h-10 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0 group-hover:bg-teal-500 group-hover:border-teal-500 transition-all shadow-sm">
+                                                        <ArrowRight size={16} className="text-slate-400 group-hover:text-white transition-colors" />
                                                     </div>
                                                 </div>
                                             </div>
 
                                             {/* Village Pills */}
-                                            <div className="px-5 pb-5 pt-3 border-t border-slate-100 bg-white/50">
-                                                <p className="text-[9px] font-black uppercase text-slate-400 tracking-wider mb-3">এই ওয়াডের গ্রামসমূহ</p>
+                                            <div className="px-5 pb-5 pt-3 border-t border-slate-50 bg-slate-50/30">
+                                                <p className="text-[9px] font-black uppercase text-slate-400 tracking-wider mb-3">অন্তর্ভুক্ত গ্রামসমূহ</p>
                                                 <div className="flex flex-wrap gap-2">
                                                     {(ward.villages || []).map((v) => (
                                                         <span
                                                             key={v}
-                                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-100 text-sm font-bold text-slate-600 group-hover:border-teal-100 transition-all"
+                                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-[13px] font-bold text-slate-600 group-hover:border-teal-100 transition-all shadow-sm"
                                                         >
                                                             <div className="w-1.5 h-1.5 rounded-full bg-teal-400 shrink-0" />
                                                             {v}
@@ -228,7 +258,7 @@ export default function UnionPortalClient({ ctx }) {
 
                             {/* Pagination */}
                             {totalWardPages > 1 && (
-                                <div className="flex items-center justify-between mt-6 pt-5 border-t border-slate-100">
+                                <div className="flex items-center justify-between mt-8 pt-6 border-t border-slate-100">
                                     <button
                                         type="button"
                                         onClick={() => setWardPage((p) => Math.max(0, p - 1))}
@@ -300,33 +330,38 @@ export default function UnionPortalClient({ ctx }) {
                         
                         {/* Chairman Profile Card */}
                         <motion.div 
-                            initial={{ opacity: 0, x: 20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            className="relative overflow-hidden p-8 rounded-[32px] bg-white border border-slate-200/60 shadow-lg text-center"
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: 0.4 }}
+                            className="relative overflow-hidden p-8 rounded-[32px] bg-white border border-slate-100 shadow-xl shadow-slate-200/50 text-center"
                         >
-                            <div className="absolute top-0 left-0 w-full h-24 bg-gradient-to-br from-teal-500 to-emerald-600 opacity-10" />
-                            <div className="relative mb-6 mx-auto w-24 h-24 rounded-full p-1 border-2 border-teal-500 ring-8 ring-teal-50">
+                            <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-br from-slate-900 to-teal-900 overflow-hidden">
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-teal-500 rounded-full blur-[40px] opacity-30 pointer-events-none" />
+                            </div>
+                            
+                            <div className="relative mt-8 mb-6 mx-auto w-28 h-28 rounded-full p-1 border-4 border-white shadow-xl bg-white">
                                 <div className="w-full h-full rounded-full bg-slate-100 flex items-center justify-center overflow-hidden">
-                                    <UserCircle size={64} className="text-slate-300" />
+                                    <UserCircle size={80} className="text-slate-300" />
                                 </div>
                             </div>
-                            <h3 className="text-xl font-black text-slate-800 mb-1">চেয়ারম্যান তথ্য</h3>
-                            <p className="text-xs font-bold text-teal-600 bg-teal-50 px-3 py-1 rounded-full w-fit mx-auto mb-6">দায়িত্বরত আছেন</p>
                             
-                            <div className="space-y-3 mb-8">
-                                <div className="text-center">
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">চেয়ারম্যান নাম</p>
-                                    <p className="text-lg font-black text-slate-700">মোঃ আব্দুর রহমান</p>
+                            <h3 className="text-2xl font-black text-slate-800 mb-1 leading-tight">মোঃ আব্দুর রহমান</h3>
+                            <p className="text-xs font-bold text-teal-600 bg-teal-50 px-4 py-1.5 rounded-full w-fit mx-auto mb-6 border border-teal-100">সম্মানিত চেয়ারম্যান</p>
+                            
+                            <div className="space-y-4 mb-8 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                <div className="flex items-center justify-between text-left">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase">দায়িত্বকাল</p>
+                                    <p className="text-sm font-black text-slate-700">বর্তমান মেয়াদে আছেন</p>
                                 </div>
-                                <div className="w-full h-px bg-slate-100" />
-                                <div className="text-center">
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">সাক্ষাতের সময়</p>
-                                    <p className="text-sm font-black text-slate-600">প্রতিদিন সকাল ১০টা - ২টা</p>
+                                <div className="w-full h-px bg-slate-200" />
+                                <div className="flex items-center justify-between text-left">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase">সাক্ষাতের সময়</p>
+                                    <p className="text-sm font-black text-slate-700 text-right">রবি-বৃহঃ<br/>সকাল ১০টা - ৩টা</p>
                                 </div>
                             </div>
 
-                            <button className="w-full py-4 rounded-2xl bg-[color:var(--dg-teal)] text-white font-black text-sm shadow-lg shadow-teal-600/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2">
-                                <Phone size={18} />
+                            <button className="w-full py-4 rounded-2xl bg-slate-900 hover:bg-teal-600 text-white font-black text-sm shadow-xl shadow-slate-200 hover:shadow-teal-200 active:scale-95 transition-all flex items-center justify-center gap-2 group">
+                                <Phone size={18} className="group-hover:animate-bounce" />
                                 সরাসরি যোগাযোগ করুন
                             </button>
                         </motion.div>
