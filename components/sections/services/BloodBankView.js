@@ -61,33 +61,33 @@ function BloodBankContent() {
     return (
         <div className="min-h-screen bg-[#F8FAFC] pb-32">
             {/* Premium Dark Hero for Blood Bank */}
-            <div className="relative pt-24 pb-20 md:pt-32 md:pb-24 px-4 overflow-hidden bg-slate-900 border-b border-slate-800 rounded-b-[48px] md:rounded-b-[80px]">
+            <div className="relative pt-20 pb-16 md:pt-32 md:pb-24 px-4 overflow-hidden bg-slate-900 border-b border-slate-800 rounded-b-[40px] md:rounded-b-[80px]">
                 <div className="absolute inset-0 opacity-40">
-                    <div className="absolute top-0 right-0 w-96 h-96 bg-rose-600 rounded-full blur-[120px] translate-x-1/3 -translate-y-1/4 animate-pulse" />
-                    <div className="absolute bottom-0 left-0 w-96 h-96 bg-amber-600 rounded-full blur-[120px] -translate-x-1/3 translate-y-1/4 animate-pulse" />
+                    <div className="absolute top-0 right-0 w-64 h-64 md:w-96 md:h-96 bg-rose-600 rounded-full blur-[100px] md:blur-[120px] translate-x-1/3 -translate-y-1/4 animate-pulse" />
+                    <div className="absolute bottom-0 left-0 w-64 h-64 md:w-96 md:h-96 bg-amber-600 rounded-full blur-[100px] md:blur-[120px] -translate-x-1/3 translate-y-1/4 animate-pulse" />
                 </div>
                 
                 <div className="max-w-[1200px] mx-auto relative z-10">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="flex flex-col lg:flex-row lg:items-end justify-between gap-8"
+                        className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 md:gap-8"
                     >
                         <div className="flex-1 text-white">
-                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400 text-[10px] font-black uppercase tracking-[0.2em] mb-6">
-                                <Activity size={14} className="inline mr-1" />
+                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400 text-[10px] font-black uppercase tracking-[0.2em] mb-4 md:mb-6">
+                                <Activity size={12} className="inline mr-1" />
                                 Smart Blood Bank
                             </div>
-                            <h1 className="text-5xl md:text-6xl lg:text-7xl font-black tracking-tight leading-tight mb-4">
+                            <h1 className="text-4xl md:text-6xl lg:text-7xl font-black tracking-tight leading-tight mb-3 md:mb-4">
                                 ডায়নামিক <span className="text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-amber-400">ব্লাড ব্যাংক</span>
                             </h1>
-                            <p className="text-xl text-slate-400 font-bold max-w-2xl">
+                            <p className="text-lg md:text-xl text-slate-400 font-bold max-w-2xl">
                                 {isUnionLocked ? `${unionQuery} ইউনিয়ন ভিত্তিক দাতা তালিকা` : "উপজেলার সকল ইউনিয়নের রক্তদাতার তথ্য এখন এক জায়গায়।"}
                             </p>
                         </div>
 
                         {/* Top Dashboard Stats inside Hero */}
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 md:gap-4 shrink-0">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 md:gap-4 shrink-0">
                             {[
                                 { label: 'রক্তদাতা', value: ALL_DONORS.length, unit: 'জন', icon: Heart, color: 'from-rose-500 to-rose-600' },
                                 { label: 'প্রস্তুত', value: availableNow, unit: 'জন', icon: Activity, color: 'from-teal-500 to-teal-600' },
@@ -98,17 +98,17 @@ function BloodBankContent() {
                                     animate={{ opacity: 1, scale: 1 }}
                                     transition={{ delay: i * 0.1 }}
                                     key={s.label}
-                                    className="p-4 md:p-5 rounded-3xl bg-white/5 border border-white/10 backdrop-blur-xl group hover:bg-white/10 transition-all cursor-default"
+                                    className="p-3 md:p-5 rounded-2xl md:rounded-3xl bg-white/5 border border-white/10 backdrop-blur-xl group hover:bg-white/10 transition-all cursor-default"
                                 >
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <div className={`p-2 rounded-xl bg-gradient-to-br ${s.color} text-white shadow-lg`}>
-                                            <s.icon size={16} />
+                                    <div className="flex items-center gap-2 mb-1.5 md:mb-2">
+                                        <div className={`p-1.5 md:p-2 rounded-lg md:rounded-xl bg-gradient-to-br ${s.color} text-white shadow-lg`}>
+                                            <s.icon size={14} className="md:w-4 md:h-4" />
                                         </div>
-                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{s.label}</span>
+                                        <span className="text-[8px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest">{s.label}</span>
                                     </div>
                                     <div className="flex items-baseline gap-1">
-                                        <span className="text-2xl font-black text-white">{s.value}</span>
-                                        <span className="text-xs font-bold text-slate-500">{s.unit}</span>
+                                        <span className="text-xl md:text-2xl font-black text-white">{s.value}</span>
+                                        <span className="text-[10px] md:text-xs font-bold text-slate-500">{s.unit}</span>
                                     </div>
                                 </motion.div>
                             ))}
@@ -120,33 +120,33 @@ function BloodBankContent() {
             <div className="max-w-[1200px] mx-auto px-4 -mt-12 relative z-20 space-y-12">
 
                 {/* Smart Filters Area */}
-                <div className="p-4 sm:p-8 rounded-[40px] bg-white border border-slate-100 italicshadow-sm space-y-6 md:space-y-8">
-                    <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">
+                <div className="p-4 md:p-8 rounded-[32px] md:rounded-[40px] bg-white border border-slate-100 italicshadow-sm space-y-4 md:space-y-8">
+                    <div className="flex flex-col lg:flex-row gap-3 md:gap-6">
                         {/* Search Input */}
                         <div className="relative flex-1 group">
-                            <div className="absolute inset-y-0 left-6 flex items-center pointer-events-none">
-                                <Search size={22} className="text-slate-400 group-focus-within:text-rose-500 transition-colors" />
+                            <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none">
+                                <Search size={20} className="text-slate-400 group-focus-within:text-rose-500 transition-colors" />
                             </div>
                             <input
                                 type="text"
                                 placeholder="দাতার নাম, রক্তের গ্রুপ বা এলাকা খুঁজুন..."
-                                className="w-full pl-16 pr-6 py-5 bg-slate-50 border border-slate-100 rounded-[24px] text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-rose-500/10 focus:border-rose-500/30 transition-all font-black text-lg"
+                                className="w-full pl-14 pr-4 py-4 md:pl-16 md:pr-6 md:py-5 bg-slate-50 border border-slate-100 rounded-2xl md:rounded-[24px] text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-rose-500/10 focus:border-rose-500/30 transition-all font-black text-base md:text-lg"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                         </div>
-
+ 
                         {/* Union Filter */}
                         <div className="w-full lg:w-72">
                             <div className="relative group">
-                                <div className="absolute inset-y-0 left-6 flex items-center pointer-events-none">
-                                    <MapPin size={22} className={`transition-colors ${isUnionLocked ? 'text-teal-500' : 'text-slate-400 group-focus-within:text-rose-500'}`} />
+                                <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none">
+                                    <MapPin size={20} className={`transition-colors ${isUnionLocked ? 'text-teal-500' : 'text-slate-400 group-focus-within:text-rose-500'}`} />
                                 </div>
                                 <select
                                     value={selectedUnion}
                                     onChange={(e) => setSelectedUnion(e.target.value)}
                                     disabled={isUnionLocked}
-                                    className={`w-full pl-16 pr-6 py-5 border rounded-[24px] font-black focus:outline-none transition-all appearance-none text-lg capitalize ${
+                                    className={`w-full pl-14 pr-4 py-4 md:pl-16 md:pr-6 md:py-5 border rounded-2xl md:rounded-[24px] font-black focus:outline-none transition-all appearance-none text-base md:text-lg capitalize ${
                                         isUnionLocked 
                                         ? 'bg-teal-50/50 border-teal-100 text-teal-800 cursor-not-allowed opacity-80' 
                                         : 'bg-slate-50 border-slate-100 text-slate-800 cursor-pointer focus:ring-4 focus:ring-rose-500/10 focus:border-rose-500/30'
@@ -160,24 +160,24 @@ function BloodBankContent() {
                     </div>
 
                     {/* Blood Group Filter (Horizontal Scroll) */}
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between px-2">
-                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">রক্তের গ্রুপ নির্বাচন করুন</h4>
-                            <span className="text-[10px] font-bold text-slate-300">প্রাপ্ত: {totalDonors} জন</span>
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between px-1">
+                            <h4 className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">রক্তের গ্রুপ</h4>
+                            <span className="text-[9px] font-bold text-slate-300">প্রাপ্ত: {totalDonors} জন</span>
                         </div>
-                        <div className="flex gap-3 overflow-x-auto pb-4 no-scrollbar scroll-smooth">
+                        <div className="flex gap-2 md:gap-3 overflow-x-auto pb-2 no-scrollbar scroll-smooth">
                             {[ 'All', ...BLOOD_GROUPS ].map((group) => (
                                 <button
                                     key={group}
                                     onClick={() => setSelectedGroup(group)}
-                                    className={`shrink-0 flex items-center gap-2 px-8 py-4 rounded-[22px] font-black text-lg transition-all border-2 ${
+                                    className={`shrink-0 flex items-center gap-2 px-6 py-3 md:px-8 md:py-4 rounded-xl md:rounded-[22px] font-black text-sm md:text-lg transition-all border-2 ${
                                         selectedGroup === group
-                                            ? 'bg-rose-500 text-white border-rose-500 shadow-xl shadow-rose-500/30 scale-105'
+                                            ? 'bg-rose-500 text-white border-rose-500 shadow-lg shadow-rose-500/20 md:shadow-rose-500/30 scale-105'
                                             : 'bg-white text-slate-600 border-slate-100 hover:bg-rose-50 hover:border-rose-100 shadow-sm'
                                     }`}
                                 >
-                                    {group === 'All' ? null : <Droplet size={18} className={selectedGroup === group ? 'text-rose-200' : 'text-rose-500'} />}
-                                    {group === 'All' ? 'সব গ্রুপ' : group}
+                                    {group === 'All' ? null : <Droplet size={14} className={selectedGroup === group ? 'text-rose-200' : 'text-rose-500'} />}
+                                    {group === 'All' ? 'সব' : group}
                                 </button>
                             ))}
                         </div>
@@ -199,66 +199,66 @@ function BloodBankContent() {
                             {/* Card Accent */}
                             <div className="absolute top-0 right-0 w-32 h-32 bg-rose-500/5 blur-3xl rounded-full pointer-events-none group-hover:bg-rose-500/10 transition-colors" />
                             
-                            <div className="p-8 relative">
+                            <div className="p-5 md:p-8 relative">
                                 {/* Header */}
-                                <div className="flex items-start justify-between mb-6">
+                                <div className="flex items-start justify-between mb-4 md:mb-6">
                                     <div className="relative">
-                                        <div className="w-16 h-16 rounded-[24px] bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-300 group-hover:border-rose-100 group-hover:bg-rose-50 transition-all overflow-hidden relative z-10">
-                                            <UserCircle size={40} className="group-hover:text-rose-200 transition-colors" />
+                                        <div className="w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-[24px] bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-300 group-hover:border-rose-100 group-hover:bg-rose-50 transition-all overflow-hidden relative z-10">
+                                            <UserCircle size={32} className="md:w-10 md:h-10 group-hover:text-rose-200 transition-colors" />
                                         </div>
                                         {/* Status Dot */}
-                                        <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-4 border-white z-20 ${donor.isAvailable ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                                        <div className={`absolute -bottom-0.5 -right-0.5 w-4 h-4 md:w-5 md:h-5 rounded-full border-2 md:border-4 border-white z-20 ${donor.isAvailable ? 'bg-emerald-500' : 'bg-slate-300'}`} />
                                     </div>
-
+ 
                                     <div className="flex flex-col items-end">
-                                        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-rose-500 to-red-600 flex items-center justify-center text-white font-black text-xl shadow-lg shadow-rose-200">
+                                        <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl bg-gradient-to-br from-rose-500 to-red-600 flex items-center justify-center text-white font-black text-lg md:text-xl shadow-lg shadow-rose-200">
                                             <span className="drop-shadow-md">{donor.bloodGroup}</span>
                                         </div>
-                                        <div className={`mt-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-tighter border ${donor.isAvailable ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-50 text-slate-500 border-slate-200'}`}>
-                                            <div className={`w-1.5 h-1.5 rounded-full ${donor.isAvailable ? 'bg-emerald-400 animate-pulse' : 'bg-slate-400'}`} />
-                                            {donor.isAvailable ? 'এখন রক্ত দিতে প্রস্তুত' : 'সাময়িক বিরতি'}
+                                        <div className={`mt-2 md:mt-3 flex items-center gap-1.5 px-2 md:px-3 py-1 md:py-1.5 rounded-full text-[8px] md:text-[10px] font-black uppercase tracking-tighter border ${donor.isAvailable ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-50 text-slate-500 border-slate-200'}`}>
+                                            <div className={`w-1 h-1 md:w-1.5 md:h-1.5 rounded-full ${donor.isAvailable ? 'bg-emerald-400 animate-pulse' : 'bg-slate-400'}`} />
+                                            {donor.isAvailable ? 'রক্ত দিতে প্রস্তুত' : 'সাময়িক বিরতি'}
                                         </div>
                                     </div>
                                 </div>
-
+ 
                                 {/* Body */}
-                                <div className="space-y-4 mb-8">
+                                <div className="space-y-3 md:space-y-4 mb-6 md:mb-8">
                                     <div>
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <h3 className="text-xl font-black text-slate-800 leading-none group-hover:text-rose-600 transition-colors">{donor.name}</h3>
-                                            <CheckCircle2 size={16} className="text-emerald-500" />
+                                        <div className="flex items-center gap-1.5 mb-0.5 md:mb-1">
+                                            <h3 className="text-lg md:text-xl font-black text-slate-800 leading-none group-hover:text-rose-600 transition-colors">{donor.name}</h3>
+                                            <CheckCircle2 size={14} className="text-emerald-500" />
                                         </div>
-                                        <p className="flex items-center gap-1.5 text-sm font-bold text-slate-500 mt-2 capitalize">
-                                            <MapPin size={16} className="text-slate-400" />
+                                        <p className="flex items-center gap-1 text-xs md:text-sm font-bold text-slate-500 mt-1 md:mt-2 capitalize">
+                                            <MapPin size={14} className="text-slate-400" />
                                             {donor.village}, {donor.unionId}
                                         </p>
                                     </div>
-
-                                    <div className="grid grid-cols-2 gap-3 p-4 rounded-2xl bg-slate-50 border border-slate-100">
+ 
+                                    <div className="grid grid-cols-2 gap-2 md:gap-3 p-3 md:p-4 rounded-xl md:rounded-2xl bg-slate-50 border border-slate-100">
                                         <div>
-                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">মোট রক্তদান</p>
-                                            <p className="text-base font-black text-slate-700 flex items-center gap-1">
-                                                <Heart size={14} className="text-rose-500" /> 
+                                            <p className="text-[8px] md:text-[10px] font-black text-slate-400 uppercase tracking-wider mb-0.5 md:mb-1">রক্তদান</p>
+                                            <p className="text-sm md:text-base font-black text-slate-700 flex items-center gap-1">
+                                                <Heart size={12} className="text-rose-500" /> 
                                                 {donor.totalDonations} বার
                                             </p>
                                         </div>
                                         <div>
-                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">শেষ দান</p>
-                                            <p className="text-base font-black text-slate-700 flex items-center gap-1">
-                                                <Calendar size={14} className="text-slate-400" />
+                                            <p className="text-[8px] md:text-[10px] font-black text-slate-400 uppercase tracking-wider mb-0.5 md:mb-1">শেষ দান</p>
+                                            <p className="text-sm md:text-base font-black text-slate-700 flex items-center gap-1">
+                                                <Calendar size={12} className="text-slate-400" />
                                                 {donor.lastDonation}
                                             </p>
                                         </div>
                                     </div>
                                 </div>
-
+ 
                                 {/* Action */}
                                 <a
                                     href={`tel:${donor.phone}`}
-                                    className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-slate-900 group-hover:bg-rose-600 text-white font-black text-sm shadow-lg shadow-slate-200 group-hover:shadow-rose-200 transition-all active:scale-95 z-10 relative overflow-hidden"
+                                    className="w-full flex items-center justify-center gap-3 py-3.5 md:py-4 rounded-xl md:rounded-2xl bg-slate-900 group-hover:bg-rose-600 text-white font-black text-xs md:text-sm shadow-lg shadow-slate-200 group-hover:shadow-rose-200 transition-all active:scale-95 z-10 relative overflow-hidden"
                                 >
                                     <div className="absolute inset-0 bg-white/20 w-full translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
-                                    <Phone size={18} className="relative z-10" />
+                                    <Phone size={16} className="relative z-10" />
                                     <span className="relative z-10">সরাসরি কল দিন</span>
                                 </a>
                             </div>
@@ -286,25 +286,25 @@ function BloodBankContent() {
             </div>
 
             {/* Donor Registration CTA */}
-            <div className="p-10 rounded-[48px] bg-gradient-to-br from-rose-600 to-orange-700 text-white relative overflow-hidden group">
-                <div className="absolute right-0 bottom-0 w-96 h-96 bg-white/10 rounded-full blur-[120px] pointer-events-none" />
-                <div className="relative flex flex-col md:flex-row items-center justify-between gap-10">
+            <div className="p-6 md:p-10 rounded-[32px] md:rounded-[48px] bg-gradient-to-br from-rose-600 to-orange-700 text-white relative overflow-hidden group">
+                <div className="absolute right-0 bottom-0 w-64 h-64 md:w-96 md:h-96 bg-white/10 rounded-full blur-[100px] md:blur-[120px] pointer-events-none" />
+                <div className="relative flex flex-col md:flex-row items-center justify-between gap-6 md:gap-10">
                     <div className="max-w-xl text-center md:text-left">
-                        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/10 text-[10px] font-black uppercase tracking-widest mb-6 backdrop-blur-md">
-                            <HeartPulse size={14} className="text-rose-300" />
+                        <div className="inline-flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full bg-white/10 border border-white/10 text-[8px] md:text-[10px] font-black uppercase tracking-widest mb-4 md:mb-6 backdrop-blur-md">
+                            <HeartPulse size={12} className="text-rose-300" />
                             দাতা হিসেবে যুক্ত হোন
                         </div>
-                        <h3 className="text-3xl sm:text-4xl font-black mb-4 leading-tight">
+                        <h3 className="text-2xl sm:text-4xl font-black mb-3 md:mb-4 leading-tight">
                             আপনার রক্ত একটি <span className="text-rose-300">মূল্যবান জীবন</span> বাঁচাতে পারে
                         </h3>
-                        <p className="text-white/70 font-bold text-base leading-relaxed">
+                        <p className="text-white/70 font-bold text-sm md:text-base leading-relaxed">
                             আপনি কি স্বেচ্ছায় রক্তদান করতে ইচ্ছুক? ডিজিগ্রাম ব্লাড ব্যাংকে নিজের তথ্য যুক্ত করে রাখুন। জরুরি প্রয়োজনে আপনার গ্রামবাসী বা আত্মীয়কে দ্রুত সাহায্য করতে পারবেন।
                         </p>
                     </div>
                     
-                    <button className="shrink-0 flex items-center gap-3 px-10 py-5 rounded-[24px] bg-white text-rose-600 font-black text-lg shadow-xl hover:scale-105 active:scale-95 transition-all">
+                    <button className="w-full md:w-auto shrink-0 flex items-center justify-center gap-3 px-8 py-4 md:px-10 md:py-5 rounded-2xl md:rounded-[24px] bg-white text-rose-600 font-black text-base md:text-lg shadow-xl hover:scale-105 active:scale-95 transition-all">
                         রেজিস্ট্রেশন করুন
-                        <ArrowRight size={20} />
+                        <ArrowRight size={18} />
                     </button>
                 </div>
             </div>

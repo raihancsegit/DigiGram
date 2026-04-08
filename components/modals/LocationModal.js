@@ -53,14 +53,14 @@ export default function LocationModal() {
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/40 backdrop-blur-md">
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-md">
             <motion.div 
                 initial={{ y: "100%" }}
                 animate={{ y: 0 }}
-                className="bg-white w-full max-w-lg rounded-t-[40px] sm:rounded-[32px] shadow-2xl max-h-[92vh] flex flex-col overflow-hidden relative"
+                className="bg-white w-full max-w-lg rounded-t-[32px] sm:rounded-[32px] shadow-2xl h-[85vh] sm:h-auto sm:max-h-[90vh] flex flex-col overflow-hidden relative"
             >
                 {/* Mobile Handle */}
-                <div className="flex justify-center pt-3 pb-1 sm:hidden">
+                <div className="flex justify-center pt-4 pb-2 sm:hidden shrink-0">
                     <div className="w-12 h-1.5 rounded-full bg-slate-200" />
                 </div>
 
