@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useDispatch } from 'react-redux';
 import { motion } from 'framer-motion';
 import { 
-    MapPin, Home, Sparkles, ArrowUpRight, 
+    MapPin, Home, Sparkles, ArrowUpRight, ArrowRight,
     Users, UserCheck, ShieldCheck, School, GraduationCap, 
     BookOpen, Phone, UserCircle, CheckCircle2, LogIn, ChevronLeft, ChevronRight
 } from 'lucide-react';
