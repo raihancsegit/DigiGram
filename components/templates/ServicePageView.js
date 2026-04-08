@@ -10,6 +10,7 @@ import {
 import { motion } from 'framer-motion';
 import LearningProgressPanel from '@/components/campus/LearningProgressPanel';
 import EmergencyDirectoryView from '@/components/templates/EmergencyDirectoryView';
+import BloodBankView from '@/components/sections/services/BloodBankView';
 
 const ICON_MAP = {
     Heart, FileText, School, BookOpen, PhoneCall, 
@@ -20,6 +21,23 @@ const ICON_MAP = {
 export default function ServicePageView({ slug, data }) {
     if (data.variant === 'emergency') {
         return <EmergencyDirectoryView slug={slug} />;
+    }
+
+    if (slug === 'blood' || data.variant === 'blood') {
+        return (
+            <div className="bg-[#F8FAFC] min-h-screen pt-24 pb-20 px-4 md:px-8">
+                <div className="max-w-7xl mx-auto">
+                    <Link
+                        href="/#services"
+                        className="inline-flex items-center gap-2 text-sm font-bold text-teal-600 hover:text-teal-700 transition-colors mb-8 group"
+                    >
+                        <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+                        সার্ভিস ডিরেক্টরিতে ফিরুন
+                    </Link>
+                    <BloodBankView />
+                </div>
+            </div>
+        );
     }
 
     const { 
