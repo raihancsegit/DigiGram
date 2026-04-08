@@ -34,15 +34,16 @@ export default function LatestNewsSection() {
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-16">
                     <div className="max-w-2xl">
                         <motion.div 
-                            initial={{ opacity: 0, y: 10 }}
-                            whileInView={{ opacity: 1, y: 0 }}
-                            className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-50 text-rose-600 text-[10px] font-black uppercase tracking-[0.2em] mb-4 border border-rose-100"
+                            initial={{ opacity: 0, x: -10 }}
+                            whileInView={{ opacity: 1, x: 0 }}
+                            viewport={{ once: true }}
+                            className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-600 text-[10px] font-black uppercase tracking-[0.2em] mb-4"
                         >
                             <Zap size={12} className="fill-current" />
                             ব্রেকিং আপডেট
                         </motion.div>
-                        <h2 className="text-4xl md:text-6xl font-black text-slate-900 tracking-tight leading-[1.05]">
-                            সর্বশেষ সংবাদ ও <br/> <span className="text-teal-600">গুরুত্বপূর্ণ ঘোষণা</span>
+                        <h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight leading-[1.1]">
+                            সর্বশেষ সংবাদ ও <br/> <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-500 to-rose-500">গুরুত্বপূর্ণ ঘোষণা</span>
                         </h2>
                     </div>
                     
@@ -50,14 +51,14 @@ export default function LatestNewsSection() {
                         <button 
                             onClick={prevSlide} 
                             disabled={TOTAL_NEWS <= CARDS_TO_SHOW}
-                            className={`w-14 h-14 rounded-2xl border border-slate-200 bg-white flex items-center justify-center text-slate-400 hover:text-teal-600 hover:border-teal-200 transition-all active:scale-95 shadow-sm ${TOTAL_NEWS <= CARDS_TO_SHOW ? 'opacity-30 cursor-not-allowed' : ''}`}
+                            className={`w-14 h-14 rounded-2xl border border-slate-200 bg-white flex items-center justify-center text-slate-400 hover:text-teal-600 hover:border-teal-200 transition-all active:scale-95 shadow-sm ${TOTAL_NEWS <= CARDS_TO_SHOW ? 'opacity-30 cursor-not-allowed' : 'shadow-md shadow-slate-200/50'}`}
                         >
                             <ChevronLeft size={28} />
                         </button>
                         <button 
                             onClick={nextSlide} 
                             disabled={TOTAL_NEWS <= CARDS_TO_SHOW}
-                            className={`w-14 h-14 rounded-2xl border border-slate-200 bg-white flex items-center justify-center text-slate-400 hover:text-teal-600 hover:border-teal-200 transition-all active:scale-95 shadow-sm ${TOTAL_NEWS <= CARDS_TO_SHOW ? 'opacity-30 cursor-not-allowed' : ''}`}
+                            className={`w-14 h-14 rounded-2xl border border-slate-200 bg-white flex items-center justify-center text-slate-400 hover:text-teal-600 hover:border-teal-200 transition-all active:scale-95 shadow-sm ${TOTAL_NEWS <= CARDS_TO_SHOW ? 'opacity-30 cursor-not-allowed' : 'shadow-md shadow-slate-200/50'}`}
                         >
                             <ChevronRight size={28} />
                         </button>
@@ -79,35 +80,36 @@ export default function LatestNewsSection() {
                                 className="w-full md:w-[calc((100%/3)-1rem)] shrink-0"
                             >
                                 <Link href={`/news/${news.slug}`} className="group block h-full">
-                                    <div className="bg-white h-full rounded-[48px] border border-slate-200/60 p-5 shadow-sm hover:shadow-2xl hover:shadow-slate-200/60 hover:border-teal-200 transition-all duration-500 relative flex flex-col group overflow-hidden">
+                                    <div className="bg-white h-full rounded-[48px] border border-slate-100 p-5 shadow-sm hover:shadow-2xl hover:border-teal-200 transition-all duration-500 relative flex flex-col group overflow-hidden">
                                         
-                                        {/* Image Area */}
-                                        <div className="relative aspect-[16/10] rounded-[36px] overflow-hidden mb-6 bg-slate-100">
+                                        {/* Image Area with Zoom Effects */}
+                                        <div className="relative aspect-[16/10] rounded-[36px] overflow-hidden mb-6 bg-slate-900">
+                                            <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent z-10 opacity-0 group-hover:opacity-100 transition-opacity" />
                                             <img 
                                                 src={news.image} 
                                                 alt={news.title}
                                                 className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000"
                                             />
-                                            <div className="absolute top-4 left-4">
-                                                <span className="px-3.5 py-1.5 rounded-xl bg-white/90 backdrop-blur-md border border-slate-100 text-teal-700 text-[9px] font-black uppercase tracking-widest">
+                                            <div className="absolute top-4 left-4 z-20">
+                                                <span className="px-3.5 py-1.5 rounded-xl bg-white/95 backdrop-blur-md border border-slate-100 text-teal-700 text-[9px] font-black uppercase tracking-widest shadow-sm">
                                                     {news.category}
                                                 </span>
                                             </div>
                                         </div>
 
                                         <div className="px-3 pb-4">
-                                            <div className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-400 tracking-widest mb-4">
+                                            <div className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-400 tracking-[0.15em] mb-4">
                                                 <Calendar size={14} className="text-teal-500" />
                                                 {news.date}
                                             </div>
-                                            <h3 className="text-xl md:text-2xl font-black text-slate-800 leading-[1.25] mb-4 group-hover:text-teal-700 transition-colors line-clamp-2">
+                                            <h3 className="text-xl md:text-2xl font-black text-slate-800 leading-[1.25] mb-4 group-hover:text-teal-600 transition-colors line-clamp-2">
                                                 {news.title}
                                             </h3>
-                                            <p className="text-slate-500 text-sm font-medium leading-relaxed mb-8 line-clamp-2">
+                                            <p className="text-slate-500 text-sm font-bold leading-relaxed mb-8 line-clamp-2">
                                                 {news.excerpt}
                                             </p>
                                             
-                                            <div className="flex items-center gap-2 text-xs font-black text-teal-600">
+                                            <div className="flex items-center gap-2 text-[11px] font-black text-teal-600 mt-auto">
                                                 পুরো খবরটি পড়ুন
                                                 <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
                                             </div>
