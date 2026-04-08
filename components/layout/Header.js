@@ -160,55 +160,67 @@ export default function Header() {
         );
 
     return (
-        <header className={`sticky top-0 z-[200] transition-all duration-500 ${isScrolled ? 'bg-white/90 backdrop-blur-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] py-2 sm:py-2.5' : 'py-3 sm:py-5 px-3 sm:px-6'}`}>
-            <div className={`max-w-[1440px] mx-auto transition-all duration-500 ${isScrolled ? 'px-4 sm:px-10' : ''}`}>
-                <nav className={`relative flex justify-between items-center gap-3 transition-all duration-500 ${isScrolled ? '' : 'bg-white/70 backdrop-blur-2xl border border-white shadow-[0_20px_50px_-20px_rgba(0,0,0,0.08)] rounded-[32px] px-3 sm:px-6 py-2.5 sm:py-3.5'}`}>
+        <header className={`sticky top-0 z-[200] px-3 sm:px-6 py-2 transition-all duration-700 ${isScrolled ? 'top-1 sm:top-2' : 'top-0'}`}>
+            <div className={`max-w-[1440px] mx-auto transition-all duration-700`}>
+                <nav className={`relative flex justify-between items-center transition-all duration-700 h-16 sm:h-20 ${
+                    isScrolled 
+                    ? 'bg-slate-900/95 backdrop-blur-2xl px-4 sm:px-8 rounded-[32px] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] border border-white/10' 
+                    : 'bg-white/40 backdrop-blur-xl border border-white/60 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.05)] rounded-[40px] px-4 sm:px-10'}`}>
                     
                     {/* Left: Branding & Location */}
-                    <div className="flex items-center gap-3 min-w-0">
-                        <Link href={paths.home} className="shrink-0 flex items-center gap-2 group">
-                            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-br from-slate-900 to-teal-900 flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform duration-300">
-                                <Sparkles size={22} className="text-teal-400" />
+                    <div className="flex items-center gap-4 sm:gap-6 shrink-0">
+                        <Link href={paths.home} className="shrink-0 flex items-center gap-3 group">
+                            <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-[20px] flex items-center justify-center transition-all duration-500 ${
+                                isScrolled 
+                                ? 'bg-teal-500 shadow-[0_0_20px_rgba(20,184,166,0.3)]' 
+                                : 'bg-slate-900 shadow-xl'
+                            }`}>
+                                <Sparkles size={24} className={isScrolled ? 'text-white' : 'text-teal-400'} />
                             </div>
-                            <div className="hidden lg:block ml-1">
-                                <p className="text-[10px] font-black text-teal-600 uppercase tracking-widest leading-none mb-0.5">ডিজিটাল পল্লী</p>
-                                <h1 className="text-xl font-black text-slate-800 leading-none">ডিজিগ্রাম</h1>
+                            <div className="hidden lg:block">
+                                <p className={`text-[10px] font-black uppercase tracking-[0.2em] leading-none mb-1 transition-colors ${isScrolled ? 'text-teal-400' : 'text-teal-600'}`}>ডিজিটাল পল্লী</p>
+                                <h1 className={`text-2xl font-black leading-none tracking-tight transition-colors ${isScrolled ? 'text-white' : 'text-slate-900'}`}>ডিজিগ্রাম</h1>
                             </div>
                         </Link>
 
-                        <div className="w-px h-8 bg-slate-200 mx-1 hidden sm:block" />
+                        <div className={`w-px h-10 transition-colors hidden sm:block ${isScrolled ? 'bg-white/10' : 'bg-slate-200'}`} />
 
-                        {/* Premium Split Location Badge */}
-                        <div className="flex items-stretch rounded-2xl border border-slate-100 bg-white/60 hover:bg-white hover:border-teal-200/60 transition-all group overflow-hidden shadow-sm hover:shadow-md h-12 sm:h-14">
+                        {/* High-End Location Widget */}
+                        <div className={`flex items-center rounded-2xl border transition-all h-12 sm:h-14 overflow-hidden group/location ${
+                            isScrolled 
+                            ? 'bg-white/5 border-white/10 hover:bg-white/10' 
+                            : 'bg-white border-slate-100 shadow-sm hover:border-teal-200 hover:shadow-md'
+                        }`}>
                             {selected.unionSlug ? (
-                                <Link
-                                    href={paths.unionPortal(selected.unionSlug)}
-                                    className="flex items-center gap-3 px-4 py-2 sm:px-6 transition-colors hover:bg-teal-50/50 min-w-0"
+                                <button
+                                    onClick={() => router.push(paths.unionPortal(selected.unionSlug))}
+                                    className="flex items-center gap-3 px-4 sm:px-6 h-full transition-colors min-w-0 md:w-auto"
                                 >
-                                    <div className="p-2 rounded-xl bg-teal-50 group-hover:bg-teal-100/80 transition-colors shrink-0">
-                                        <MapPin size={18} className="text-teal-600" />
+                                    <div className={`p-2 rounded-xl transition-colors shrink-0 ${
+                                        isScrolled ? 'bg-teal-500/10 text-teal-400' : 'bg-teal-50 text-teal-600'
+                                    }`}>
+                                        <MapPin size={18} />
                                     </div>
-                                    <div className="flex flex-col items-start min-w-0">
-                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1.5 opacity-80">
+                                    <div className="flex flex-col items-start min-w-0 leading-none">
+                                        <span className={`text-[10px] font-black uppercase tracking-[0.15em] mb-1 opacity-60 ${isScrolled ? 'text-white' : 'text-slate-400'}`}>
                                             {selected.ward ? selected.ward : 'আপনার ইউনিয়ন'}
                                         </span>
-                                        <span className="text-base font-black text-slate-800 truncate leading-none tracking-tight">
+                                        <span className={`text-base font-black truncate tracking-tight ${isScrolled ? 'text-white' : 'text-slate-800'}`}>
                                             {selected.union}
                                         </span>
                                     </div>
-                                </Link>
+                                </button>
                             ) : (
                                 <button
                                     onClick={() => dispatch(openModal())}
-                                    className="flex items-center gap-3 px-4 py-2 sm:px-6 transition-colors min-w-0 hover:bg-teal-50/50"
+                                    className="flex items-center gap-3 px-4 sm:px-6 h-full transition-colors min-w-0"
                                 >
-                                    <div className="p-2 rounded-xl bg-teal-50 group-hover:bg-teal-100/80 transition-colors shrink-0">
-                                        <MapPin size={18} className="text-teal-600" />
+                                    <div className={`p-2 rounded-xl transition-colors shrink-0 ${
+                                        isScrolled ? 'bg-teal-500/10 text-teal-400' : 'bg-teal-50 text-teal-600'
+                                    }`}>
+                                        <MapPin size={18} />
                                     </div>
-                                    <div className="flex flex-col items-start min-w-0 text-left">
-                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1.5 opacity-80">অবস্থান সিলেক্ট করুন</span>
-                                        <span className="text-base font-black text-slate-800 truncate leading-none tracking-tight">ইউনিয়ন বা গ্রাম</span>
-                                    </div>
+                                    <h3 className={`text-sm sm:text-base font-black truncate tracking-tight ${isScrolled ? 'text-white' : 'text-slate-800'}`}>অবস্থান সিলেক্ট করুন</h3>
                                 </button>
                             )}
 
@@ -218,45 +230,57 @@ export default function Header() {
                                     e.stopPropagation();
                                     dispatch(openModal());
                                 }}
-                                className="px-3 sm:px-4 border-l border-slate-100 hover:bg-teal-600 hover:text-white bg-slate-50/50 text-slate-400 transition-all flex items-center justify-center group/arrow"
-                                aria-label="এলাকা পরিবর্তন করুন"
+                                className={`px-3 sm:px-5 h-full border-l flex items-center justify-center transition-all group/arrow ${
+                                    isScrolled 
+                                    ? 'bg-white/5 border-white/10 hover:bg-teal-500 text-white' 
+                                    : 'bg-slate-50 border-slate-100 hover:bg-teal-600 hover:text-white text-slate-400'
+                                }`}
+                                aria-label="এলাকা পরিবর্তন"
                             >
-                                <div className="p-1 rounded-lg border border-transparent group-hover/arrow:border-white/20 transition-all">
-                                    <ChevronDown size={18} className={`transition-transform duration-300 group-hover/arrow:scale-110`} />
-                                </div>
+                                <ChevronDown size={18} className="transition-transform group-hover/arrow:rotate-180" />
                             </button>
                         </div>
                     </div>
 
                     {/* Middle: Desktop Nav Quick Links */}
-                    <div className="hidden xl:flex items-center gap-1 p-1 bg-slate-100/50 rounded-2xl border border-slate-100">
+                    <div className={`hidden xl:flex items-center gap-1 p-1 rounded-2xl transition-all duration-500 ${
+                        isScrolled ? 'bg-white/5 border border-white/10' : 'bg-slate-100/50 border border-slate-100'
+                    }`}>
                         {HEADER_QUICK_LINKS.map((item) => (
                             <Link
                                 key={item.id}
                                 href={item.href}
-                                className="flex items-center gap-2 px-4 py-2 rounded-xl text-slate-600 hover:text-teal-700 hover:bg-white hover:shadow-sm transition-all duration-200 group"
+                                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl transition-all duration-300 group ${
+                                    isScrolled 
+                                    ? 'text-white/70 hover:text-white hover:bg-white/10' 
+                                    : 'text-slate-500 hover:text-teal-700 hover:bg-white hover:shadow-sm'
+                                }`}
                             >
-                                <item.icon size={16} className="text-teal-600/70 group-hover:scale-110 transition-transform" />
-                                <span className="text-sm font-bold tracking-tight">{item.title}</span>
+                                <item.icon size={16} className={`transition-transform duration-500 group-hover:scale-125 ${isScrolled ? 'text-teal-400' : 'text-teal-600/70'}`} />
+                                <span className="text-[13px] font-black tracking-tight">{item.title}</span>
                             </Link>
                         ))}
                     </div>
 
                     {/* Right: Info & Profile */}
-                    <div className="flex items-center gap-2 sm:gap-4">
+                    <div className="flex items-center gap-2 sm:gap-6">
                         
                         {/* Time & Greeting (Desktop) */}
-                        <div className="hidden md:flex flex-col text-right pr-2">
-                            <div className="flex items-center justify-end gap-1.5 text-teal-600">
+                        <div className="hidden lg:flex flex-col text-right leading-none">
+                            <div className={`flex items-center justify-end gap-1.5 mb-1 ${isScrolled ? 'text-teal-400' : 'text-teal-600'}`}>
                                 <Sparkles size={12} className="fill-current" />
-                                <span className="text-[10px] font-black uppercase tracking-widest">{getGreeting()}</span>
+                                <span className="text-[10px] font-black uppercase tracking-[0.2em]">{getGreeting()}</span>
                             </div>
-                            <p className="text-[13px] font-black text-slate-800 tabular-nums">{timeStr}</p>
+                            <p className={`text-base font-black tabular-nums tracking-tight ${isScrolled ? 'text-white' : 'text-slate-800'}`}>{timeStr}</p>
                         </div>
 
                         {/* Search Quick Button */}
-                        <button className="p-3 rounded-2xl bg-slate-50 border border-slate-100 text-slate-400 hover:text-teal-600 hover:bg-white hover:border-teal-200 transition-all active:scale-95">
-                            <Search size={20} strokeWidth={2.5} />
+                        <button className={`w-12 h-12 rounded-2xl transition-all flex items-center justify-center active:scale-95 ${
+                            isScrolled 
+                            ? 'bg-white/10 border border-white/10 text-white hover:bg-teal-500' 
+                            : 'bg-white border border-slate-100 text-slate-400 shadow-sm hover:border-teal-200 hover:text-teal-600'
+                        }`}>
+                            <Search size={22} strokeWidth={2.5} />
                         </button>
 
                         {/* Profile Wrapper */}
@@ -266,14 +290,19 @@ export default function Header() {
                                     setIsProfileOpen((o) => !o);
                                     requestAnimationFrame(() => updateMenuPosition());
                                 }}
-                                className="flex items-center gap-2 p-1 pl-1 pr-3 rounded-2xl bg-slate-900 border border-slate-800 shadow-lg hover:shadow-teal-900/20 active:scale-[0.98] transition-all"
+                                className={`flex items-center gap-2 p-1 pl-1 pr-3 rounded-2xl transition-all active:scale-[0.98] ${
+                                    isScrolled 
+                                    ? 'bg-teal-500 shadow-lg shadow-teal-500/20' 
+                                    : 'bg-slate-900 shadow-lg shadow-slate-900/10'
+                                }`}
                             >
-                                <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center text-teal-400">
-                                    <UserCircle size={24} />
+                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${
+                                    isScrolled ? 'bg-white/20 text-white' : 'bg-white/10 text-teal-400'
+                                }`}>
+                                    <UserCircle size={26} />
                                 </div>
-                                <div className="hidden sm:block text-left mr-1">
-                                    <p className="text-[8px] font-black text-teal-300 uppercase leading-none mb-1">প্রোফাইল</p>
-                                    <ChevronDown size={12} className={`text-white transition-transform ${isProfileOpen ? 'rotate-180' : ''}`} />
+                                <div className="hidden sm:block text-left">
+                                    <ChevronDown size={14} className={`text-white transition-transform duration-300 ${isProfileOpen ? 'rotate-180' : ''}`} />
                                 </div>
                             </button>
                         </div>
