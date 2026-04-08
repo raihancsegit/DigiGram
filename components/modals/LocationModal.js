@@ -52,10 +52,19 @@ export default function LocationModal() {
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm">
-            <div className="bg-white w-full max-w-lg rounded-t-[30px] sm:rounded-3xl shadow-2xl max-h-[90vh] flex flex-col">
-                <div className="p-6 border-b border-slate-100 flex justify-between items-center shrink-0">
-                    <div className="flex items-center gap-3 min-w-0">
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/40 backdrop-blur-md">
+            <motion.div 
+                initial={{ y: "100%" }}
+                animate={{ y: 0 }}
+                className="bg-white w-full max-w-lg rounded-t-[40px] sm:rounded-[32px] shadow-2xl max-h-[92vh] flex flex-col overflow-hidden relative"
+            >
+                {/* Mobile Handle */}
+                <div className="flex justify-center pt-3 pb-1 sm:hidden">
+                    <div className="w-12 h-1.5 rounded-full bg-slate-200" />
+                </div>
+
+                <div className="px-6 py-5 sm:p-8 border-b border-slate-100 flex justify-between items-center shrink-0">
+                    <div className="flex items-center gap-4 min-w-0">
                         {step > 1 && (
                             <button
                                 type="button"
@@ -137,7 +146,7 @@ export default function LocationModal() {
                     </ul>
 
                 </div>
-            </div>
+            </motion.div>
         </div>
     );
 }

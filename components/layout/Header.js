@@ -160,9 +160,9 @@ export default function Header() {
         );
 
     return (
-        <header className={`sticky top-0 z-[200] transition-all duration-500 ${isScrolled ? 'bg-white/80 backdrop-blur-xl border-b border-slate-200/50 py-2 sm:py-3' : 'py-3 sm:py-5 px-3 sm:px-6'}`}>
-            <div className={`max-w-[1440px] mx-auto transition-all duration-500 ${isScrolled ? 'px-4 sm:px-8' : ''}`}>
-                <nav className={`relative flex justify-between items-center gap-3 transition-all duration-500 ${isScrolled ? '' : 'bg-white/70 backdrop-blur-2xl border border-white shadow-[0_20px_50px_-20px_rgba(0,0,0,0.1)] rounded-[32px] px-3 sm:px-6 py-2.5 sm:py-3'}`}>
+        <header className={`sticky top-0 z-[200] transition-all duration-500 ${isScrolled ? 'bg-white/90 backdrop-blur-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] py-2 sm:py-2.5' : 'py-3 sm:py-5 px-3 sm:px-6'}`}>
+            <div className={`max-w-[1440px] mx-auto transition-all duration-500 ${isScrolled ? 'px-4 sm:px-10' : ''}`}>
+                <nav className={`relative flex justify-between items-center gap-3 transition-all duration-500 ${isScrolled ? '' : 'bg-white/70 backdrop-blur-2xl border border-white shadow-[0_20px_50px_-20px_rgba(0,0,0,0.08)] rounded-[32px] px-3 sm:px-6 py-2.5 sm:py-3.5'}`}>
                     
                     {/* Left: Branding & Location */}
                     <div className="flex items-center gap-3 min-w-0">
@@ -178,21 +178,21 @@ export default function Header() {
 
                         <div className="w-px h-8 bg-slate-200 mx-1 hidden sm:block" />
 
-                        {/* Split Location Badge */}
-                        <div className="flex items-center rounded-2xl border border-slate-100 bg-white/50 hover:bg-white hover:border-teal-200 transition-all group overflow-hidden shadow-sm">
+                        {/* Premium Split Location Badge */}
+                        <div className="flex items-stretch rounded-2xl border border-slate-100 bg-white/60 hover:bg-white hover:border-teal-200/60 transition-all group overflow-hidden shadow-sm hover:shadow-md h-12 sm:h-14">
                             {selected.unionSlug ? (
                                 <Link
                                     href={paths.unionPortal(selected.unionSlug)}
-                                    className="flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2.5 transition-colors hover:bg-teal-50/30 min-w-0"
+                                    className="flex items-center gap-3 px-4 py-2 sm:px-6 transition-colors hover:bg-teal-50/50 min-w-0"
                                 >
-                                    <div className="p-1.5 rounded-xl bg-teal-50 group-hover:bg-teal-100 transition-colors shrink-0">
-                                        <MapPin size={16} className="text-teal-600" />
+                                    <div className="p-2 rounded-xl bg-teal-50 group-hover:bg-teal-100/80 transition-colors shrink-0">
+                                        <MapPin size={18} className="text-teal-600" />
                                     </div>
                                     <div className="flex flex-col items-start min-w-0">
-                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider leading-none mb-1">
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1.5 opacity-80">
                                             {selected.ward ? selected.ward : 'আপনার ইউনিয়ন'}
                                         </span>
-                                        <span className="text-sm font-black text-slate-800 truncate leading-none">
+                                        <span className="text-base font-black text-slate-800 truncate leading-none tracking-tight">
                                             {selected.union}
                                         </span>
                                     </div>
@@ -200,28 +200,30 @@ export default function Header() {
                             ) : (
                                 <button
                                     onClick={() => dispatch(openModal())}
-                                    className="flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2.5 transition-colors min-w-0"
+                                    className="flex items-center gap-3 px-4 py-2 sm:px-6 transition-colors min-w-0 hover:bg-teal-50/50"
                                 >
-                                    <div className="p-1.5 rounded-xl bg-teal-50 group-hover:bg-teal-100 transition-colors shrink-0">
-                                        <MapPin size={16} className="text-teal-600" />
+                                    <div className="p-2 rounded-xl bg-teal-50 group-hover:bg-teal-100/80 transition-colors shrink-0">
+                                        <MapPin size={18} className="text-teal-600" />
                                     </div>
                                     <div className="flex flex-col items-start min-w-0 text-left">
-                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider leading-none mb-1">অবস্থান সিলেক্ট করুন</span>
-                                        <span className="text-sm font-black text-slate-800 truncate leading-none">সিলেক্ট করুন</span>
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1.5 opacity-80">অবস্থান সিলেক্ট করুন</span>
+                                        <span className="text-base font-black text-slate-800 truncate leading-none tracking-tight">ইউনিয়ন বা গ্রাম</span>
                                     </div>
                                 </button>
                             )}
 
-                            
                             <button
                                 onClick={(e) => {
                                     e.preventDefault();
+                                    e.stopPropagation();
                                     dispatch(openModal());
                                 }}
-                                className="h-full px-2 sm:px-3 py-2 sm:py-2.5 border-l border-slate-100 hover:bg-teal-50 text-slate-300 hover:text-teal-600 transition-all flex items-center justify-center"
+                                className="px-3 sm:px-4 border-l border-slate-100 hover:bg-teal-600 hover:text-white bg-slate-50/50 text-slate-400 transition-all flex items-center justify-center group/arrow"
                                 aria-label="এলাকা পরিবর্তন করুন"
                             >
-                                <ChevronDown size={14} className="shrink-0" />
+                                <div className="p-1 rounded-lg border border-transparent group-hover/arrow:border-white/20 transition-all">
+                                    <ChevronDown size={18} className={`transition-transform duration-300 group-hover/arrow:scale-110`} />
+                                </div>
                             </button>
                         </div>
                     </div>
