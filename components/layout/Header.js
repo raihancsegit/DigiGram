@@ -2,15 +2,18 @@
 import { useState, useEffect, useRef, useLayoutEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useSelector, useDispatch } from 'react-redux';
 import { MapPin, Bell, UserCircle, ChevronDown, Clock, BookOpen, Sparkles, LogOut, User, Search, Menu } from 'lucide-react';
 import { openModal } from '@/lib/store/features/locationSlice';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HEADER_QUICK_LINKS } from '@/lib/constants/serviceCategories';
 import { paths } from '@/lib/constants/paths';
+import NewsTicker from '@/components/layout/NewsTicker';
 
 export default function Header() {
+    const pathname = usePathname();
+    const showTicker = pathname === '/';
     const dispatch = useDispatch();
     const router = useRouter();
     const { selected } = useSelector((state) => state.location);
@@ -162,7 +165,11 @@ export default function Header() {
         );
 
     return (
-        <header className={`sticky top-0 z-[200] transition-all duration-700 bg-white/10`}>
+        <header className={`sticky top-0 z-[200] transition-all duration-700 ${
+            isScrolled
+            ? 'bg-slate-900/98 backdrop-blur-2xl shadow-[0_4px_32px_-8px_rgba(15,23,42,0.45)]'
+            : 'bg-white/90 backdrop-blur-xl shadow-[0_2px_20px_-6px_rgba(15,23,42,0.1)]'
+        }`}>
             <div className="max-w-[1440px] mx-auto px-1 sm:px-4 md:px-6 py-2 transition-all duration-700">
                 <nav className={`relative flex justify-between items-center transition-all duration-700 h-14 sm:h-16 ${
                     isScrolled 
@@ -311,6 +318,7 @@ export default function Header() {
                     </div>
                 </nav>
             </div>
+            {showTicker && <NewsTicker />}
             {profileMenu}
         </header>
 
