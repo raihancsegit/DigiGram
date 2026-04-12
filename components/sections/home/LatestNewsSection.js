@@ -1,138 +1,204 @@
 'use client';
 
 import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Calendar, ArrowRight, Zap, ChevronLeft, ChevronRight, Bookmark } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Calendar, ArrowRight, Zap, Clock, ArrowUpRight, Newspaper, TrendingUp, Star } from 'lucide-react';
 import Link from 'next/link';
 import { getGlobalNews } from '@/lib/content/newsData';
 
+const CATEGORY_CONFIG = {
+    'উন্নয়ন':      { bg: 'bg-emerald-50',  text: 'text-emerald-700',  border: 'border-emerald-200/70',  dot: 'bg-emerald-500' },
+    'স্বাস্থ্য':   { bg: 'bg-sky-50',      text: 'text-sky-700',      border: 'border-sky-200/70',      dot: 'bg-sky-500' },
+    'কৃষি':        { bg: 'bg-lime-50',     text: 'text-lime-700',     border: 'border-lime-200/70',     dot: 'bg-lime-500' },
+    'নোটিশ':       { bg: 'bg-amber-50',    text: 'text-amber-700',    border: 'border-amber-200/70',    dot: 'bg-amber-500' },
+    'জানাজা':      { bg: 'bg-slate-100',   text: 'text-slate-700',    border: 'border-slate-200/70',    dot: 'bg-slate-500' },
+    'হারানো-প্রাপ্তি': { bg: 'bg-rose-50', text: 'text-rose-700',     border: 'border-rose-200/70',     dot: 'bg-rose-500' },
+};
+
+function CategoryBadge({ category, size = 'sm' }) {
+    const cfg = CATEGORY_CONFIG[category] ?? { bg: 'bg-teal-50', text: 'text-teal-700', border: 'border-teal-200/70', dot: 'bg-teal-500' };
+    return (
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-black uppercase tracking-widest ${cfg.bg} ${cfg.text} ${cfg.border}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+            {category}
+        </span>
+    );
+}
+
+/* ─── Featured (big) card ───────────────────────────────── */
+function FeaturedCard({ news }) {
+    return (
+        <Link href={`/news/${news.slug}`} className="group block h-full">
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5 }}
+                className="relative h-full rounded-[32px] overflow-hidden border border-slate-200/60 bg-white shadow-[0_8px_40px_-12px_rgba(15,23,42,0.15)] hover:shadow-[0_24px_60px_-16px_rgba(15,23,42,0.22)] hover:border-teal-200 transition-all duration-500"
+            >
+                {/* Image */}
+                <div className="relative h-56 sm:h-72 overflow-hidden bg-slate-900">
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/20 to-transparent z-10" />
+                    <img
+                        src={news.image}
+                        alt={news.title}
+                        className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-[800ms]"
+                    />
+                    {/* Badge on image */}
+                    <div className="absolute top-4 left-4 z-20">
+                        <CategoryBadge category={news.category} />
+                    </div>
+                    {/* Featured pill */}
+                    <div className="absolute top-4 right-4 z-20 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-teal-500 text-white text-[10px] font-black uppercase tracking-widest shadow-lg">
+                        <Star size={10} className="fill-current" />
+                        ফিচার্ড
+                    </div>
+                    {/* Title overlay on bottom of image */}
+                    <div className="absolute bottom-0 left-0 right-0 z-20 p-5">
+                        <h3 className="text-xl sm:text-2xl font-black text-white leading-tight line-clamp-2 drop-shadow-lg">
+                            {news.title}
+                        </h3>
+                    </div>
+                </div>
+
+                {/* Body */}
+                <div className="p-5 sm:p-6">
+                    <p className="text-slate-500 text-sm leading-relaxed line-clamp-3 mb-5">{news.excerpt}</p>
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3 text-[11px] font-bold text-slate-400">
+                            <span className="flex items-center gap-1"><Calendar size={12} className="text-teal-500" /> {news.date}</span>
+                            <span className="flex items-center gap-1"><Clock size={12} className="text-teal-500" /> {news.readTime}</span>
+                        </div>
+                        <span className="inline-flex items-center gap-1 text-[12px] font-black text-teal-600 group-hover:gap-2 transition-all">
+                            পড়ুন <ArrowUpRight size={14} className="group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-transform" />
+                        </span>
+                    </div>
+                </div>
+            </motion.div>
+        </Link>
+    );
+}
+
+/* ─── Compact side card ─────────────────────────────────── */
+function CompactCard({ news, index }) {
+    return (
+        <Link href={`/news/${news.slug}`} className="group block">
+            <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: index * 0.08 }}
+                className="flex gap-4 p-4 rounded-2xl border border-slate-100 bg-white hover:border-teal-200 hover:shadow-[0_8px_28px_-8px_rgba(13,148,136,0.15)] transition-all duration-300"
+            >
+                {/* Thumb */}
+                <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden bg-slate-100 shrink-0">
+                    <img src={news.image} alt={news.title} className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                </div>
+                {/* Text */}
+                <div className="flex flex-col justify-between min-w-0 flex-1 py-0.5">
+                    <div>
+                        <CategoryBadge category={news.category} />
+                        <h4 className="text-sm font-black text-slate-800 leading-snug line-clamp-2 mt-2 group-hover:text-teal-700 transition-colors">
+                            {news.title}
+                        </h4>
+                    </div>
+                    <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 mt-1.5">
+                        <Calendar size={10} className="text-teal-400 shrink-0" />
+                        {news.date}
+                        <span className="mx-0.5 text-slate-300">·</span>
+                        <Clock size={10} className="text-teal-400 shrink-0" />
+                        {news.readTime}
+                    </div>
+                </div>
+            </motion.div>
+        </Link>
+    );
+}
+
+/* ─── Main Section ──────────────────────────────────────── */
 export default function LatestNewsSection() {
-    const [currentIndex, setCurrentIndex] = useState(0);
     const globalNews = getGlobalNews();
-    
-    const CARDS_TO_SHOW = 3;
-    const TOTAL_NEWS = globalNews.length;
-    const GAP_SIZE = 1.5; // in rem (gap-6)
-
-    const nextSlide = () => {
-        if (TOTAL_NEWS > CARDS_TO_SHOW) {
-            setCurrentIndex((prev) => (prev + 1) % (TOTAL_NEWS - CARDS_TO_SHOW + 1));
-        }
-    };
-
-    const prevSlide = () => {
-        if (TOTAL_NEWS > CARDS_TO_SHOW) {
-            setCurrentIndex((prev) => (prev - 1 + (TOTAL_NEWS - CARDS_TO_SHOW + 1)) % (TOTAL_NEWS - CARDS_TO_SHOW + 1));
-        }
-    };
+    const [featured] = globalNews;
+    const sideNews = globalNews.slice(1);
 
     return (
-        <section className="dg-section-x py-24 bg-slate-50/30 overflow-hidden">
+        <section className="dg-section-x py-20 overflow-hidden">
             <div className="max-w-7xl mx-auto px-4">
-                
-                {/* Header Area */}
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-16">
-                    <div className="max-w-2xl">
-                        <motion.div 
-                            initial={{ opacity: 0, x: -10 }}
-                            whileInView={{ opacity: 1, x: 0 }}
+
+                {/* ── Section Header ── */}
+                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-12">
+                    <div>
+                        <motion.div
+                            initial={{ opacity: 0, y: -8 }}
+                            whileInView={{ opacity: 1, y: 0 }}
                             viewport={{ once: true }}
-                            className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-600 text-[10px] font-black uppercase tracking-[0.2em] mb-4"
+                            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-600 text-[10px] font-black uppercase tracking-[0.2em] mb-4"
                         >
-                            <Zap size={12} className="fill-current" />
+                            <Zap size={11} className="fill-current" />
                             ব্রেকিং আপডেট
                         </motion.div>
-                        <h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight leading-[1.1]">
-                            সর্বশেষ সংবাদ ও <br/> <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-500 to-rose-500">গুরুত্বপূর্ণ ঘোষণা</span>
-                        </h2>
-                    </div>
-                    
-                    <div className="flex items-center gap-4">
-                        <button 
-                            onClick={prevSlide} 
-                            disabled={TOTAL_NEWS <= CARDS_TO_SHOW}
-                            className={`w-14 h-14 rounded-2xl border border-slate-200 bg-white flex items-center justify-center text-slate-400 hover:text-teal-600 hover:border-teal-200 transition-all active:scale-95 shadow-sm ${TOTAL_NEWS <= CARDS_TO_SHOW ? 'opacity-30 cursor-not-allowed' : 'shadow-md shadow-slate-200/50'}`}
-                        >
-                            <ChevronLeft size={28} />
-                        </button>
-                        <button 
-                            onClick={nextSlide} 
-                            disabled={TOTAL_NEWS <= CARDS_TO_SHOW}
-                            className={`w-14 h-14 rounded-2xl border border-slate-200 bg-white flex items-center justify-center text-slate-400 hover:text-teal-600 hover:border-teal-200 transition-all active:scale-95 shadow-sm ${TOTAL_NEWS <= CARDS_TO_SHOW ? 'opacity-30 cursor-not-allowed' : 'shadow-md shadow-slate-200/50'}`}
-                        >
-                            <ChevronRight size={28} />
-                        </button>
-                    </div>
-                </div>
 
-                {/* Slider Window */}
-                <div className="relative overflow-hidden">
-                    <motion.div 
-                        className="flex gap-6"
-                        animate={{ 
-                            x: `calc(-${currentIndex * (100 / CARDS_TO_SHOW)}% - ${currentIndex * (GAP_SIZE * (CARDS_TO_SHOW - 1) / CARDS_TO_SHOW)}rem)` 
-                        }}
-                        transition={{ type: "spring", stiffness: 150, damping: 25 }}
+                        <motion.h2
+                            initial={{ opacity: 0, y: 10 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            transition={{ delay: 0.05 }}
+                            className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight leading-[1.15]"
+                        >
+                            সর্বশেষ সংবাদ ও{' '}
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-500 via-sky-500 to-rose-500">
+                                গুরুত্বপূর্ণ ঘোষণা
+                            </span>
+                        </motion.h2>
+                    </div>
+
+                    <Link
+                        href="/news"
+                        className="shrink-0 inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-slate-900 text-white text-[12px] font-black hover:bg-teal-600 transition-colors duration-300 shadow-lg shadow-slate-900/20"
                     >
-                        {globalNews.map((news) => (
-                            <div 
-                                key={news.id} 
-                                className="w-full md:w-[calc((100%/3)-1rem)] shrink-0"
-                            >
-                                <Link href={`/news/${news.slug}`} className="group block h-full">
-                                    <div className="bg-white h-full rounded-[48px] border border-slate-100 p-5 shadow-sm hover:shadow-2xl hover:border-teal-200 transition-all duration-500 relative flex flex-col group overflow-hidden">
-                                        
-                                        {/* Image Area with Zoom Effects */}
-                                        <div className="relative aspect-[16/10] rounded-[36px] overflow-hidden mb-6 bg-slate-900">
-                                            <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent z-10 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                            <img 
-                                                src={news.image} 
-                                                alt={news.title}
-                                                className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000"
-                                            />
-                                            <div className="absolute top-4 left-4 z-20">
-                                                <span className="px-3.5 py-1.5 rounded-xl bg-white/95 backdrop-blur-md border border-slate-100 text-teal-700 text-[9px] font-black uppercase tracking-widest shadow-sm">
-                                                    {news.category}
-                                                </span>
-                                            </div>
-                                        </div>
+                        <Newspaper size={14} />
+                        সব খবর দেখুন
+                    </Link>
+                </div>
 
-                                        <div className="px-3 pb-4">
-                                            <div className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-400 tracking-[0.15em] mb-4">
-                                                <Calendar size={14} className="text-teal-500" />
-                                                {news.date}
-                                            </div>
-                                            <h3 className="text-xl md:text-2xl font-black text-slate-800 leading-[1.25] mb-4 group-hover:text-teal-600 transition-colors line-clamp-2">
-                                                {news.title}
-                                            </h3>
-                                            <p className="text-slate-500 text-sm font-bold leading-relaxed mb-8 line-clamp-2">
-                                                {news.excerpt}
-                                            </p>
-                                            
-                                            <div className="flex items-center gap-2 text-[11px] font-black text-teal-600 mt-auto">
-                                                পুরো খবরটি পড়ুন
-                                                <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </Link>
-                            </div>
+                {/* ── Layout: Featured Left + Side Right ── */}
+                <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 items-start">
+
+                    {/* Featured card — takes 2/5 on desktop */}
+                    {featured && (
+                        <div className="lg:col-span-2 h-full">
+                            <FeaturedCard news={featured} />
+                        </div>
+                    )}
+
+                    {/* Side compact list — takes 3/5 on desktop */}
+                    <div className="lg:col-span-3 flex flex-col gap-3">
+                        {sideNews.map((news, i) => (
+                            <CompactCard key={news.id} news={news} index={i} />
                         ))}
-                    </motion.div>
+                    </div>
                 </div>
 
-                {/* Indicators Area */}
-                <div className="max-w-[120px] mx-auto flex gap-1.5 mt-16">
-                    {globalNews.slice(0, Math.max(1, TOTAL_NEWS - CARDS_TO_SHOW + 1)).map((_, idx) => (
-                        <button
-                            key={idx}
-                            onClick={() => setCurrentIndex(idx)}
-                            className={`h-1.5 rounded-full transition-all duration-500 ${
-                                idx === currentIndex ? 'w-8 bg-teal-600' : 'w-2 bg-slate-200 hover:bg-slate-300'
-                            }`}
-                        />
-                    ))}
-                </div>
+                {/* ── Trending strip ── */}
+                <motion.div
+                    initial={{ opacity: 0, y: 12 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.2 }}
+                    className="mt-8 flex items-center gap-3 px-5 py-3.5 rounded-2xl bg-gradient-to-r from-teal-50 to-sky-50 border border-teal-100"
+                >
+                    <span className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-600 text-white text-[10px] font-black uppercase tracking-widest">
+                        <TrendingUp size={10} />
+                        ট্রেন্ডিং
+                    </span>
+                    <div className="flex items-center gap-1 text-sm font-bold text-slate-600 truncate">
+                        <span className="text-teal-600 font-black shrink-0">#{1}</span>
+                        <span className="truncate">{featured?.title}</span>
+                    </div>
+                    <Link href={`/news/${featured?.slug}`} className="ml-auto shrink-0 inline-flex items-center gap-1 text-[11px] font-black text-teal-600 hover:text-teal-800 transition-colors">
+                        পড়ুন <ArrowRight size={12} />
+                    </Link>
+                </motion.div>
 
             </div>
         </section>
