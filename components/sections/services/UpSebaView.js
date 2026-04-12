@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { MonitorSmartphone, FileText, Banknote, Users, CheckCircle2, ArrowRight, ShieldCheck, Landmark, Globe, Smartphone, Clock, Database } from 'lucide-react';
+import { MonitorSmartphone, FileText, Banknote, Users, CheckCircle2, ArrowRight, ShieldCheck, Landmark, Globe, Smartphone, Clock, Database, Phone } from 'lucide-react';
 
 const AnimatedCounter = ({ end, duration = 2, suffix = '' }) => {
     const [count, setCount] = useState(0);
