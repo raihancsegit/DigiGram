@@ -1,21 +1,46 @@
 'use client';
 
-import { useState, useMemo, Suspense, useEffect } from 'react';
+import { useState, useMemo, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
     Search, Droplet, MapPin, 
     Phone, Calendar, Users, 
     CheckCircle2, Clock, Info,
-    UserCircle, ArrowRight, Heart, Activity, LifeBuoy
+    UserCircle, ArrowRight, Heart, HeartPulse, Activity
 } from 'lucide-react';
 import { ALL_DONORS } from '@/lib/content/donorData';
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
 
+const AnimatedCounter = ({ end, duration = 2, suffix = '' }) => {
+    const [count, setCount] = useState(0);
+
+    const bnMap = {
+        '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪',
+        '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯'
+    };
+    const toBnNum = (num) => String(num).replace(/[0-9]/g, match => bnMap[match]);
+
+    useEffect(() => {
+        let startTimestamp = null;
+        const step = (timestamp) => {
+            if (!startTimestamp) startTimestamp = timestamp;
+            const progress = Math.min((timestamp - startTimestamp) / (duration * 1000), 1);
+            setCount(Math.floor(progress * end));
+            if (progress < 1) {
+                window.requestAnimationFrame(step);
+            }
+        };
+        window.requestAnimationFrame(step);
+    }, [end, duration]);
+
+    return <span>{toBnNum(count)}{suffix}</span>;
+};
+
 export default function BloodBankView() {
     return (
-        <Suspense fallback={<div className="py-20 text-center font-bold text-slate-400">Loading Blood Bank...</div>}>
+        <Suspense fallback={<div className="py-20 text-center font-bold text-slate-400">রক্তদাতা খোঁজা হচ্ছে...</div>}>
             <BloodBankContent />
         </Suspense>
     );
@@ -27,340 +52,267 @@ function BloodBankContent() {
 
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedGroup, setSelectedGroup] = useState('All');
-    
-    // Set initial union to the query param if it exists, otherwise 'All'
     const [selectedUnion, setSelectedUnion] = useState(unionQuery || 'All');
 
-    // If there is a union query, we consider the filter "locked" to that union
-    const isUnionLocked = !!unionQuery;
-
-    // Optional: if unionQuery changes, update the selection
-    useEffect(() => {
-        if (unionQuery) {
-            setSelectedUnion(unionQuery);
-        }
-    }, [unionQuery]);
-
-    // Get unique unions for filter
     const unions = useMemo(() => {
-        const unique = Array.from(new Set(ALL_DONORS.map(d => d.unionId)));
-        return ['All', ...unique];
+        const u = new Set(ALL_DONORS.map(d => d.unionId));
+        return ['All', ...Array.from(u)];
     }, []);
 
-    const filteredDonors = ALL_DONORS.filter(donor => {
-        const matchesGroup = selectedGroup === 'All' || donor.bloodGroup === selectedGroup;
-        const matchesUnion = selectedUnion === 'All' || donor.unionId === selectedUnion;
-        const matchesSearch = donor.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                             donor.village.toLowerCase().includes(searchTerm.toLowerCase());
-        return matchesGroup && matchesUnion && matchesSearch;
-    });
+    const filteredDonors = useMemo(() => {
+        return ALL_DONORS.filter(donor => {
+            const matchesSearch = donor.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                                  donor.village.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchesGroup = selectedGroup === 'All' || donor.bloodGroup === selectedGroup;
+            const matchesUnion = selectedUnion === 'All' || donor.unionId === selectedUnion;
 
-    const totalDonors = filteredDonors.length;
-    const availableNow = filteredDonors.filter(d => d.isAvailable).length;
+            return matchesSearch && matchesGroup && matchesUnion;
+        });
+    }, [searchTerm, selectedGroup, selectedUnion]);
+
+    const activeDonors = ALL_DONORS.filter(d => d.isAvailable).length;
 
     return (
-        <div className="min-h-screen bg-[#F8FAFC] pb-32">
-            {/* Premium Dark Hero for Blood Bank */}
-            <div className="relative pt-20 pb-16 md:pt-32 md:pb-24 px-4 overflow-hidden bg-slate-900 border-b border-slate-800 rounded-b-[40px] md:rounded-b-[80px]">
-                <div className="absolute inset-0 opacity-40">
-                    <div className="absolute top-0 right-0 w-64 h-64 md:w-96 md:h-96 bg-rose-600 rounded-full blur-[100px] md:blur-[120px] translate-x-1/3 -translate-y-1/4 animate-pulse" />
-                    <div className="absolute bottom-0 left-0 w-64 h-64 md:w-96 md:h-96 bg-amber-600 rounded-full blur-[100px] md:blur-[120px] -translate-x-1/3 translate-y-1/4 animate-pulse" />
-                </div>
+        <div className="pb-16 pt-4">
+            {/* 1. Hero Section */}
+            <div className="relative rounded-[40px] bg-rose-950 border border-rose-900 overflow-hidden px-6 py-16 md:p-20 mb-16 shadow-2xl">
+                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-rose-500/30 blur-[150px] rounded-full translate-x-1/2 -translate-y-1/3"></div>
+                <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-orange-500/20 blur-[150px] rounded-full -translate-x-1/2 translate-y-1/2"></div>
                 
-                <div className="max-w-[1200px] mx-auto relative z-10">
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 md:gap-8"
-                    >
-                        <div className="flex-1 text-white">
-                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400 text-[10px] font-black uppercase tracking-[0.2em] mb-4 md:mb-6">
-                                <Activity size={12} className="inline mr-1" />
-                                Smart Blood Bank
-                            </div>
-                            <h1 className="text-4xl md:text-6xl lg:text-7xl font-black tracking-tight leading-tight mb-3 md:mb-4">
-                                ডায়নামিক <span className="text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-amber-400">ব্লাড ব্যাংক</span>
-                            </h1>
-                            <p className="text-lg md:text-xl text-slate-400 font-bold max-w-2xl">
-                                {isUnionLocked ? `${unionQuery} ইউনিয়ন ভিত্তিক দাতা তালিকা` : "উপজেলার সকল ইউনিয়নের রক্তদাতার তথ্য এখন এক জায়গায়।"}
-                            </p>
+                <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-12">
+                    <div className="text-center md:text-left max-w-2xl">
+                        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/20 text-rose-200 text-[10px] font-black uppercase tracking-widest mb-6 backdrop-blur-md shadow-sm">
+                            <HeartPulse size={14} className="animate-pulse text-rose-400" /> স্মার্ট ইউনিয়ন ব্লাড ব্যাংক
                         </div>
+                        <h2 className="text-4xl md:text-6xl font-black text-white leading-[1.2] mb-6">
+                            এক ফোটা রক্ত, <span className="text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-orange-400">বাঁচাতে পারে একটি প্রাণ</span>
+                        </h2>
+                        <p className="text-lg text-rose-100/80 font-medium mb-8 leading-relaxed max-w-xl">
+                            আপনার ইউনিয়নের নিবন্ধিত রক্তদাতাদের তালিকা। জরুরি মুহূর্তে সরাসরি কল করে সহজে রক্ত সংগ্রহ করুন।
+                        </p>
+                        
+                        <div className="flex flex-col sm:flex-row items-center gap-4">
+                            <button onClick={() => document.getElementById('directory').scrollIntoView({ behavior: 'smooth' })} className="w-full sm:w-auto px-8 py-5 rounded-[20px] bg-gradient-to-r from-rose-500 to-red-600 text-white font-black text-lg hover:from-rose-400 hover:to-red-500 transition-all shadow-lg shadow-rose-500/25 active:scale-95 flex items-center justify-center gap-2">
+                                <Droplet size={20} className="fill-current" />
+                                রক্তদাতা খুঁজুন
+                            </button>
+                        </div>
+                    </div>
 
-                        {/* Top Dashboard Stats inside Hero */}
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 md:gap-4 shrink-0">
-                            {[
-                                { label: 'রক্তদাতা', value: ALL_DONORS.length, unit: 'জন', icon: Heart, color: 'from-rose-500 to-rose-600' },
-                                { label: 'প্রস্তুত', value: availableNow, unit: 'জন', icon: Activity, color: 'from-teal-500 to-teal-600' },
-                                { label: 'রক্তদান', value: ALL_DONORS.reduce((acc, curr) => acc + (curr.totalDonations || 0), 0), unit: 'বার', icon: LifeBuoy, color: 'from-blue-500 to-blue-600' },
-                            ].map((s, i) => (
-                                <motion.div 
-                                    initial={{ opacity: 0, scale: 0.9 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    transition={{ delay: i * 0.1 }}
-                                    key={s.label}
-                                    className="p-3 md:p-5 rounded-2xl md:rounded-3xl bg-white/5 border border-white/10 backdrop-blur-xl group hover:bg-white/10 transition-all cursor-default"
-                                >
-                                    <div className="flex items-center gap-2 mb-1.5 md:mb-2">
-                                        <div className={`p-1.5 md:p-2 rounded-lg md:rounded-xl bg-gradient-to-br ${s.color} text-white shadow-lg`}>
-                                            <s.icon size={14} className="md:w-4 md:h-4" />
-                                        </div>
-                                        <span className="text-[8px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest">{s.label}</span>
-                                    </div>
-                                    <div className="flex items-baseline gap-1">
-                                        <span className="text-xl md:text-2xl font-black text-white">{s.value}</span>
-                                        <span className="text-[10px] md:text-xs font-bold text-slate-500">{s.unit}</span>
-                                    </div>
-                                </motion.div>
-                            ))}
+                    <div className="grid grid-cols-2 gap-4 shrink-0 w-full md:w-auto">
+                        <div className="bg-white/5 border border-white/10 rounded-[32px] p-6 text-center backdrop-blur-md">
+                            <Users size={32} className="text-orange-400 mx-auto mb-3" />
+                            <div className="text-3xl font-black text-white mb-1"><AnimatedCounter end={ALL_DONORS.length} suffix="+" /></div>
+                            <p className="text-[10px] font-black text-rose-200/50 uppercase tracking-widest">নিবন্ধিত দাতা</p>
                         </div>
-                    </motion.div>
+                        <div className="bg-rose-500/20 border border-rose-500/30 rounded-[32px] p-6 text-center backdrop-blur-md mt-6 relative overflow-hidden group">
+                           <div className="absolute inset-0 bg-gradient-to-t from-rose-500/20 to-transparent"></div>
+                            <Activity size={32} className="text-rose-400 mx-auto mb-3 relative z-10" />
+                            <div className="text-3xl font-black text-white mb-1 relative z-10"><AnimatedCounter end={activeDonors} /></div>
+                            <p className="text-[10px] font-black text-rose-200/80 uppercase tracking-widest relative z-10">বর্তমানে প্রস্তুত</p>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div className="max-w-[1200px] mx-auto px-4 -mt-12 relative z-20 space-y-12">
-
-                {/* Smart Filters Area */}
-                <div className="p-4 md:p-8 rounded-[32px] md:rounded-[40px] bg-white border border-slate-100 italicshadow-sm space-y-4 md:space-y-8">
-                    <div className="flex flex-col lg:flex-row gap-3 md:gap-6">
-                        {/* Search Input */}
-                        <div className="relative flex-1 group">
-                            <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none">
-                                <Search size={20} className="text-slate-400 group-focus-within:text-rose-500 transition-colors" />
-                            </div>
-                            <input
-                                type="text"
-                                placeholder="দাতার নাম, রক্তের গ্রুপ বা এলাকা খুঁজুন..."
-                                className="w-full pl-14 pr-4 py-4 md:pl-16 md:pr-6 md:py-5 bg-slate-50 border border-slate-100 rounded-2xl md:rounded-[24px] text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-rose-500/10 focus:border-rose-500/30 transition-all font-black text-base md:text-lg"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
+            {/* 2. Process / How it Works */}
+            <div className="mb-20">
+                <div className="text-center mb-12">
+                    <h3 className="text-2xl md:text-3xl font-black text-slate-800 mb-4">কীভাবে রক্তদাতা পাবেন?</h3>
+                    <p className="text-slate-500 font-medium max-w-md mx-auto">জরুরি সময়ে অযথা সময় নষ্ট না করে সঠিক রক্তদাতার কাছে পৌঁছানোর সহজ প্রসেস।</p>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div className="bg-rose-50/50 rounded-[32px] p-8 border border-rose-100 text-center relative hover:-translate-y-2 transition-transform shadow-sm">
+                        <div className="w-16 h-16 rounded-2xl bg-white shadow-sm text-rose-600 flex items-center justify-center mx-auto mb-6">
+                            <Search size={28} />
                         </div>
- 
-                        {/* Union Filter */}
-                        <div className="w-full lg:w-72">
-                            <div className="relative group">
-                                <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none">
-                                    <MapPin size={20} className={`transition-colors ${isUnionLocked ? 'text-teal-500' : 'text-slate-400 group-focus-within:text-rose-500'}`} />
-                                </div>
-                                <select
-                                    value={selectedUnion}
-                                    onChange={(e) => setSelectedUnion(e.target.value)}
-                                    disabled={isUnionLocked}
-                                    className={`w-full pl-14 pr-4 py-4 md:pl-16 md:pr-6 md:py-5 border rounded-2xl md:rounded-[24px] font-black focus:outline-none transition-all appearance-none text-base md:text-lg capitalize ${
-                                        isUnionLocked 
-                                        ? 'bg-teal-50/50 border-teal-100 text-teal-800 cursor-not-allowed opacity-80' 
-                                        : 'bg-slate-50 border-slate-100 text-slate-800 cursor-pointer focus:ring-4 focus:ring-rose-500/10 focus:border-rose-500/30'
-                                    }`}
-                                >
-                                    <option value="All">সব ইউনিয়ন</option>
-                                    {unions.filter(u => u !== 'All').map(u => <option key={u} value={u}>{u}</option>)}
-                                </select>
-                            </div>
-                        </div>
+                        <h4 className="text-xl font-black text-slate-800 mb-3">১. গ্রুপ সিলেক্ট করুন</h4>
+                        <p className="text-sm font-medium text-slate-500 leading-relaxed">আপনার প্রয়োজনীয় রক্তের গ্রুপ এবং ইউনিয়ন নির্বাচন করে ফিল্টার করুন।</p>
                     </div>
+                    <div className="bg-orange-50/50 rounded-[32px] p-8 border border-orange-100 text-center relative hover:-translate-y-2 transition-transform shadow-sm">
+                        <div className="w-16 h-16 rounded-2xl bg-white shadow-sm text-orange-500 flex items-center justify-center mx-auto mb-6">
+                            <CheckCircle2 size={28} />
+                        </div>
+                        <h4 className="text-xl font-black text-slate-800 mb-3">২. এভেইলেবিলিটি চেক</h4>
+                        <p className="text-sm font-medium text-slate-500 leading-relaxed">যিনি রক্ত দেওয়ার জন্য প্রস্তুত আছেন (সবুজ সিগন্যাল) শুধু তাকেই বাছাই করুন।</p>
+                    </div>
+                    <div className="bg-red-50/50 rounded-[32px] p-8 border border-red-100 text-center relative hover:-translate-y-2 transition-transform shadow-sm">
+                        <div className="w-16 h-16 rounded-2xl bg-white shadow-sm text-red-600 flex items-center justify-center mx-auto mb-6">
+                            <Phone size={28} />
+                        </div>
+                        <h4 className="text-xl font-black text-slate-800 mb-3">৩. সরাসরি কল করুন</h4>
+                        <p className="text-sm font-medium text-slate-500 leading-relaxed">প্রোফাইলের নিচে থাকা "সরাসরি কল দিন" বাটনে ক্লিক করে যোগাযোগ করুন।</p>
+                    </div>
+                </div>
+            </div>
 
-                    {/* Blood Group Filter (Horizontal Scroll) */}
-                    <div className="space-y-3">
-                        <div className="flex items-center justify-between px-1">
-                            <h4 className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">রক্তের গ্রুপ</h4>
-                            <span className="text-[9px] font-bold text-slate-300">প্রাপ্ত: {totalDonors} জন</span>
-                        </div>
-                        <div className="flex gap-2 md:gap-3 overflow-x-auto pb-2 no-scrollbar scroll-smooth">
-                            {[ 'All', ...BLOOD_GROUPS ].map((group) => (
-                                <button
-                                    key={group}
-                                    onClick={() => setSelectedGroup(group)}
-                                    className={`shrink-0 flex items-center gap-2 px-6 py-3 md:px-8 md:py-4 rounded-xl md:rounded-[22px] font-black text-sm md:text-lg transition-all border-2 ${
-                                        selectedGroup === group
-                                            ? 'bg-rose-500 text-white border-rose-500 shadow-lg shadow-rose-500/20 md:shadow-rose-500/30 scale-105'
-                                            : 'bg-white text-slate-600 border-slate-100 hover:bg-rose-50 hover:border-rose-100 shadow-sm'
-                                    }`}
-                                >
-                                    {group === 'All' ? null : <Droplet size={14} className={selectedGroup === group ? 'text-rose-200' : 'text-rose-500'} />}
-                                    {group === 'All' ? 'সব' : group}
-                                </button>
-                            ))}
-                        </div>
+            {/* 3. Directory Section */}
+            <div id="directory">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8 border-b border-slate-100 pb-8">
+                    <div>
+                        <h2 className="text-3xl font-black text-slate-800 mb-2">রক্তদাতাদের তালিকা</h2>
+                        <p className="text-sm font-medium text-slate-500">আপনার ইউনিয়ন অনুযায়ী তালিকা ফিল্টার করে দেখুন</p>
                     </div>
                 </div>
 
-            {/* Results Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <AnimatePresence mode='popLayout'>
-                    {filteredDonors.map((donor, idx) => (
-                        <motion.div
-                            key={donor.id}
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.9 }}
-                            layout
-                            className="group relative bg-white border border-slate-200/60 rounded-[32px] overflow-hidden hover:border-teal-300 hover:shadow-xl transition-all duration-500"
+                {/* Filters */}
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-8">
+                    <div className="relative md:col-span-4">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <Search size={18} className="text-slate-400" />
+                        </div>
+                        <input
+                            type="text"
+                            placeholder="নাম বা গ্রাম দিয়ে খুঁজুন..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full pl-11 pr-4 py-3.5 bg-white border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all shadow-sm"
+                        />
+                    </div>
+                    
+                    <div className="md:col-span-8 flex flex-col sm:flex-row gap-4">
+                        <select
+                            value={selectedGroup}
+                            onChange={(e) => setSelectedGroup(e.target.value)}
+                            className="flex-1 py-3.5 px-4 bg-white border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-rose-500 appearance-none shadow-sm cursor-pointer"
                         >
-                            {/* Card Accent */}
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-rose-500/5 blur-3xl rounded-full pointer-events-none group-hover:bg-rose-500/10 transition-colors" />
-                            
-                            <div className="p-5 md:p-8 relative">
-                                {/* Header */}
-                                <div className="flex items-start justify-between mb-4 md:mb-6">
+                            <option value="All">সব রক্তের গ্রুপ</option>
+                            {BLOOD_GROUPS.map(group => (
+                                <option key={group} value={group}>{group}</option>
+                            ))}
+                        </select>
+
+                        <select
+                            value={selectedUnion}
+                            onChange={(e) => setSelectedUnion(e.target.value)}
+                            className="flex-1 py-3.5 px-4 bg-white border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-rose-500 appearance-none shadow-sm cursor-pointer"
+                        >
+                            <option value="All">সব ইউনিয়ন (উপজেলা)</option>
+                            {unions.filter(u => u !== 'All').map(union => (
+                                <option key={union} value={union}>{union}</option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+
+                {/* Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <AnimatePresence mode="popLayout">
+                        {filteredDonors.map((donor, idx) => (
+                            <motion.div
+                                key={donor.id}
+                                layout
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.95 }}
+                                transition={{ duration: 0.2 }}
+                                className="bg-white rounded-[32px] p-6 border border-slate-200 hover:border-rose-300 shadow-sm hover:shadow-xl transition-all duration-300 group flex flex-col relative overflow-hidden"
+                            >
+                                <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-rose-50 to-transparent rounded-bl-full pointer-events-none" />
+                                
+                                <div className="flex items-center justify-between mb-6 relative z-10">
                                     <div className="relative">
-                                        <div className="w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-[24px] bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-300 group-hover:border-rose-100 group-hover:bg-rose-50 transition-all overflow-hidden relative z-10">
-                                            <UserCircle size={32} className="md:w-10 md:h-10 group-hover:text-rose-200 transition-colors" />
+                                        <div className="w-16 h-16 rounded-[20px] bg-gradient-to-br from-rose-100 to-rose-50 border border-rose-100 text-rose-600 flex items-center justify-center font-black text-2xl shadow-inner shadow-rose-200/50 group-hover:scale-110 transition-transform">
+                                            {donor.bloodGroup}
                                         </div>
-                                        {/* Status Dot */}
-                                        <div className={`absolute -bottom-0.5 -right-0.5 w-4 h-4 md:w-5 md:h-5 rounded-full border-2 md:border-4 border-white z-20 ${donor.isAvailable ? 'bg-emerald-500' : 'bg-slate-300'}`} />
                                     </div>
- 
-                                    <div className="flex flex-col items-end">
-                                        <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl bg-gradient-to-br from-rose-500 to-red-600 flex items-center justify-center text-white font-black text-lg md:text-xl shadow-lg shadow-rose-200">
-                                            <span className="drop-shadow-md">{donor.bloodGroup}</span>
-                                        </div>
-                                        <div className={`mt-2 md:mt-3 flex items-center gap-1.5 px-2 md:px-3 py-1 md:py-1.5 rounded-full text-[8px] md:text-[10px] font-black uppercase tracking-tighter border ${donor.isAvailable ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-50 text-slate-500 border-slate-200'}`}>
-                                            <div className={`w-1 h-1 md:w-1.5 md:h-1.5 rounded-full ${donor.isAvailable ? 'bg-emerald-400 animate-pulse' : 'bg-slate-400'}`} />
-                                            {donor.isAvailable ? 'রক্ত দিতে প্রস্তুত' : 'সাময়িক বিরতি'}
+                                    <div className="text-right">
+                                        <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[10px] text-[10px] font-black tracking-widest uppercase shadow-sm border ${
+                                            donor.isAvailable 
+                                            ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
+                                            : 'bg-slate-50 text-slate-500 border-slate-100'
+                                        }`}>
+                                            <div className={`w-1.5 h-1.5 rounded-full ${donor.isAvailable ? 'bg-emerald-400 animate-pulse' : 'bg-slate-400'}`} />
+                                            {donor.isAvailable ? 'প্রস্তুত আছেন' : 'সম্প্রতি দিয়েছেন'}
                                         </div>
                                     </div>
                                 </div>
- 
-                                {/* Body */}
-                                <div className="space-y-3 md:space-y-4 mb-6 md:mb-8">
+
+                                <div className="space-y-4 mb-8 flex-1 relative z-10">
                                     <div>
-                                        <div className="flex items-center gap-1.5 mb-0.5 md:mb-1">
-                                            <h3 className="text-lg md:text-xl font-black text-slate-800 leading-none group-hover:text-rose-600 transition-colors">{donor.name}</h3>
-                                            <CheckCircle2 size={14} className="text-emerald-500" />
+                                        <div className="flex items-center gap-1.5 mb-1">
+                                            <h3 className="text-xl font-black text-slate-800 leading-none group-hover:text-rose-600 transition-colors">{donor.name}</h3>
+                                            <CheckCircle2 size={16} className="text-emerald-500" />
                                         </div>
-                                        <p className="flex items-center gap-1 text-xs md:text-sm font-bold text-slate-500 mt-1 md:mt-2 capitalize">
+                                        <p className="flex items-center gap-1.5 text-xs font-bold text-slate-500 mt-2">
                                             <MapPin size={14} className="text-slate-400" />
                                             {donor.village}, {donor.unionId}
                                         </p>
                                     </div>
- 
-                                    <div className="grid grid-cols-2 gap-2 md:gap-3 p-3 md:p-4 rounded-xl md:rounded-2xl bg-slate-50 border border-slate-100">
+
+                                    <div className="grid grid-cols-2 gap-3 p-4 rounded-[20px] bg-slate-50 border border-slate-100">
                                         <div>
-                                            <p className="text-[8px] md:text-[10px] font-black text-slate-400 uppercase tracking-wider mb-0.5 md:mb-1">রক্তদান</p>
-                                            <p className="text-sm md:text-base font-black text-slate-700 flex items-center gap-1">
-                                                <Heart size={12} className="text-rose-500" /> 
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">মোট দান</p>
+                                            <p className="text-sm font-black text-slate-700 flex items-center gap-1.5">
+                                                <Heart size={14} className="text-rose-500 fill-current" /> 
                                                 {donor.totalDonations} বার
                                             </p>
                                         </div>
                                         <div>
-                                            <p className="text-[8px] md:text-[10px] font-black text-slate-400 uppercase tracking-wider mb-0.5 md:mb-1">শেষ দান</p>
-                                            <p className="text-sm md:text-base font-black text-slate-700 flex items-center gap-1">
-                                                <Calendar size={12} className="text-slate-400" />
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">শেষ দান</p>
+                                            <p className="text-sm font-black text-slate-700 flex items-center gap-1.5">
+                                                <Calendar size={14} className="text-slate-400" />
                                                 {donor.lastDonation}
                                             </p>
                                         </div>
                                     </div>
                                 </div>
- 
-                                {/* Action */}
-                                <a
-                                    href={`tel:${donor.phone}`}
-                                    className="w-full flex items-center justify-center gap-3 py-3.5 md:py-4 rounded-xl md:rounded-2xl bg-slate-900 group-hover:bg-rose-600 text-white font-black text-xs md:text-sm shadow-lg shadow-slate-200 group-hover:shadow-rose-200 transition-all active:scale-95 z-10 relative overflow-hidden"
-                                >
-                                    <div className="absolute inset-0 bg-white/20 w-full translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
-                                    <Phone size={16} className="relative z-10" />
-                                    <span className="relative z-10">সরাসরি কল দিন</span>
-                                </a>
-                            </div>
-                        </motion.div>
-                    ))}
-                </AnimatePresence>
 
-                {filteredDonors.length === 0 && (
-                    <div className="col-span-full py-20 text-center space-y-4">
-                        <div className="w-24 h-24 bg-rose-50 rounded-full flex items-center justify-center mx-auto text-rose-300">
-                            <HeartPulse size={48} />
+                                <button
+                                    onClick={() => window.location.href = `tel:${donor.phone}`}
+                                    className="w-full flex items-center justify-center gap-2 py-4 rounded-[20px] bg-slate-900 hover:bg-rose-600 text-white font-black text-sm shadow-xl shadow-slate-900/10 transition-all active:scale-95 relative z-10"
+                                >
+                                    <Phone size={18} />
+                                    সরাসরি কল দিন
+                                </button>
+                            </motion.div>
+                        ))}
+                    </AnimatePresence>
+
+                    {filteredDonors.length === 0 && (
+                        <div className="col-span-full py-20 text-center space-y-4 bg-slate-50 rounded-[40px] border-2 border-dashed border-slate-200">
+                            <div className="w-24 h-24 bg-rose-50 rounded-full flex items-center justify-center mx-auto text-rose-300">
+                                <HeartPulse size={48} />
+                            </div>
+                            <div>
+                                <h3 className="text-2xl font-black text-slate-800">কোনো রক্তদাতা পাওয়া যায়নি</h3>
+                                <p className="text-slate-500 font-bold text-sm mt-2">অন্য গ্রুপের বা অন্য ইউনিয়নের সার্চ করে দেখতে পারেন।</p>
+                            </div>
+                            <button 
+                                onClick={() => { setSearchTerm(''); setSelectedGroup('All'); setSelectedUnion('All'); }}
+                                className="mt-4 px-8 py-3 bg-white text-rose-600 border border-rose-200 rounded-full font-black text-sm hover:bg-rose-50 transition-all active:scale-95 shadow-sm"
+                            >
+                                ফিল্টার ক্লিয়ার করুন
+                            </button>
                         </div>
-                        <div>
-                            <h3 className="text-2xl font-black text-slate-800">কোনো তথ্য পাওয়া যায়নি</h3>
-                            <p className="text-slate-500 font-bold text-base mt-2">ভিন্ন গ্রুপ বা গ্রাম লিখে চেষ্টা করুন।</p>
-                        </div>
-                        <button 
-                            onClick={() => { setSearchTerm(''); setSelectedGroup('All'); setSelectedUnion('All'); }}
-                            className="mt-4 px-8 py-4 bg-rose-50 text-rose-600 border border-rose-100 rounded-2xl font-black text-sm hover:bg-rose-100 transition-all active:scale-95"
-                        >
-                            সবগুলো দেখুন
-                        </button>
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
 
-            {/* Donor Registration CTA */}
-            <div className="p-6 md:p-10 rounded-[32px] md:rounded-[48px] bg-gradient-to-br from-rose-600 to-orange-700 text-white relative overflow-hidden group">
-                <div className="absolute right-0 bottom-0 w-64 h-64 md:w-96 md:h-96 bg-white/10 rounded-full blur-[100px] md:blur-[120px] pointer-events-none" />
-                <div className="relative flex flex-col md:flex-row items-center justify-between gap-6 md:gap-10">
+            {/* 4. Footer CTA */}
+            <div className="mt-16 p-8 md:p-12 rounded-[40px] bg-gradient-to-br from-rose-600 to-orange-600 text-white relative overflow-hidden group shadow-2xl">
+                <div className="absolute right-0 bottom-0 w-[400px] h-[400px] bg-white/20 rounded-full blur-[100px] pointer-events-none" />
+                <div className="relative flex flex-col md:flex-row items-center justify-between gap-8 z-10">
                     <div className="max-w-xl text-center md:text-left">
-                        <div className="inline-flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full bg-white/10 border border-white/10 text-[8px] md:text-[10px] font-black uppercase tracking-widest mb-4 md:mb-6 backdrop-blur-md">
-                            <HeartPulse size={12} className="text-rose-300" />
-                            দাতা হিসেবে যুক্ত হোন
+                        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/20 border border-white/20 text-[10px] font-black uppercase tracking-widest mb-6 backdrop-blur-md shadow-sm">
+                            <HeartPulse size={14} className="animate-pulse" />
+                            একজন হিরো হোন
                         </div>
-                        <h3 className="text-2xl sm:text-4xl font-black mb-3 md:mb-4 leading-tight">
-                            আপনার রক্ত একটি <span className="text-rose-300">মূল্যবান জীবন</span> বাঁচাতে পারে
+                        <h3 className="text-3xl md:text-4xl font-black mb-4 leading-tight">
+                            নতুন রক্তদাতা হিসেবে <span className="text-rose-200">আজই যুক্ত হোন</span>
                         </h3>
-                        <p className="text-white/70 font-bold text-sm md:text-base leading-relaxed">
-                            আপনি কি স্বেচ্ছায় রক্তদান করতে ইচ্ছুক? ডিজিগ্রাম ব্লাড ব্যাংকে নিজের তথ্য যুক্ত করে রাখুন। জরুরি প্রয়োজনে আপনার গ্রামবাসী বা আত্মীয়কে দ্রুত সাহায্য করতে পারবেন।
+                        <p className="text-white/80 font-bold text-sm md:text-base leading-relaxed">
+                            আপনার এক ফোটা রক্ত পারে মুমর্ষু রোগীর জীবন বাঁচাতে। এলাকার এই মহৎ উদ্যোগে যুক্ত হতে নিচের বাটনে ক্লিক করে ফর্মটি পূরণ করুন। 
                         </p>
                     </div>
                     
-                    <button className="w-full md:w-auto shrink-0 flex items-center justify-center gap-3 px-8 py-4 md:px-10 md:py-5 rounded-2xl md:rounded-[24px] bg-white text-rose-600 font-black text-base md:text-lg shadow-xl hover:scale-105 active:scale-95 transition-all">
-                        রেজিস্ট্রেশন করুন
-                        <ArrowRight size={18} />
+                    <button className="w-full md:w-auto shrink-0 flex items-center justify-center gap-2 px-10 py-5 rounded-[24px] bg-white text-rose-600 font-black text-lg shadow-xl hover:scale-105 active:scale-95 transition-all">
+                        <Heart size={20} className="fill-rose-600" /> নিবন্ধন করুন
                     </button>
                 </div>
             </div>
-
-            {/* FAQ / Info */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="p-8 rounded-[32px] bg-slate-50 border border-slate-200/60">
-                    <div className="flex items-center gap-3 mb-6">
-                        <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-teal-600 shadow-sm border border-slate-100">
-                            <Clock size={20} />
-                        </div>
-                        <h4 className="text-lg font-black text-slate-800">রক্তদানের শর্তাবলি</h4>
-                    </div>
-                    <ul className="space-y-3">
-                        {['বয়স ১৮-৬০ বছর', 'ওজন অন্তত ৫০ কেজি', '৪ মাস আগে শেষ রক্তদান', 'সুস্থ ও রোগমুক্ত শরীর'].map((item, i) => (
-                            <li key={i} className="flex items-center gap-3 text-sm font-bold text-slate-600">
-                                <CheckCircle2 size={16} className="text-emerald-500" />
-                                {item}
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-
-                <div className="p-8 rounded-[32px] bg-slate-50 border border-slate-200/60">
-                    <div className="flex items-center gap-3 mb-6">
-                        <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-rose-600 shadow-sm border border-slate-100">
-                            <Info size={20} />
-                        </div>
-                        <h4 className="text-lg font-black text-slate-800">জরুরি পরামর্শ</h4>
-                    </div>
-                    <p className="text-sm font-bold text-slate-500 leading-relaxed">
-                        রক্তদানের পর পর্যাপ্ত পানি ও পুষ্টিকর খাবার গ্রহণ করুন। অন্তত ৩০ মিনিট বিশ্রাম নিন এবং ২৪ ঘণ্টা ভারী পরিশ্রম থেকে বিরত থাকুন। কোনো সমস্যা হলে আমাদের ভলান্টিয়ার বা নিকটস্থ হাসপাতালে যোগাযোগ করুন।
-                    </p>
-                </div>
-            </div>
+            
         </div>
-    </div>
     );
-}
-
-function HeartPulse({size, className}) {
-    return (
-        <svg 
-            width={size} 
-            height={size} 
-            viewBox="0 0 24 24" 
-            fill="none" 
-            stroke="currentColor" 
-            strokeWidth="2.5" 
-            strokeLinecap="round" 
-            strokeLinejoin="round" 
-            className={className}
-        >
-            <path d="M20.42 4.58a5 5 0 0 0-7.07 0l-.35.35-.35-.35a5 5 0 0 0-7.07 7.07l1.35 1.35.35.35L12 18l4.65-4.65.35-.35 1.35-1.35a5 5 0 0 0 0-7.07Z" />
-            <path d="M12 13V18" />
-            <path d="M12 6V8" />
-        </svg>
-    )
 }
