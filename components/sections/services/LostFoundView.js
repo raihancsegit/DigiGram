@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, MapPin, Calendar, Phone, Filter, AlertCircle, CheckCircle2, Image as ImageIcon, PlusCircle } from 'lucide-react';
+import { Search, MapPin, Calendar, Phone, Filter, AlertCircle, CheckCircle2, Image as ImageIcon, PlusCircle, Gift, ShieldAlert, Crosshair } from 'lucide-react';
 import { getLostFoundPosts } from '@/lib/content/lostFoundData';
 
 export default function LostFoundView() {
@@ -56,6 +56,15 @@ export default function LostFoundView() {
                 </div>
             </div>
 
+            {/* Warning Banner */}
+            <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl p-4 sm:p-5 mb-8 border border-amber-100 flex items-start gap-4">
+                <AlertCircle className="text-amber-500 shrink-0 mt-0.5" />
+                <div>
+                    <h4 className="text-sm font-black text-amber-800 mb-1">প্রতারকদের থেকে সাবধান!</h4>
+                    <p className="text-xs font-bold text-amber-700 opacity-90">কেউ জিনিস পাওয়ার কথা বলে আগে টাকা দাবি করলে দেবেন না। সামনাসামনি গিয়ে উপযুক্ত প্রমাণসহ জিনিস বুঝে নিন।</p>
+                </div>
+            </div>
+
             {/* Filters */}
             <div className="flex items-center gap-3 mb-8 overflow-x-auto pb-4 scrollbar-hide">
                 <button 
@@ -81,7 +90,7 @@ export default function LostFoundView() {
             </div>
 
             {/* Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <AnimatePresence mode="popLayout">
                     {filteredPosts.map((post) => (
                         <motion.div
@@ -90,14 +99,14 @@ export default function LostFoundView() {
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.95 }}
                             transition={{ duration: 0.2 }}
-                            className="bg-white rounded-[28px] border border-slate-100 overflow-hidden shadow-sm hover:shadow-xl hover:border-teal-200 transition-all duration-300 flex flex-col"
+                            className="bg-white rounded-[32px] border border-slate-100 overflow-hidden shadow-sm hover:shadow-xl hover:border-teal-200 transition-all duration-300 flex flex-col group"
                         >
                             {post.image ? (
-                                <div className="relative h-48 bg-slate-100 overflow-hidden shrink-0">
-                                    <img src={post.image} alt={post.title} className="w-full h-full object-cover" />
+                                <div className="relative h-56 bg-slate-100 overflow-hidden shrink-0">
+                                    <img src={post.image} alt={post.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                                     {post.status === 'resolved' && (
-                                        <div className="absolute inset-0 bg-white/60 backdrop-blur-sm flex items-center justify-center">
-                                            <div className="bg-teal-500 text-white px-4 py-2 rounded-full font-black text-sm shadow-lg flex items-center gap-2 transform -rotate-12">
+                                        <div className="absolute inset-0 bg-white/70 backdrop-blur-md flex items-center justify-center">
+                                            <div className="bg-teal-500 text-white px-5 py-2.5 rounded-full font-black text-sm shadow-xl flex items-center gap-2 transform -rotate-12 border-2 border-white">
                                                 <CheckCircle2 size={18} />
                                                 মীমাংসিত
                                             </div>
@@ -105,11 +114,11 @@ export default function LostFoundView() {
                                     )}
                                 </div>
                             ) : (
-                                <div className="relative h-32 bg-slate-50 flex items-center justify-center border-b border-slate-100 shrink-0">
+                                <div className="relative h-40 bg-slate-50 flex items-center justify-center border-b border-slate-100 shrink-0">
                                     <ImageIcon size={32} className="text-slate-300" />
                                     {post.status === 'resolved' && (
-                                        <div className="absolute inset-0 bg-white/60 backdrop-blur-sm flex items-center justify-center">
-                                            <div className="bg-teal-500 text-white px-4 py-2 rounded-full font-black text-sm shadow-lg flex items-center gap-2 transform -rotate-12">
+                                        <div className="absolute inset-0 bg-white/70 backdrop-blur-md flex items-center justify-center">
+                                            <div className="bg-teal-500 text-white px-5 py-2.5 rounded-full font-black text-sm shadow-xl flex items-center gap-2 transform -rotate-12 border-2 border-white">
                                                 <CheckCircle2 size={18} />
                                                 মীমাংসিত
                                             </div>
@@ -123,40 +132,56 @@ export default function LostFoundView() {
                                     <span className={`shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${
                                         post.type === 'lost' ? 'bg-rose-50 text-rose-600 border border-rose-100' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'
                                     }`}>
-                                        {post.type === 'lost' ? 'হারানো' : 'প্রাপ্তি'}
+                                        {post.type === 'lost' ? 'হারানো নোটিশ' : 'প্রাপ্তি সংবাদ'}
                                     </span>
                                     <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-1 rounded-md">{post.category}</span>
                                 </div>
 
-                                <h3 className="text-lg font-black text-slate-800 leading-snug mb-3 line-clamp-2">
+                                <h3 className="text-lg font-black text-slate-800 leading-snug mb-3 line-clamp-2 group-hover:text-teal-600 transition-colors">
                                     {post.title}
                                 </h3>
 
-                                <p className="text-sm font-medium text-slate-500 leading-relaxed line-clamp-3 mb-6">
+                                <p className="text-xs font-medium text-slate-500 leading-relaxed line-clamp-3 mb-5">
                                     {post.description}
                                 </p>
 
-                                <div className="mt-auto space-y-2.5 mb-6">
-                                    <div className="flex items-center gap-2.5 text-xs font-bold text-slate-500">
-                                        <MapPin size={14} className="text-slate-400 shrink-0" />
-                                        <span className="truncate">{post.location}</span>
+                                {/* Detailed Fields Container */}
+                                <div className="space-y-2 mb-6 border border-slate-100 rounded-2xl p-3 bg-slate-50">
+                                    {post.rewardAmount && post.rewardAmount !== 'প্রযোজ্য নয়' && (
+                                        <div className="flex items-start gap-2 text-xs font-bold">
+                                            <Gift size={14} className="text-amber-500 shrink-0 mt-0.5" />
+                                            <span className="text-amber-700">পুরস্কার: {post.rewardAmount}</span>
+                                        </div>
+                                    )}
+                                    <div className="flex items-start gap-2 text-xs font-bold text-slate-600">
+                                        <Crosshair size={14} className="text-slate-400 shrink-0 mt-0.5" />
+                                        <span>শেষ দেখা/প্রাপ্তি: {post.lastSeenArea}</span>
                                     </div>
-                                    <div className="flex items-center gap-2.5 text-xs font-bold text-slate-500">
-                                        <Calendar size={14} className="text-slate-400 shrink-0" />
-                                        {post.date}
+                                    <div className="flex items-start gap-2 text-xs font-bold text-slate-600">
+                                        <ShieldAlert size={14} className="text-slate-400 shrink-0 mt-0.5" />
+                                        <span>জিডি: {post.gdNumber}</span>
                                     </div>
                                 </div>
 
-                                <div className="pt-5 border-t border-slate-100 mt-auto">
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <p className="text-[10px] font-black text-slate-400 uppercase mb-0.5">যোগাযোগ</p>
-                                            <p className="text-sm font-bold text-slate-700">{post.contactName}</p>
-                                        </div>
-                                        <a href={`tel:${post.contactPhone}`} className="w-10 h-10 rounded-full bg-teal-50 flex items-center justify-center text-teal-600 hover:bg-teal-500 hover:text-white transition-colors active:scale-90">
-                                            <Phone size={16} />
-                                        </a>
+                                <div className="mt-auto flex items-center justify-between pt-5 border-t border-slate-100">
+                                    <div>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">যোগাযোগ</p>
+                                        <p className="text-sm font-bold text-slate-700">{post.contactName}</p>
+                                        <p className="text-[10px] font-bold text-slate-400 flex items-center gap-1 mt-1">
+                                            <Calendar size={10} /> {post.date}
+                                        </p>
                                     </div>
+                                    <button 
+                                        disabled={post.status === 'resolved'}
+                                        onClick={() => window.location.href = `tel:${post.contactPhone}`}
+                                        className={`w-11 h-11 rounded-full flex items-center justify-center transition-all ${
+                                            post.status === 'active' 
+                                            ? 'bg-teal-50 text-teal-600 hover:bg-teal-500 hover:text-white hover:shadow-lg hover:shadow-teal-500/20 active:scale-90 border border-teal-100' 
+                                            : 'bg-slate-100 text-slate-300 cursor-not-allowed'
+                                        }`}
+                                    >
+                                        <Phone size={18} />
+                                    </button>
                                 </div>
                             </div>
                         </motion.div>
