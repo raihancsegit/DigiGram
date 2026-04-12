@@ -1,175 +1,240 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-    Phone, MapPin, Search, Plus, 
-    ChevronDown, ShieldCheck, HeartPulse, 
-    Truck, Flame, Shield, Dog, Zap, Info
-} from 'lucide-react';
-import { emergencyCategories, emergencyHowTo } from '@/lib/content/emergencyDirectory';
+import { Phone, Search, ShieldAlert, HeartPulse, Flame, PhoneCall, Copy, CheckCircle2, UserCheck, AlertTriangle, MapPin, Info, ArrowRight, Ambulance, Activity } from 'lucide-react';
 
-const CATEGORY_ICONS = {
-    national: ShieldCheck,
-    hospital: HeartPulse,
-    ambulance: Truck,
-    fire: Flame,
-    police: Shield,
-    vet: Dog,
-    utilities: Zap
+const AnimatedCounter = ({ end, duration = 2, suffix = '' }) => {
+    const [count, setCount] = useState(0);
+
+    const bnMap = {
+        '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪',
+        '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯'
+    };
+    const toBnNum = (num) => String(num).replace(/[0-9]/g, match => bnMap[match]);
+
+    useEffect(() => {
+        let startTimestamp = null;
+        const step = (timestamp) => {
+            if (!startTimestamp) startTimestamp = timestamp;
+            const progress = Math.min((timestamp - startTimestamp) / (duration * 1000), 1);
+            setCount(Math.floor(progress * end));
+            if (progress < 1) {
+                window.requestAnimationFrame(step);
+            }
+        };
+        window.requestAnimationFrame(step);
+    }, [end, duration]);
+
+    return <span>{toBnNum(count)}{suffix}</span>;
 };
+
+const EMERGENCY_CONTACTS = [
+    { id: 1, name: 'ন্যাশনাল ইমার্জেন্সি সার্ভিস', number: '৯৯৯', category: 'Global', type: 'Emergency', location: 'বাংলাদেশ', verified: true },
+    { id: 2, name: 'ডুমুরিয়া ফায়ার সার্ভিস', number: '০১৩২২-২২৩৩৪৫', category: 'Fire', type: 'Local', location: 'ডুমুরিয়া বাজার', verified: true },
+    { id: 3, name: 'ডুমুরিয়া থানা (ওসি)', number: '০১৭১৩-৩৭৩৯৯৯', category: 'Police', type: 'Local', location: 'থানা মোড়', verified: true },
+    { id: 4, name: 'উপজেলা স্বাস্থ্য কমপ্লেক্স', number: '০২৪১১-২৩৪৪৫৫', category: 'Hospital', type: 'Local', location: 'ডুমুরিয়া সদর', verified: true },
+    { id: 5, name: 'পল্লী বিদ্যুৎ অভিযোগ কেন্দ্র', number: '০১৩২২-৪৪৫৫৬৬', category: 'Utility', type: 'Local', location: 'ডুমুরিয়া জোন', verified: true },
+    { id: 6, name: 'র‍্যাব কন্ট্রোল রুম', number: '০২-৪৮৯৬৩১১১', category: 'Police', type: 'Global', location: 'খুলনা রেঞ্জ', verified: true },
+    { id: 7, name: 'ডুমুরিয়া ইউএনও অফিস', number: '০১৭১৩-২৩৪৪৫৫', category: 'Admin', type: 'Local', location: 'উপজেলা কমপ্লেক্স', verified: true },
+    { id: 8, name: 'খর্ণিয়া ইউনিয়ন ডিজিটাল সেন্টার', number: '০১৯১১-২২৩৩৪৪', category: 'Admin', type: 'Local', location: 'খর্ণিয়া বাজার', verified: true },
+];
 
 export default function EmergencyDirectoryView() {
     const [searchTerm, setSearchTerm] = useState('');
-    const [openCategory, setOpenCategory] = useState('national');
+    const [selectedCategory, setSelectedCategory] = useState('All');
+    const [copiedId, setCopiedId] = useState(null);
 
-    const filteredCategories = emergencyCategories.map(cat => ({
-        ...cat,
-        items: cat.items.filter(item => 
-            item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            item.subtitle?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            item.phones.some(p => p.number.includes(searchTerm))
-        )
-    })).filter(cat => cat.items.length > 0);
+    const categories = ['All', 'Police', 'Fire', 'Hospital', 'Admin', 'Utility'];
+
+    const filteredContacts = EMERGENCY_CONTACTS.filter(contact => {
+        const matchesCategory = selectedCategory === 'All' || contact.category === selectedCategory;
+        const matchesSearch = contact.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                              contact.location.toLowerCase().includes(searchTerm.toLowerCase());
+        return matchesCategory && matchesSearch;
+    });
+
+    const copyToClipboard = (number, id) => {
+        navigator.clipboard.writeText(number);
+        setCopiedId(id);
+        setTimeout(() => setCopiedId(null), 2000);
+    };
 
     return (
-        <div className="space-y-8">
-            {/* Search Bar */}
-            <div className="relative group">
-                <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none">
-                    <Search size={20} className="text-slate-400 group-focus-within:text-teal-500 transition-colors" />
-                </div>
-                <input
-                    type="text"
-                    placeholder="হাসপাতাল, অ্যাম্বুলেন্স বা ফায়ার সার্ভিসের নাম লিখে খুঁজুন..."
-                    className="w-full pl-14 pr-6 py-5 bg-white border border-slate-200 rounded-[24px] text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-teal-500/10 focus:border-teal-500/50 transition-all font-bold"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                />
-            </div>
-
-            {/* Emergency Tips */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {emergencyHowTo.map((tip, idx) => (
-                    <div key={idx} className="p-5 rounded-3xl bg-teal-50/50 border border-teal-100 flex gap-4">
-                        <div className="w-10 h-10 rounded-2xl bg-white border border-teal-100 flex items-center justify-center text-teal-600 shrink-0 font-black text-xs">
-                            {idx + 1}
+        <div className="pb-16 pt-4">
+            {/* 1. Hero Section */}
+            <div className="relative rounded-[40px] bg-rose-950 border border-thin border-rose-900 overflow-hidden px-6 py-16 md:p-20 mb-16 shadow-2xl">
+                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-rose-500/20 blur-[150px] rounded-full translate-x-1/2 -translate-y-1/3"></div>
+                <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-orange-500/20 blur-[150px] rounded-full -translate-x-1/2 translate-y-1/2"></div>
+                
+                <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-12">
+                    <div className="text-center md:text-left max-w-2xl">
+                        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/20 text-rose-200 text-[10px] font-black uppercase tracking-widest mb-6 backdrop-blur-md shadow-sm">
+                            <ShieldAlert size={14} className="text-rose-400" /> এলাকাভিত্তিক জরুরি ডিরেক্টরি
                         </div>
-                        <div>
-                            <h4 className="font-black text-slate-800 text-sm mb-1">{tip.title}</h4>
-                            <p className="text-xs font-bold text-slate-500 leading-relaxed">{tip.text}</p>
+                        <h2 className="text-4xl md:text-6xl font-black text-white leading-[1.2] mb-6">
+                            উপজেলা ও ইউনিয়নের <span className="text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-orange-400">জরুরি সকল নম্বরসমূহ</span>
+                        </h2>
+                        <p className="text-lg text-rose-100/80 font-medium mb-8 leading-relaxed max-w-xl">
+                            জরুরি মুহূর্তে সঠিক নম্বরটি খুঁজে পাওয়া এখন আরও সহজ। আপনার ডুমুরিয়া উপজেলার ফায়ার সার্ভিস, থানা বা হাসপাতালের নম্বর পাচ্ছেন এখানেই।
+                        </p>
+                        
+                        <div className="flex flex-col sm:flex-row items-center gap-4">
+                            <button onClick={() => document.getElementById('contacts').scrollIntoView({ behavior: 'smooth' })} className="w-full sm:w-auto px-10 py-5 rounded-[20px] bg-gradient-to-r from-rose-600 to-red-700 text-white font-black text-lg hover:from-rose-500 transition-all shadow-lg shadow-rose-500/25 active:scale-95 flex items-center justify-center gap-2">
+                                <Search size={22} />
+                                নম্বর খুঁজুন
+                            </button>
                         </div>
                     </div>
-                ))}
+
+                    <div className="grid grid-cols-2 gap-4 shrink-0 w-full md:w-auto">
+                        <div className="bg-white/5 border border-white/10 rounded-[32px] p-6 text-center backdrop-blur-md hover:bg-white/10 transition-colors">
+                            <CheckCircle2 size={32} className="text-emerald-400 mx-auto mb-3" />
+                            <div className="text-3xl font-black text-white mb-1"><AnimatedCounter end={EMERGENCY_CONTACTS.length} /></div>
+                            <p className="text-[10px] font-black text-rose-200/50 uppercase tracking-widest">ভেরিফাইড নম্বর</p>
+                        </div>
+                        <div className="bg-white/5 border border-white/10 rounded-[32px] p-6 text-center backdrop-blur-md hover:bg-white/10 transition-colors mt-6">
+                            <Activity size={32} className="text-orange-400 mx-auto mb-3" />
+                            <div className="text-3xl font-black text-white mb-1"><AnimatedCounter end={24} suffix="/৭" /></div>
+                            <p className="text-[10px] font-black text-rose-200/50 uppercase tracking-widest">লাইভ সার্ভিস</p>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            {/* Categories */}
-            <div className="space-y-4">
-                {filteredCategories.map((category) => {
-                    const Icon = CATEGORY_ICONS[category.id] || Info;
-                    const isOpen = openCategory === category.id;
+            {/* 2. Warning Section */}
+            <div className="bg-amber-50 rounded-[32px] border border-amber-100 p-8 mb-16 flex flex-col md:flex-row items-center gap-6 shadow-sm">
+                <div className="w-16 h-16 rounded-2xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-lg shadow-amber-500/20">
+                    <AlertTriangle size={36} />
+                </div>
+                <div>
+                    <h3 className="text-xl font-black text-amber-900 mb-1">অপ্রয়োজনে কল করবেন না!</h3>
+                    <p className="text-sm font-bold text-amber-800/70 leading-relaxed">
+                        জরুরি নম্বরগুলোতে বিনা প্রয়োজনে কল করা আইনত দণ্ডনীয় অপরাধ। এগুলো শুধুমাত্র বড় কোনো বিপদ বা জরুরি প্রয়োজনে ব্যবহারের জন্য সংরক্ষিত।
+                    </p>
+                </div>
+            </div>
 
-                    return (
-                        <div key={category.id} className="rounded-[32px] overflow-hidden bg-white border border-slate-200/60 shadow-sm">
+            {/* 3. Directory Section */}
+            <div id="contacts" className="mb-16">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8 border-b border-slate-100 pb-8">
+                    <div>
+                        <h2 className="text-3xl font-black text-slate-800 mb-2">যোগাযোগের নম্বরসমূহ</h2>
+                        <p className="text-sm font-medium text-slate-500">আপনার প্রয়োজনীয় ক্যাটাগরি অনুযায়ী নম্বর খুঁজুন</p>
+                    </div>
+                </div>
+
+                {/* Filters */}
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-10">
+                    <div className="relative md:col-span-4">
+                        <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+                            <Search size={20} className="text-slate-400" />
+                        </div>
+                        <input
+                            type="text"
+                            placeholder="অফিসের নাম বা ঠিকানা দিয়ে খুঁজুন..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full pl-14 pr-6 py-4.5 bg-white border border-slate-200 rounded-3xl text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-rose-500 shadow-sm"
+                        />
+                    </div>
+                    
+                    <div className="md:col-span-8 flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                        {categories.map((cat) => (
                             <button
-                                onClick={() => setOpenCategory(isOpen ? null : category.id)}
-                                className={`w-full flex items-center justify-between p-6 sm:p-8 text-left transition-colors ${isOpen ? 'bg-slate-50' : 'hover:bg-slate-50/50'}`}
+                                key={cat}
+                                onClick={() => setSelectedCategory(cat)}
+                                className={`shrink-0 px-8 py-4 rounded-full text-xs font-black transition-all ${
+                                    selectedCategory === cat 
+                                    ? 'bg-rose-900 text-white shadow-lg shadow-rose-900/20' 
+                                    : 'bg-white border border-slate-200 text-slate-600 hover:border-rose-300'
+                                }`}
                             >
-                                <div className="flex items-center gap-4 sm:gap-6">
-                                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-lg ${isOpen ? 'bg-teal-600 shadow-teal-200' : 'bg-slate-800 shadow-slate-200'}`}>
-                                        <Icon size={28} />
+                                {cat === 'All' ? 'সবগুলো' : cat === 'Police' ? 'পুলিশ/থানা' : cat === 'Fire' ? 'ফায়ার সার্ভিস' : cat === 'Hospital' ? 'হাসপাতাল' : cat === 'Admin' ? 'প্রশাসন' : 'ইউটিলিটি'}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Contacts Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    <AnimatePresence mode="popLayout">
+                        {filteredContacts.map((contact, idx) => (
+                            <motion.div
+                                key={contact.id}
+                                layout
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ delay: idx * 0.05 }}
+                                className="bg-white rounded-[32px] p-8 border border-slate-100 hover:border-rose-200 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all group flex flex-col justify-between"
+                            >
+                                <div>
+                                    <div className="flex justify-between items-start mb-6">
+                                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-inner ${
+                                            contact.category === 'Police' ? 'bg-indigo-50 text-indigo-600' :
+                                            contact.category === 'Fire' ? 'bg-orange-50 text-orange-600' :
+                                            contact.category === 'Hospital' ? 'bg-rose-50 text-rose-600' :
+                                            contact.category === 'Admin' ? 'bg-emerald-50 text-emerald-600' :
+                                            'bg-amber-50 text-amber-600'
+                                        }`}>
+                                            {contact.category === 'Police' ? <ShieldAlert size={28} /> :
+                                             contact.category === 'Fire' ? <Flame size={28} /> :
+                                             contact.category === 'Hospital' ? <HeartPulse size={28} /> :
+                                             contact.category === 'Admin' ? <UserCheck size={28} /> : 
+                                             <AlertTriangle size={28} />}
+                                        </div>
+                                        {contact.verified && (
+                                            <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-emerald-100 shadow-sm">
+                                                <CheckCircle2 size={12} /> ভেরিফাইড
+                                            </div>
+                                        )}
                                     </div>
-                                    <div>
-                                        <h3 className="text-xl font-black text-slate-900">{category.title}</h3>
-                                        {category.subtitle && <p className="text-xs font-bold text-slate-500 mt-0.5">{category.subtitle}</p>}
+
+                                    <h3 className="text-xl font-black text-slate-800 mb-2 leading-tight group-hover:text-rose-600 transition-colors uppercase">{contact.name}</h3>
+                                    <div className="flex items-center gap-1.5 text-xs font-bold text-slate-400 mb-6">
+                                        <MapPin size={14} /> {contact.location}
                                     </div>
                                 </div>
-                                <motion.div
-                                    animate={{ rotate: isOpen ? 180 : 0 }}
-                                    className="p-2 rounded-xl bg-slate-100 text-slate-400"
-                                >
-                                    <ChevronDown size={20} />
-                                </motion.div>
-                            </button>
 
-                            <AnimatePresence>
-                                {isOpen && (
-                                    <motion.div
-                                        initial={{ height: 0, opacity: 0 }}
-                                        animate={{ height: 'auto', opacity: 1 }}
-                                        exit={{ height: 0, opacity: 0 }}
-                                        transition={{ duration: 0.3, ease: 'easeInOut' }}
-                                    >
-                                        <div className="px-6 sm:px-8 pb-8 space-y-4 border-t border-slate-100/50 bg-slate-50/30">
-                                            {category.hint && (
-                                                <div className="mt-6 flex gap-3 p-4 rounded-2xl bg-amber-50 border border-amber-100 text-amber-800 text-xs font-bold">
-                                                    <Info size={16} className="shrink-0" />
-                                                    {category.hint}
-                                                </div>
-                                            )}
-                                            
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-                                                {category.items.map((item, idx) => (
-                                                    <div key={idx} className="p-6 rounded-[28px] bg-white border border-slate-200/60 hover:border-teal-200 transition-all flex flex-col group">
-                                                        <div className="flex items-start justify-between gap-4 mb-4">
-                                                            <div>
-                                                                <h4 className="font-black text-slate-800 text-base group-hover:text-teal-700 transition-colors leading-tight">{item.name}</h4>
-                                                                {item.subtitle && <p className="text-xs font-bold text-slate-400 mt-1">{item.subtitle}</p>}
-                                                            </div>
-                                                            {item.badges?.map((b, i) => (
-                                                                <span key={i} className="px-2 py-0.5 rounded-full bg-teal-50 text-[9px] font-black text-teal-600 uppercase tracking-tighter border border-teal-100 whitespace-nowrap">
-                                                                    {b}
-                                                                </span>
-                                                            ))}
-                                                        </div>
-
-                                                        {item.address && (
-                                                            <div className="flex items-start gap-2 text-xs font-bold text-slate-500 mb-4">
-                                                                <MapPin size={14} className="text-slate-300 shrink-0 mt-0.5" />
-                                                                {item.address}
-                                                            </div>
-                                                        )}
-
-                                                        <div className="mt-auto pt-4 border-t border-slate-50 flex flex-wrap gap-2">
-                                                            {item.phones.map((p, pi) => (
-                                                                <a
-                                                                    key={pi}
-                                                                    href={`tel:${p.number}`}
-                                                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-slate-900 hover:bg-teal-600 text-white transition-all shadow-md active:scale-95"
-                                                                >
-                                                                    <Phone size={14} />
-                                                                    <div className="flex flex-col items-start leading-none">
-                                                                        <span className="text-[9px] font-black opacity-60 uppercase">{p.label || 'কল দিন'}</span>
-                                                                        <span className="text-sm font-black tracking-tight">{p.number}</span>
-                                                                    </div>
-                                                                </a>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
+                                <div className="space-y-3 mt-auto">
+                                    <div className="p-5 bg-slate-50 rounded-[20px] border border-slate-100 relative group/num overflow-hidden">
+                                        <div className="absolute right-3 top-3 opacity-0 group-hover/num:opacity-100 transition-opacity">
+                                            <button 
+                                                onClick={() => copyToClipboard(contact.number, contact.id)}
+                                                className="p-2 bg-white rounded-lg text-slate-400 hover:text-rose-500 shadow-sm border border-slate-100 transition-colors"
+                                            >
+                                                {copiedId === contact.id ? <CheckCircle2 size={16} className="text-emerald-500" /> : <Copy size={16} />}
+                                            </button>
                                         </div>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-                        </div>
-                    );
-                })}
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">ফোন নম্বর</p>
+                                        <p className="text-2xl font-black text-slate-800 tracking-tight font-mono">{contact.number}</p>
+                                    </div>
+                                    <button 
+                                        onClick={() => window.location.href = `tel:${contact.number}`}
+                                        className="w-full py-4 rounded-[20px] bg-slate-900 hover:bg-rose-600 text-white font-black text-sm flex items-center justify-center gap-3 transition-all active:scale-95 shadow-xl shadow-slate-900/10"
+                                    >
+                                        <PhoneCall size={18} /> সরাসরি কল দিন
+                                    </button>
+                                </div>
+                            </motion.div>
+                        ))}
+                    </AnimatePresence>
+                </div>
             </div>
 
-            {/* Bottom Help */}
-            <div className="p-8 rounded-[40px] bg-gradient-to-br from-slate-900 to-teal-900 text-white relative overflow-hidden text-center sm:text-left">
-                <div className="absolute right-0 top-0 w-64 h-64 bg-teal-500 rounded-full blur-[100px] opacity-20 pointer-events-none" />
-                <div className="relative flex flex-col sm:flex-row items-center gap-8">
-                    <div className="w-20 h-20 rounded-3xl bg-white/10 backdrop-blur-md flex items-center justify-center shrink-0 border border-white/10">
-                        <Plus size={40} className="text-teal-400" />
-                    </div>
-                    <div className="flex-1">
-                        <h3 className="text-2xl font-black mb-2">আপনার এলাকার নম্বর এখানে নেই?</h3>
-                        <p className="text-slate-400 font-bold text-sm leading-relaxed max-w-xl">
-                            আপনার এলাকায় নতুন কোনো ডাক্তার, ক্লিনিক বা অ্যাম্বুলেন্স সার্ভিস চালু হলে আমাদের ভলান্টিয়ার বা ইউনিয়ন সচিবের সাথে যোগাযোগ করুন। আমরা দ্রুত তালিকায় যুক্ত করে দেব।
-                        </p>
-                    </div>
+            {/* 4. Footer CTA */}
+            <div className="mt-8 bg-slate-50 rounded-[40px] p-8 md:p-14 border border-slate-200 flex flex-col md:flex-row items-center justify-between gap-10 relative overflow-hidden shadow-sm">
+                <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-rose-500/10 rounded-full blur-[100px] pointer-events-none" />
+                <div className="relative z-10 w-full text-center md:text-left">
+                    <h3 className="text-2xl md:text-3xl font-black text-slate-800 mb-4">আপনার কাছে কি কোনো জরুরি নম্বর আছে?</h3>
+                    <p className="text-slate-600 font-bold max-w-xl text-base">
+                        আপনার কাছে যদি এমন কোনো গুরুত্বপূর্ণ নম্বর থাকে যা সাধারণ মানুষের উপকারে আসবে তা আমাদের জানানোর অনুরোধ রইলো। আমরা যাচাই করে লিস্টে যুক্ত করবো।
+                    </p>
+                </div>
+                <div className="shrink-0 w-full md:w-auto relative z-10">
+                    <button className="w-full px-10 py-5 rounded-[24px] bg-white text-rose-600 font-black text-lg shadow-xl border-2 border-slate-100 hover:bg-rose-600 hover:text-white transition-all active:scale-95 flex items-center justify-center gap-2">
+                        নম্বর সাবমিট করুন <ArrowRight size={20} />
+                    </button>
                 </div>
             </div>
         </div>

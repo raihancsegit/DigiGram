@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, MapPin, Calendar, Phone, Filter, AlertCircle, CheckCircle2, Image as ImageIcon, PlusCircle, Gift, ShieldAlert, Crosshair, Users, Target, SearchIcon, Award, UserCheck } from 'lucide-react';
+import { Search, MapPin, Calendar, Phone, Filter, AlertCircle, CheckCircle2, Image as ImageIcon, PlusCircle, Gift, ShieldAlert, Crosshair, Users, Target, SearchIcon, Award, UserCheck, Heart, AlertTriangle, ArrowRight } from 'lucide-react';
 import { getLostFoundPosts } from '@/lib/content/lostFoundData';
 
 const AnimatedCounter = ({ end, duration = 2, suffix = '' }) => {
@@ -48,22 +48,22 @@ export default function LostFoundView() {
                 
                 <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-12">
                     <div className="text-center md:text-left max-w-2xl">
-                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/20 text-indigo-200 text-xs font-black uppercase tracking-widest mb-6">
-                            <Target size={14} /> কমিউনিটি কানেক্ট
+                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/20 text-indigo-200 text-xs font-black uppercase tracking-widest mb-6 px-4 py-2 backdrop-blur-md">
+                            <Target size={14} className="text-rose-400" /> কমিউনিটি হারানো-প্রাপ্তি কেন্দ্র
                         </div>
                         <h2 className="text-4xl md:text-6xl font-black text-white leading-[1.2] mb-6">
-                            হারানো বস্তু খুঁজতে বা প্রাপ্ত জিনিস <span className="text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-amber-400">ফিরিয়ে দিতে সাহায্য করুন</span>
+                            প্রিয় কিছু হারিয়েছেন? <br/> <span className="text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-amber-400">কমিউনিটিকে জানান</span>
                         </h2>
-                        <p className="text-lg text-indigo-200 font-medium mb-8 leading-relaxed max-w-xl">
-                            আপনার হারানো মূল্যবান জিনিস, দলিল বা গবাদি পশুর সন্ধানে কমিউনিটিকে জানান। খুঁজে পেলে উপযুক্ত পুরস্কার দিন।
+                        <p className="text-lg text-indigo-200/80 font-medium mb-8 leading-relaxed max-w-xl">
+                            আপনার হারানো দলিল, গবাদি পশু বা মূল্যবান ইলেকট্রনিক্স পণ্য খুঁজে পেতে এলাকার মানুষের সাহায্য নিন। অথবা কেউ কিছু খুঁজে পেয়ে থাকলে মালিককে ফেরত দিন।
                         </p>
                         
                         <div className="flex flex-col sm:flex-row items-center gap-4">
-                            <button className="w-full sm:w-auto px-8 py-5 rounded-full bg-gradient-to-r from-rose-500 to-orange-500 text-white font-black text-lg hover:from-rose-400 hover:to-orange-400 transition-all shadow-lg shadow-rose-500/25 active:scale-95 flex items-center justify-center gap-2">
+                            <button className="w-full sm:w-auto px-8 py-5 rounded-[20px] bg-gradient-to-r from-rose-500 to-orange-500 text-white font-black text-lg hover:from-rose-400 transition-all shadow-lg shadow-rose-500/25 active:scale-95 flex items-center justify-center gap-2">
                                 <PlusCircle size={20} />
-                                হারানো বিজ্ঞপ্তি দিন
+                                বিজ্ঞতি দিন
                             </button>
-                            <button className="w-full sm:w-auto px-8 py-5 rounded-full bg-white/10 text-white font-black text-lg hover:bg-white/20 transition-all border border-white/10 active:scale-95 flex items-center justify-center gap-2">
+                            <button className="w-full sm:w-auto px-8 py-5 rounded-[20px] bg-white/10 text-white font-black text-lg hover:bg-white/20 transition-all border border-white/10 active:scale-95 flex items-center justify-center gap-2">
                                 <CheckCircle2 size={20} />
                                 প্রাপ্তি সংবাদ দিন
                             </button>
@@ -71,172 +71,140 @@ export default function LostFoundView() {
                     </div>
 
                     <div className="grid grid-cols-2 gap-4 shrink-0 w-full md:w-auto">
-                        <div className="bg-white/5 border border-white/10 rounded-[32px] p-6 text-center backdrop-blur-md">
-                            <CheckCircle2 size={32} className="text-emerald-400 mx-auto mb-3" />
-                            <div className="text-3xl font-black text-white mb-1"><AnimatedCounter end={340} suffix="+" /></div>
-                            <p className="text-[10px] font-black text-indigo-300 uppercase tracking-widest">সাফল্যের সাথে উদ্ধার</p>
+                        <div className="bg-white/5 border border-white/10 rounded-[32px] p-6 text-center backdrop-blur-md hover:bg-white/10 transition-colors">
+                            <Heart size={32} className="text-emerald-400 mx-auto mb-3" />
+                            <div className="text-3xl font-black text-white mb-1"><AnimatedCounter end={150} suffix="+" /></div>
+                            <p className="text-[10px] font-black text-indigo-200/50 uppercase tracking-widest">খুঁজে পাওয়া পণ্য</p>
                         </div>
-                        <div className="bg-white/5 border border-white/10 rounded-[32px] p-6 text-center backdrop-blur-md mt-6">
-                            <Award size={32} className="text-amber-400 mx-auto mb-3" />
-                            <div className="text-3xl font-black text-white mb-1"><AnimatedCounter end={120} suffix="K+" /></div>
-                            <p className="text-[10px] font-black text-indigo-300 uppercase tracking-widest">পুরস্কার দেওয়া হয়েছে</p>
+                        <div className="bg-white/5 border border-white/10 rounded-[32px] p-6 text-center backdrop-blur-md hover:bg-white/10 transition-colors mt-6">
+                            <SearchIcon size={32} className="text-rose-400 mx-auto mb-3" />
+                            <div className="text-3xl font-black text-white mb-1"><AnimatedCounter end={25} suffix="+" /></div>
+                            <p className="text-[10px] font-black text-indigo-200/50 uppercase tracking-widest">চলমান বিজ্ঞপ্তি</p>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* 2. Warning Banner */}
-            <div className="bg-amber-50 rounded-[32px] p-6 md:p-8 mb-16 border border-amber-200 shadow-sm flex flex-col md:flex-row items-start md:items-center gap-6 relative overflow-hidden">
-                <div className="absolute top-0 right-0 opacity-5"><ShieldAlert size={150} /></div>
-                <div className="w-16 h-16 rounded-2xl bg-amber-500 flex items-center justify-center text-white shrink-0 shadow-lg shadow-amber-500/30">
-                    <ShieldAlert size={32} />
+            {/* 2. Safety First Alert */}
+            <div className="bg-rose-50 rounded-[32px] border border-rose-100 p-8 mb-16 flex flex-col md:flex-row items-center gap-8 relative overflow-hidden group">
+                <div className="absolute top-0 right-0 p-10 opacity-5 -rotate-12">
+                    <ShieldAlert size={150} />
                 </div>
-                <div className="relative z-10 flex-1">
-                    <h4 className="text-xl font-black text-amber-900 mb-2">প্রতারকদের থেকে সাবধান!</h4>
-                    <p className="text-sm font-bold text-amber-800/80 leading-relaxed max-w-3xl">
-                        কেউ আপনার হারানো বস্তু পাওয়ার কথা বলে যদি বিকাশ/নগদে অ্যাডভান্স টাকা বা বখশিস দাবি করে, তবে কোনোভাবেই টাকা পাঠাবেন না। 
-                        সামনাসামনি গিয়ে উপযুক্ত প্রমাণসহ জিনিস বুঝে নেওয়ার পর পুরস্কার প্রদান করুন। সন্দেহ হলে থানায় যোগাযোগ করুন।
+                <div className="w-20 h-20 rounded-[24px] bg-rose-500 text-white flex items-center justify-center shrink-0 shadow-lg shadow-rose-500/20">
+                    <AlertTriangle size={40} className="animate-pulse" />
+                </div>
+                <div className="relative z-10">
+                    <h3 className="text-2xl font-black text-rose-900 mb-2">প্রতারক থেকে সাবধান!</h3>
+                    <p className="text-base font-bold text-rose-800/70 leading-relaxed max-w-4xl">
+                        কেউ আপনার হারানো বস্তু পাওয়ার কথা বলে যদি অগ্রিম টাকা বা বখশিস দাবি করে, তবে কোনোভাবেই টাকা পাঠাবেন না। 
+                        বিপরীত পক্ষকে উপযুক্ত প্রমাণ (যেমন: ছবির প্রুফ বা বিশেষ কোনো চিহ্ন) দেখাতে বলুন এবং সামনাসামনি গিয়ে জিনিস বুঝে পাওয়ার পর কেবল কৃতজ্ঞতাস্বরূপ কিছু দেবেন।
                     </p>
                 </div>
             </div>
 
-            {/* 3. Directory List */}
-            <div id="notices" className="mb-8 border-t border-slate-100 pt-12">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
+            {/* 3. Main Dashboard */}
+            <div id="directory">
+                <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-10 pb-8 border-b border-slate-100">
                     <div>
-                        <h2 className="text-3xl font-black text-slate-800 mb-2">লিস্টেড নোটিশবোর্ড</h2>
-                        <p className="text-sm font-medium text-slate-500">আপনার হারানো জিনিস খুঁজুন অথবা কুড়িয়ে পাওয়া জিনিস মালিককে ফেরত দিন</p>
+                        <h2 className="text-3xl font-black text-slate-800">নোটিশবোর্ড</h2>
+                        <p className="text-sm font-medium text-slate-500">আপনার হারানো জিনিসটি লিস্টে আছে কি না দেখুন</p>
+                    </div>
+                    
+                    <div className="flex bg-slate-100 p-2 rounded-2xl w-full md:w-auto">
+                        {['all', 'lost', 'found'].map((t) => (
+                            <button
+                                key={t}
+                                onClick={() => setFilter(t)}
+                                className={`flex-1 md:w-32 py-3 rounded-xl text-xs font-black transition-all ${
+                                    filter === t ? 'bg-white text-indigo-600 shadow-md' : 'text-slate-500 hover:text-slate-800'
+                                }`}
+                            >
+                                {t === 'all' ? 'সবগুলো' : t === 'lost' ? 'হারানো' : 'প্রাপ্তি'}
+                            </button>
+                        ))}
                     </div>
                 </div>
 
-                {/* Filters */}
-                <div className="flex items-center gap-3 mb-8 overflow-x-auto pb-4 scrollbar-hide">
-                    <button 
-                        onClick={() => setFilter('all')}
-                        className={`shrink-0 px-8 py-3.5 rounded-full text-sm font-black transition-all ${filter === 'all' ? 'bg-indigo-900 text-white shadow-lg shadow-indigo-900/20' : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300'}`}
-                    >
-                        সবগুলো
-                    </button>
-                    <button 
-                        onClick={() => setFilter('lost')}
-                        className={`shrink-0 px-6 py-3.5 rounded-full text-sm font-black transition-all flex items-center gap-2 ${filter === 'lost' ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/25' : 'bg-white text-slate-600 border border-slate-200 hover:border-rose-300 hover:text-rose-600'}`}
-                    >
-                        <SearchIcon size={18} />
-                        শুধু হারানো
-                    </button>
-                    <button 
-                        onClick={() => setFilter('found')}
-                        className={`shrink-0 px-6 py-3.5 rounded-full text-sm font-black transition-all flex items-center gap-2 ${filter === 'found' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/25' : 'bg-white text-slate-600 border border-slate-200 hover:border-emerald-300 hover:text-emerald-600'}`}
-                    >
-                        <UserCheck size={18} />
-                        শুধু প্রাপ্তি
-                    </button>
-                </div>
-
-                {/* Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                     <AnimatePresence mode="popLayout">
-                        {filteredPosts.map((post) => (
+                        {filteredPosts.map((post, idx) => (
                             <motion.div
                                 key={post.id}
                                 layout
-                                initial={{ opacity: 0, scale: 0.95 }}
+                                initial={{ opacity: 0, scale: 0.9 }}
                                 animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.95 }}
-                                transition={{ duration: 0.2 }}
-                                className={`bg-white rounded-[40px] border-2 overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-300 flex flex-col group ${
-                                    post.type === 'lost' ? 'hover:border-rose-200' : 'hover:border-emerald-200'
+                                transition={{ delay: idx * 0.05 }}
+                                className={`bg-white rounded-[32px] border-2 overflow-hidden hover:shadow-2xl transition-all group flex flex-col ${
+                                    post.type === 'lost' ? 'border-amber-100 hover:border-amber-200' : 'border-emerald-100 hover:border-emerald-200'
                                 }`}
                             >
-                                <div className="relative h-60 bg-slate-100 overflow-hidden shrink-0">
-                                    {post.image ? (
-                                        <img src={post.image} alt={post.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
-                                    ) : (
-                                        <div className="w-full h-full flex items-center justify-center bg-slate-50"><ImageIcon size={48} className="text-slate-300" /></div>
-                                    )}
-                                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent"></div>
-                                    
-                                    <div className="absolute top-5 left-5">
-                                        <span className={`px-4 py-2 rounded-[14px] text-[10px] font-black uppercase tracking-widest shadow-md ${
-                                            post.type === 'lost' ? 'bg-rose-500 text-white' : 'bg-emerald-500 text-white'
-                                        }`}>
-                                            {post.type === 'lost' ? 'হারানো নোটিশ' : 'প্রাপ্তি সংবাদ'}
-                                        </span>
-                                    </div>
-                                    <div className="absolute bottom-5 left-5 right-5">
-                                        <h3 className="text-xl font-black text-white leading-snug mb-1.5">{post.title}</h3>
-                                        <div className="flex items-center gap-2 text-xs font-bold text-white/80">
-                                            <span className="bg-white/20 px-2 py-0.5 rounded-md backdrop-blur-md border border-white/10">{post.category}</span>
-                                            <span>•</span>
-                                            <span>{post.date}</span>
-                                        </div>
-                                    </div>
-
-                                    {post.status === 'resolved' && (
-                                        <div className="absolute inset-0 bg-white/70 backdrop-blur-md flex items-center justify-center z-20">
-                                            <div className="bg-teal-500 text-white px-6 py-3 rounded-full font-black text-lg shadow-xl flex items-center gap-2 transform -rotate-12 border-[3px] border-white ring-4 ring-teal-500/20">
-                                                <CheckCircle2 size={24} />
-                                                মীমাংসিত
-                                            </div>
-                                        </div>
-                                    )}
+                                <div className="relative h-64 bg-slate-100 overflow-hidden">
+                                     <img src={post.image} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt={post.title} />
+                                     <div className={`absolute top-4 left-4 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-white shadow-lg ${
+                                         post.type === 'lost' ? 'bg-orange-500' : 'bg-emerald-500'
+                                     }`}>
+                                         {post.type === 'lost' ? 'হারিয়ে গেছে' : 'কুড়িয়ে পাওয়া'}
+                                     </div>
                                 </div>
-
-                                <div className="p-6 md:p-8 flex flex-col flex-1">
+                                
+                                <div className="p-8 flex flex-col flex-1">
+                                    <div className="flex items-center gap-4 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">
+                                        <span className="flex items-center gap-1.5"><Calendar size={14} /> {post.date}</span>
+                                        <span className="flex items-center gap-1.5"><MapPin size={14} /> {post.lastSeenArea}</span>
+                                    </div>
+                                    <h3 className="text-xl font-black text-slate-800 mb-4 leading-tight group-hover:text-indigo-600 transition-colors uppercase">
+                                        {post.title}
+                                    </h3>
                                     <p className="text-sm font-medium text-slate-500 leading-relaxed line-clamp-3 mb-6">
                                         {post.description}
                                     </p>
 
-                                    {/* Detailed Fields Container */}
-                                    <div className="space-y-3 mb-6 bg-slate-50 border border-slate-100 rounded-[20px] p-5">
-                                        {post.rewardAmount && post.rewardAmount !== 'প্রযোজ্য নয়' && (
-                                            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
-                                                <div className="flex items-center gap-2 text-xs font-black text-amber-600 uppercase tracking-widest">
-                                                    <Gift size={16} /> পুরস্কার ঘোষণা
-                                                </div>
-                                                <span className="text-sm font-black text-amber-700 bg-amber-100 px-3 py-1 rounded-lg">{post.rewardAmount}</span>
+                                    <div className="bg-slate-50 rounded-2xl p-5 mb-8 border border-slate-100">
+                                        {post.rewardAmount && (
+                                            <div className="flex items-center justify-between pb-3 border-b border-slate-200 mb-3">
+                                                <span className="text-[10px] font-black text-amber-600 uppercase tracking-widest flex items-center gap-1.5 align-middle"><Gift size={14}/> পুরস্কার ঘোষণা</span>
+                                                <span className="text-sm font-black text-amber-700">{post.rewardAmount}</span>
                                             </div>
                                         )}
-                                        <div className="flex items-start gap-3 text-xs font-bold text-slate-600 pt-1">
-                                            <Crosshair size={16} className="text-indigo-400 shrink-0 mt-0.5" />
-                                            <span className="leading-snug">শেষ দেখা/প্রাপ্তি স্পট: {post.lastSeenArea}</span>
-                                        </div>
-                                        <div className="flex items-start gap-3 text-xs font-bold text-slate-600">
-                                            <ShieldAlert size={16} className="text-slate-400 shrink-0 mt-0.5" />
-                                            <span>জিডি নাম্বার: <span className="font-mono text-slate-800">{post.gdNumber}</span></span>
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center shrink-0">
+                                                <UserCheck size={16} className="text-slate-500" />
+                                            </div>
+                                            <div>
+                                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">বিজ্ঞাপনদাতা</p>
+                                                <p className="text-xs font-black text-slate-700">{post.contactName}</p>
+                                            </div>
                                         </div>
                                     </div>
 
-                                    <div className="mt-auto flex items-center justify-between pt-5 border-t border-slate-100">
-                                        <div>
-                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">যোগাযোগের ব্যক্তি</p>
-                                            <p className="text-sm font-black text-slate-700">{post.contactName}</p>
-                                        </div>
-                                        <button 
-                                            disabled={post.status === 'resolved'}
-                                            onClick={() => window.location.href = `tel:${post.contactPhone}`}
-                                            className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${
-                                                post.status === 'active' 
-                                                ? 'bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-lg shadow-indigo-500/25 hover:shadow-xl active:scale-95' 
-                                                : 'bg-slate-100 text-slate-300 cursor-not-allowed'
-                                            }`}
-                                        >
-                                            <Phone size={24} />
-                                        </button>
-                                    </div>
+                                    <button 
+                                        onClick={() => window.location.href = `tel:${post.contactPhone}`}
+                                        className={`w-full py-4 rounded-[20px] font-black text-sm flex items-center justify-center gap-3 transition-all active:scale-95 shadow-lg ${
+                                            post.type === 'lost' ? 'bg-orange-600 hover:bg-orange-700 text-white shadow-orange-600/20' : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20'
+                                        }`}
+                                    >
+                                        <Phone size={18} /> সরাসরি কল দিন
+                                    </button>
                                 </div>
                             </motion.div>
                         ))}
                     </AnimatePresence>
                 </div>
-                
-                {filteredPosts.length === 0 && (
-                    <div className="text-center py-20">
-                        <Search size={48} className="text-slate-200 mx-auto mb-4" />
-                        <h3 className="text-xl font-black text-slate-800 mb-2">কোনো পোস্ট পাওয়া যায়নি</h3>
-                        <p className="text-sm text-slate-500 font-medium">এই ক্যাটাগরিতে বর্তমানে কোনো পোস্ট নেই।</p>
-                    </div>
-                )}
+            </div>
+
+            {/* 4. Footer CTA */}
+            <div className="mt-16 bg-white rounded-[40px] p-8 md:p-14 border border-slate-100 flex flex-col md:flex-row items-center justify-between gap-10 relative overflow-hidden shadow-sm">
+                <div className="relative z-10 w-full text-center md:text-left">
+                    <h3 className="text-2xl md:text-3xl font-black text-slate-800 mb-4">কিছু কি কুড়িয়ে পেয়েছেন?</h3>
+                    <p className="text-slate-600 font-bold max-w-xl text-base">
+                        আপনার সঠিক একটি সংবাদে কারো বিশাল কোনো ক্ষতি পূরণ হতে পারে। আজই প্রাপ্তি সংবাদ দিয়ে মালিককে সহায়তা করুন।
+                    </p>
+                </div>
+                <div className="shrink-0 w-full md:w-auto relative z-10">
+                    <button className="w-full px-10 py-5 rounded-[24px] bg-slate-900 text-white font-black text-lg shadow-xl hover:bg-indigo-600 transition-all active:scale-95 flex items-center gap-2">
+                        প্রাপ্তি সংবাদ দিন <ArrowRight size={20} />
+                    </button>
+                </div>
             </div>
         </div>
     );
