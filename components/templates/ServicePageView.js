@@ -19,6 +19,8 @@ import AgriPoolView from '@/components/sections/services/AgriPoolView';
 import DonationView from '@/components/sections/services/DonationView';
 import MarketCalendarView from '@/components/sections/services/MarketCalendarView';
 import UpSebaView from '@/components/sections/services/UpSebaView';
+import SchoolDirectoryView from '@/components/sections/services/SchoolDirectoryView';
+import LearningHubView from '@/components/sections/services/LearningHubView';
 
 const ICON_MAP = {
     Heart, FileText, School, BookOpen, PhoneCall, 
@@ -77,6 +79,40 @@ export default function ServicePageView({ slug, data }) {
                         সার্ভিস ডিরেক্টরিতে ফিরুন
                     </Link>
                     <LostFoundView />
+                </div>
+            </div>
+        );
+    }
+
+    if (slug === 'school' || data.variant === 'school') {
+        return (
+            <div className="bg-[#F8FAFC] min-h-screen pt-24 pb-20 px-4 md:px-8">
+                <div className="max-w-7xl mx-auto">
+                    <Link
+                        href="/#services"
+                        className="inline-flex items-center gap-2 text-sm font-bold text-teal-600 hover:text-teal-700 transition-colors mb-8 group"
+                    >
+                        <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+                        সার্ভিস ডিরেক্টরিতে ফিরুন
+                    </Link>
+                    <SchoolDirectoryView />
+                </div>
+            </div>
+        );
+    }
+
+    if (slug === 'learning' || data.variant === 'learning') {
+        return (
+            <div className="bg-[#F8FAFC] min-h-screen pt-24 pb-20 px-4 md:px-8">
+                <div className="max-w-7xl mx-auto">
+                    <Link
+                        href="/#services"
+                        className="inline-flex items-center gap-2 text-sm font-bold text-teal-600 hover:text-teal-700 transition-colors mb-8 group"
+                    >
+                        <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+                        সার্ভিস ডিরেক্টরিতে ফিরুন
+                    </Link>
+                    <LearningHubView />
                 </div>
             </div>
         );
