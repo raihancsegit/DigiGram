@@ -11,6 +11,13 @@ import { motion } from 'framer-motion';
 import LearningProgressPanel from '@/components/campus/LearningProgressPanel';
 import EmergencyDirectoryView from '@/components/templates/EmergencyDirectoryView';
 import BloodBankView from '@/components/sections/services/BloodBankView';
+import LostFoundView from '@/components/sections/services/LostFoundView';
+import IslamicCornerView from '@/components/sections/services/IslamicCornerView';
+import PowerWatchView from '@/components/sections/services/PowerWatchView';
+import LaborDirectoryView from '@/components/sections/services/LaborDirectoryView';
+import AgriPoolView from '@/components/sections/services/AgriPoolView';
+import DonationView from '@/components/sections/services/DonationView';
+import MarketCalendarView from '@/components/sections/services/MarketCalendarView';
 
 const ICON_MAP = {
     Heart, FileText, School, BookOpen, PhoneCall, 
@@ -35,6 +42,125 @@ export default function ServicePageView({ slug, data }) {
                         সার্ভিস ডিরেক্টরিতে ফিরুন
                     </Link>
                     <BloodBankView />
+                </div>
+            </div>
+        );
+    }
+
+    if (slug === 'lost' || data.variant === 'lost') {
+        return (
+            <div className="bg-[#F8FAFC] min-h-screen pt-24 pb-20 px-4 md:px-8">
+                <div className="max-w-7xl mx-auto">
+                    <Link
+                        href="/#services"
+                        className="inline-flex items-center gap-2 text-sm font-bold text-teal-600 hover:text-teal-700 transition-colors mb-8 group"
+                    >
+                        <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+                        সার্ভিস ডিরেক্টরিতে ফিরুন
+                    </Link>
+                    <LostFoundView />
+                </div>
+            </div>
+        );
+    }
+
+    if (slug === 'islamic' || data.variant === 'islamic') {
+        return (
+            <div className="bg-[#F8FAFC] min-h-screen pt-24 pb-20 px-4 md:px-8">
+                <div className="max-w-7xl mx-auto">
+                    <Link
+                        href="/#services"
+                        className="inline-flex items-center gap-2 text-sm font-bold text-teal-600 hover:text-teal-700 transition-colors mb-8 group"
+                    >
+                        <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+                        সার্ভিস ডিরেক্টরিতে ফিরুন
+                    </Link>
+                    <IslamicCornerView />
+                </div>
+            </div>
+        );
+    }
+
+    if (slug === 'power-watch' || data.variant === 'power-watch') {
+        return (
+            <div className="bg-[#F8FAFC] min-h-screen pt-24 pb-20 px-4 md:px-8">
+                <div className="max-w-7xl mx-auto">
+                    <Link
+                        href="/#services"
+                        className="inline-flex items-center gap-2 text-sm font-bold text-teal-600 hover:text-teal-700 transition-colors mb-8 group"
+                    >
+                        <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+                        সার্ভিস ডিরেক্টরিতে ফিরুন
+                    </Link>
+                    <PowerWatchView />
+                </div>
+            </div>
+        );
+    }
+
+    if (slug === 'labor' || data.variant === 'labor') {
+        return (
+            <div className="bg-[#F8FAFC] min-h-screen pt-24 pb-20 px-4 md:px-8">
+                <div className="max-w-7xl mx-auto">
+                    <Link
+                        href="/#services"
+                        className="inline-flex items-center gap-2 text-sm font-bold text-teal-600 hover:text-teal-700 transition-colors mb-8 group"
+                    >
+                        <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+                        সার্ভিস ডিরেক্টরিতে ফিরুন
+                    </Link>
+                    <LaborDirectoryView />
+                </div>
+            </div>
+        );
+    }
+
+    if (slug === 'agri-pool' || data.variant === 'agri-pool') {
+        return (
+            <div className="bg-[#F8FAFC] min-h-screen pt-24 pb-20 px-4 md:px-8">
+                <div className="max-w-7xl mx-auto">
+                    <Link
+                        href="/#services"
+                        className="inline-flex items-center gap-2 text-sm font-bold text-teal-600 hover:text-teal-700 transition-colors mb-8 group"
+                    >
+                        <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+                        সার্ভিস ডিরেক্টরিতে ফিরুন
+                    </Link>
+                    <AgriPoolView />
+                </div>
+            </div>
+        );
+    }
+
+    if (slug === 'donation' || data.variant === 'donation') {
+        return (
+            <div className="bg-[#F8FAFC] min-h-screen pt-24 pb-20 px-4 md:px-8">
+                <div className="max-w-7xl mx-auto">
+                    <Link
+                        href="/#services"
+                        className="inline-flex items-center gap-2 text-sm font-bold text-teal-600 hover:text-teal-700 transition-colors mb-8 group"
+                    >
+                        <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+                        সার্ভিস ডিরেক্টরিতে ফিরুন
+                    </Link>
+                    <DonationView />
+                </div>
+            </div>
+        );
+    }
+
+    if (slug === 'market' || data.variant === 'market') {
+        return (
+            <div className="bg-[#F8FAFC] min-h-screen pt-24 pb-20 px-4 md:px-8">
+                <div className="max-w-7xl mx-auto">
+                    <Link
+                        href="/#services"
+                        className="inline-flex items-center gap-2 text-sm font-bold text-teal-600 hover:text-teal-700 transition-colors mb-8 group"
+                    >
+                        <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+                        সার্ভিস ডিরেক্টরিতে ফিরুন
+                    </Link>
+                    <MarketCalendarView />
                 </div>
             </div>
         );
