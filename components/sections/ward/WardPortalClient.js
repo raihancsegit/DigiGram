@@ -4,15 +4,17 @@ import { useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useDispatch, useSelector } from 'react-redux';
 import { motion } from 'framer-motion';
-import {
+import { 
     MapPin, Home, Sparkles, ArrowUpRight,
     Users, UserCircle, ShieldCheck,
-    Phone, CheckCircle2, LogIn, Newspaper, ArrowLeft
+    Phone, CheckCircle2, LogIn, Newspaper, ArrowLeft,
+    School, Building2, BookOpen, UserCheck
 } from 'lucide-react';
 import { applyLocationSnapshot } from '@/lib/store/features/locationSlice';
 import { paths } from '@/lib/constants/paths';
 import { layout } from '@/lib/theme';
 import PowerWatchSection from '../community/PowerWatchSection';
+import { parseBnInt, toBnDigits } from '@/lib/utils/format';
 
 export default function WardPortalClient({ ctx, ward: initialWard }) {
     const dispatch = useDispatch();
@@ -44,6 +46,19 @@ export default function WardPortalClient({ ctx, ward: initialWard }) {
         user?.role === 'WARD_MEMBER' &&
         user?.wardId === ward.id &&
         user?.unionId === union.slug;
+
+    // Aggregate institutional stats for this ward
+    const wardStats = useMemo(() => {
+        const villages = ward.villages || [];
+        return villages.reduce((acc, v) => ({
+            schools: acc.schools + parseBnInt(v.schools || '0'),
+            mosques: acc.mosques + parseBnInt(v.mosques || '0'),
+            madrassas: acc.madrassas + parseBnInt(v.madrassas || '0'),
+            orphanages: acc.orphanages + parseBnInt(v.orphanages || '0'),
+            maleVoters: acc.maleVoters + parseBnInt(v.maleVoters || '0'),
+            femaleVoters: acc.femaleVoters + parseBnInt(v.femaleVoters || '0'),
+        }), { schools: 0, mosques: 0, madrassas: 0, orphanages: 0, maleVoters: 0, femaleVoters: 0 });
+    }, [ward.villages]);
 
     // Ward-specific news from Redux
     const wardNews = dynamicNews.filter(
@@ -95,7 +110,7 @@ export default function WardPortalClient({ ctx, ward: initialWard }) {
                                 <Sparkles size={14} />
                                 {district.name} · {upazila.name} · {union.name}
                             </div>
-                            <h1 className="text-4xl sm:text-5xl font-black tracking-tight leading-[1.1] mb-4">
+                            <h1 className="text-4xl sm:text-5xl font-black tracking-tight leading-[1.1] mb-4 text-white">
                                 {ward.name} <span className="text-teal-400">পোর্টাল</span>
                             </h1>
                             <div className="flex flex-wrap gap-3 mb-2">
@@ -152,28 +167,63 @@ export default function WardPortalClient({ ctx, ward: initialWard }) {
                     {/* Left: Villages + News */}
                     <div className="lg:col-span-8 space-y-6">
 
-                        {/* Village List */}
-                        <div className="p-6 sm:p-8 rounded-[32px] bg-white border border-slate-200/60 shadow-sm">
+                        {/* Village Breakdown Table */}
+                        <div className="p-6 sm:p-8 rounded-[32px] bg-white border border-slate-200/60 shadow-sm overflow-hidden">
                             <h2 className="text-xl font-black text-slate-800 mb-6 flex items-center gap-2">
                                 <MapPin className="text-teal-600" />
-                                {ward.name}-এর গ্রামসমূহ
-                                <span className="text-slate-300 font-black ml-1">({ward.villages?.length || 0})</span>
+                                গ্রাম ভিত্তিক পরিসংখ্যান
                             </h2>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                {(ward.villages || []).map((v, idx) => (
-                                    <motion.div
-                                        key={v}
-                                        initial={{ opacity: 0, scale: 0.9 }}
-                                        animate={{ opacity: 1, scale: 1 }}
-                                        transition={{ delay: idx * 0.05 }}
-                                        className="flex items-center gap-3 p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:bg-teal-50 hover:border-teal-200 transition-all group"
-                                    >
-                                        <div className="w-8 h-8 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-teal-600 font-black text-xs shrink-0 group-hover:border-teal-300">
-                                            {idx + 1}
-                                        </div>
-                                        <span className="font-bold text-slate-700 text-sm group-hover:text-teal-700">{v}</span>
-                                    </motion.div>
-                                ))}
+                            
+                            <div className="overflow-x-auto -mx-6 sm:mx-0">
+                                <table className="w-full text-left border-collapse border-spacing-0">
+                                    <thead>
+                                        <tr className="bg-slate-50 text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                                            <th className="p-4 border-b border-slate-100 first:pl-6 rounded-tl-2xl">গ্রাম</th>
+                                            <th className="p-4 border-b border-slate-100">জনসংখ্যা</th>
+                                            <th className="p-4 border-b border-slate-100">ভোটার (পু/মহিলা)</th>
+                                            <th className="p-4 border-b border-slate-100 last:pr-6 rounded-tr-2xl">প্রতিষ্ঠান</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-50">
+                                        {(ward.villages || []).map((v, idx) => {
+                                            const isObj = typeof v === 'object';
+                                            return (
+                                                <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+                                                    <td className="p-4 pl-6">
+                                                        <span className="font-black text-slate-800 text-sm">{isObj ? v.name : v}</span>
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <span className="font-bold text-slate-600 text-sm">{isObj ? toBnDigits(v.population) : '---'}</span>
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <div className="flex flex-col">
+                                                            <span className="font-black text-slate-800 text-sm">{isObj ? toBnDigits(v.voters) : '---'}</span>
+                                                            {isObj && (
+                                                                <span className="text-[10px] font-bold text-slate-400">
+                                                                    {toBnDigits(v.maleVoters)} / {toBnDigits(v.femaleVoters)}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-4 pr-6">
+                                                        <div className="flex items-center gap-2">
+                                                            {isObj ? (
+                                                                <>
+                                                                    <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-teal-50 text-teal-700 font-black text-[10px]">
+                                                                        <School size={10} /> {toBnDigits(v.schools)}
+                                                                    </div>
+                                                                    <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-emerald-50 text-emerald-700 font-black text-[10px]">
+                                                                        <Building2 size={10} /> {toBnDigits(v.mosques)}
+                                                                    </div>
+                                                                </>
+                                                            ) : '---'}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
 
@@ -184,7 +234,7 @@ export default function WardPortalClient({ ctx, ward: initialWard }) {
                                     <Newspaper className="text-teal-600" />
                                     ওয়াড নিউজ ফিড
                                 </h2>
-                                <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">{wardNews.length} টি খবর</span>
+                                <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider text-white bg-slate-800 px-3 py-1 rounded-full">{toBnDigits(wardNews.length.toString())} টি খবর</span>
                             </div>
 
                             {wardNews.length === 0 ? (
@@ -242,7 +292,7 @@ export default function WardPortalClient({ ctx, ward: initialWard }) {
                                 <p className="text-xs font-bold text-slate-400 bg-slate-50 px-3 py-1 rounded-full w-fit mx-auto mb-6">{ward.name} · {union.name}</p>
                                 <a
                                     href={`tel:${ward.member.phone}`}
-                                    className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl bg-[color:var(--dg-teal)] text-white font-black text-sm shadow-lg shadow-teal-600/20 hover:scale-[1.02] active:scale-95 transition-all"
+                                    className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl bg-teal-500 text-white font-black text-sm shadow-lg shadow-teal-600/20 hover:scale-[1.02] active:scale-95 transition-all"
                                 >
                                     <Phone size={18} />
                                     যোগাযোগ করুন
@@ -250,36 +300,86 @@ export default function WardPortalClient({ ctx, ward: initialWard }) {
                             </motion.div>
                         )}
 
-                        {/* Back to Union */}
-                        <Link
-                            href={`/u/${union.slug}`}
-                            className="flex items-center gap-3 p-5 rounded-[24px] bg-slate-900 text-white border border-slate-800 hover:bg-teal-900 transition-all group"
-                        >
-                            <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center shrink-0 group-hover:bg-teal-500 transition-colors">
-                                <ArrowLeft size={20} />
-                            </div>
-                            <div>
-                                <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider">{union.name} ইউনিয়ন</p>
-                                <p className="font-black text-white text-sm">ইউনিয়ন পোর্টালে ফিরুন</p>
-                            </div>
-                        </Link>
-
-                        {/* Stats mini card */}
-                        <div className="p-6 rounded-[28px] bg-white border border-slate-200/60 shadow-sm space-y-4">
-                            <h4 className="text-sm font-black uppercase text-slate-400 tracking-wider">ওয়াড তথ্য</h4>
-                            <div className="flex items-center justify-between py-3 border-b border-slate-100">
-                                <span className="text-sm font-bold text-slate-600">জনসংখ্যা</span>
-                                <span className="text-base font-black text-slate-800">{ward.population || '৪৫০০'}</span>
-                            </div>
-                            <div className="flex items-center justify-between py-3 border-b border-slate-100">
-                                <span className="text-sm font-bold text-slate-600">মোট ভোটার</span>
-                                <span className="text-base font-black text-slate-800">{ward.voters || '২৮০০'}</span>
-                            </div>
-                            <div className="flex items-center justify-between py-3">
-                                <span className="text-sm font-bold text-slate-600">ইউনিয়নের ওয়াড</span>
-                                <span className="text-base font-black text-slate-800">{ctx.union.wards?.length || 0}টির মধ্যে ১টি</span>
+                        {/* Statistics Summary */}
+                        <div className="p-8 rounded-[32px] bg-white border border-slate-200/60 shadow-sm space-y-6">
+                            <h4 className="text-xs font-black uppercase text-slate-400 tracking-[0.2em] flex items-center gap-2">
+                                <Users size={14} className="text-teal-600" />
+                                মোট পরিসংখ্যান
+                            </h4>
+                            
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm font-bold text-slate-500">জনসংখ্যা</span>
+                                    <span className="text-lg font-black text-slate-800">{ward.population || '0'}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm font-bold text-slate-500">মোট ভোটার</span>
+                                    <span className="text-lg font-black text-slate-800">{ward.voters || '0'}</span>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3 pt-4 border-t border-slate-100">
+                                    <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 text-center">
+                                        <p className="text-[9px] font-black uppercase text-slate-400 mb-1">পুরুষ ভোটার</p>
+                                        <p className="text-sm font-black text-slate-700">{toBnDigits(wardStats.maleVoters.toString())}</p>
+                                    </div>
+                                    <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 text-center">
+                                        <p className="text-[9px] font-black uppercase text-slate-400 mb-1">মহিলা ভোটার</p>
+                                        <p className="text-sm font-black text-slate-700">{toBnDigits(wardStats.femaleVoters.toString())}</p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
+
+                        {/* Institutional Sidebar Card */}
+                        <div className="p-8 rounded-[32px] bg-slate-900 text-white border border-slate-800 shadow-xl overflow-hidden relative">
+                            <div className="absolute top-0 right-0 p-4 opacity-5">
+                                <Building2 size={80} />
+                            </div>
+                            <h4 className="text-xs font-black uppercase tracking-[0.2em] text-teal-400 mb-6 font-white">স্থাপনা ও প্রতিষ্ঠান</h4>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase">স্কুল</p>
+                                    <div className="flex items-center gap-2 text-white font-black">
+                                        <School size={14} className="text-teal-400" />
+                                        {toBnDigits(wardStats.schools.toString())}টি
+                                    </div>
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase">মসজিদ</p>
+                                    <div className="flex items-center gap-2 text-white font-black">
+                                        <Building2 size={14} className="text-teal-400" />
+                                        {toBnDigits(wardStats.mosques.toString())}টি
+                                    </div>
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase">মাদ্রাসা</p>
+                                    <div className="flex items-center gap-2 text-white font-black">
+                                        <BookOpen size={14} className="text-teal-400" />
+                                        {toBnDigits(wardStats.madrassas.toString())}টি
+                                    </div>
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase">এতিমখানা</p>
+                                    <div className="flex items-center gap-2 text-white font-black">
+                                        <CheckCircle2 size={14} className="text-teal-400" />
+                                        {toBnDigits(wardStats.orphanages.toString())}টি
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Back Link */}
+                        <Link
+                            href={`/u/${union.slug}`}
+                            className="flex items-center gap-3 p-5 rounded-[24px] bg-white border border-slate-200 hover:bg-slate-50 transition-all group"
+                        >
+                            <div className="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center shrink-0 group-hover:bg-teal-500 transition-colors">
+                                <ArrowLeft size={20} className="text-slate-500 group-hover:text-white" />
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider">তালিকায় ফিরে যান</p>
+                                <p className="font-black text-slate-800 text-sm">ইউনিিয়ন পোর্টাল</p>
+                            </div>
+                        </Link>
                     </div>
                 </div>
             </div>

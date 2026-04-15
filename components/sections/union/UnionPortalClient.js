@@ -7,7 +7,7 @@ import { motion } from 'framer-motion';
 import { 
     MapPin, Home, Sparkles, ArrowUpRight, ArrowRight,
     Users, UserCheck, ShieldCheck, School, GraduationCap, 
-    BookOpen, Phone, UserCircle, CheckCircle2, LogIn, ChevronLeft, ChevronRight
+    BookOpen, Phone, UserCircle, CheckCircle2, LogIn, ChevronLeft, ChevronRight, Building2
 } from 'lucide-react';
 import { applyLocationSnapshot, openModal } from '@/lib/store/features/locationSlice';
 import { SERVICE_CATEGORIES } from '@/lib/constants/serviceCategories';
@@ -29,6 +29,11 @@ export default function UnionPortalClient({ ctx }) {
             const dynamic = dynamicWardData[key];
             if (!dynamic) return ward;
             
+            // Normalize villages to objects if they are strings
+            const normalizedVillages = (dynamic.villages || ward.villages || []).map(v => 
+                typeof v === 'string' ? { name: v, population: '0', voters: '0' } : v
+            );
+
             return {
                 ...ward,
                 member: {
@@ -36,15 +41,18 @@ export default function UnionPortalClient({ ctx }) {
                     name: dynamic.memberName || ward.member?.name,
                     phone: dynamic.memberPhone || ward.member?.phone,
                 },
-                villages: dynamic.villages || ward.villages,
-                population: dynamic.population,
-                voters: dynamic.voters,
+                villages: normalizedVillages,
+                population: dynamic.population || ward.population,
+                voters: dynamic.voters || ward.voters,
             };
         });
     }, [union.wards, union.slug, dynamicWardData]);
 
-    // Aggregate all villages from all wards
-    const allVillages = mergedWards.reduce((acc, ward) => [...acc, ...(ward.villages || [])], []);
+    // Aggregate all village names for the news section
+    const allVillages = mergedWards.reduce((acc, ward) => [
+        ...acc, 
+        ...(ward.villages || []).map(v => typeof v === 'string' ? v : v.name)
+    ], []);
 
     const WARDS_PER_PAGE = 2;
     const [wardPage, setWardPage] = useState(0);
@@ -66,22 +74,40 @@ export default function UnionPortalClient({ ctx }) {
         );
     }, [dispatch, district.id, district.name, upazila.id, upazila.name, union.name, union.slug]);
 
-    // Aggregate dynamic stats
-    const totalPopulation = mergedWards.reduce((acc, w) => acc + parseBnInt(w.population), 0);
-    const totalVoters = mergedWards.reduce((acc, w) => acc + parseBnInt(w.voters), 0);
+    // Aggregate all granular stats
+    const aggregatedData = useMemo(() => {
+        return mergedWards.reduce((acc, w) => {
+            const wardVillages = w.villages || [];
+            const villageTotals = wardVillages.reduce((vAcc, v) => ({
+                schools: vAcc.schools + parseBnInt(v.schools || '0'),
+                mosques: vAcc.mosques + parseBnInt(v.mosques || '0'),
+                madrassas: vAcc.madrassas + parseBnInt(v.madrassas || '0'),
+                orphanages: vAcc.orphanages + parseBnInt(v.orphanages || '0'),
+            }), { schools: 0, mosques: 0, madrassas: 0, orphanages: 0 });
+
+            return {
+                population: acc.population + parseBnInt(w.population),
+                voters: acc.voters + parseBnInt(w.voters),
+                schools: acc.schools + villageTotals.schools,
+                mosques: acc.mosques + villageTotals.mosques,
+                madrassas: acc.madrassas + villageTotals.madrassas,
+                orphanages: acc.orphanages + villageTotals.orphanages,
+            };
+        }, { population: 0, voters: 0, schools: 0, mosques: 0, madrassas: 0, orphanages: 0 });
+    }, [mergedWards]);
 
     const stats = [
-        { label: 'মোট ওয়াড', value: totalWards, icon: MapPin, color: 'text-teal-600', bg: 'bg-teal-50' },
-        { label: 'মোট গ্রাম', value: allVillages.length, icon: MapPin, color: 'text-sky-600', bg: 'bg-sky-50' },
-        { label: 'মোট জনসংখ্যা', value: totalPopulation > 0 ? `${toBnDigits(totalPopulation.toLocaleString())}+` : '৪৫,০০০+', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
-        { label: 'মোট ভোটার', value: totalVoters > 0 ? `${toBnDigits(totalVoters.toLocaleString())}+` : '২৮,৫০০+', icon: UserCheck, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+        { label: 'মোট ওয়াড', value: toBnDigits(mergedWards.length.toString()), icon: MapPin, color: 'text-teal-600', bg: 'bg-teal-50' },
+        { label: 'মোট গ্রাম', value: toBnDigits(allVillages.length.toString()), icon: MapPin, color: 'text-sky-600', bg: 'bg-sky-50' },
+        { label: 'মোট জনসংখ্যা', value: aggregatedData.population > 0 ? `${toBnDigits(aggregatedData.population.toLocaleString())}+` : '৪৫,০০০+', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
+        { label: 'মোট ভোটার', value: aggregatedData.voters > 0 ? `${toBnDigits(aggregatedData.voters.toLocaleString())}+` : '২৮,৫০০+', icon: UserCheck, color: 'text-indigo-600', bg: 'bg-indigo-50' },
     ];
 
     const educationStats = [
-        { label: 'প্রাথমিক/উচ্চ বিদ্যালয়', value: '১৮টি', icon: School, color: 'text-orange-600' },
-        { label: 'কলেজ', value: '২টি', icon: GraduationCap, color: 'text-rose-600' },
-        { label: 'দাখিল/আলিম মাদ্রাসা', value: '৫টি', icon: BookOpen, color: 'text-sky-600' },
-        { label: 'হাফেজিয়া মাদ্রাসা', value: '৯টি', icon: BookOpen, color: 'text-amber-600' },
+        { label: 'প্রাথমিক/উচ্চ বিদ্যালয়', value: aggregatedData.schools > 0 ? `${toBnDigits(aggregatedData.schools.toString())}টি` : '১৮টি', icon: School, color: 'text-orange-600' },
+        { label: 'মসজিদ', value: aggregatedData.mosques > 0 ? `${toBnDigits(aggregatedData.mosques.toString())}টি` : '৩৬টি', icon: Building2, color: 'text-rose-600' },
+        { label: 'মাদ্রাসা', value: aggregatedData.madrassas > 0 ? `${toBnDigits(aggregatedData.madrassas.toString())}টি` : '১৪টি', icon: BookOpen, color: 'text-sky-600' },
+        { label: 'এতিমখানা', value: aggregatedData.orphanages > 0 ? `${toBnDigits(aggregatedData.orphanages.toString())}টি` : '৫টি', icon: Home, color: 'text-amber-600' },
     ];
 
     return (
