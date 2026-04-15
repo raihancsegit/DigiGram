@@ -97,40 +97,35 @@ export default function UnionPortalClient({ ctx }) {
         );
     }, [dispatch, district.id, district.name, upazila.id, upazila.name, union.name, union.slug]);
 
-    // Aggregate all granular stats
+    // Aggregate all granular stats for the whole union
     const aggregatedData = useMemo(() => {
         return mergedWards.reduce((acc, w) => {
-            const wardVillages = w.villages || [];
-            const villageTotals = wardVillages.reduce((vAcc, v) => ({
-                schools: vAcc.schools + parseBnInt(v.schools || '0'),
-                mosques: vAcc.mosques + parseBnInt(v.mosques || '0'),
-                madrassas: vAcc.madrassas + parseBnInt(v.madrassas || '0'),
-                orphanages: vAcc.orphanages + parseBnInt(v.orphanages || '0'),
-            }), { schools: 0, mosques: 0, madrassas: 0, orphanages: 0 });
-
             return {
-                population: acc.population + parseBnInt(w.population),
-                voters: acc.voters + parseBnInt(w.voters),
-                schools: acc.schools + villageTotals.schools,
-                mosques: acc.mosques + villageTotals.mosques,
-                madrassas: acc.madrassas + villageTotals.madrassas,
-                orphanages: acc.orphanages + villageTotals.orphanages,
+                population: acc.population + (w.stats?.population || 0),
+                voters: acc.voters + (w.stats?.voters || 0),
+                maleVoters: acc.maleVoters + (w.stats?.maleVoters || 0),
+                femaleVoters: acc.femaleVoters + (w.stats?.femaleVoters || 0),
+                schools: acc.schools + (w.stats?.schools || 0),
+                mosques: acc.mosques + (w.stats?.mosques || 0),
+                madrassas: acc.madrassas + (w.stats?.madrassas || 0),
+                orphanages: acc.orphanages + (w.stats?.orphanages || 0),
+                bloodDonors: acc.bloodDonors + (w.bloodDonorsCount || 0),
             };
-        }, { population: 0, voters: 0, schools: 0, mosques: 0, madrassas: 0, orphanages: 0 });
+        }, { population: 0, voters: 0, maleVoters: 0, femaleVoters: 0, schools: 0, mosques: 0, madrassas: 0, orphanages: 0, bloodDonors: 0 });
     }, [mergedWards]);
 
-    const stats = [
+    const allStats = [
         { label: 'মোট ওয়াড', value: toBnDigits(mergedWards.length.toString()), icon: MapPin, color: 'text-teal-600', bg: 'bg-teal-50' },
         { label: 'মোট গ্রাম', value: toBnDigits(allVillages.length.toString()), icon: MapPin, color: 'text-sky-600', bg: 'bg-sky-50' },
-        { label: 'মোট জনসংখ্যা', value: aggregatedData.population > 0 ? `${toBnDigits(aggregatedData.population.toLocaleString())}+` : '৪৫,০০০+', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
-        { label: 'মোট ভোটার', value: aggregatedData.voters > 0 ? `${toBnDigits(aggregatedData.voters.toLocaleString())}+` : '২৮,৫০০+', icon: UserCheck, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-    ];
-
-    const educationStats = [
-        { label: 'প্রাথমিক/উচ্চ বিদ্যালয়', value: aggregatedData.schools > 0 ? `${toBnDigits(aggregatedData.schools.toString())}টি` : '১৮টি', icon: School, color: 'text-orange-600' },
-        { label: 'মসজিদ', value: aggregatedData.mosques > 0 ? `${toBnDigits(aggregatedData.mosques.toString())}টি` : '৩৬টি', icon: Building2, color: 'text-rose-600' },
-        { label: 'মাদ্রাসা', value: aggregatedData.madrassas > 0 ? `${toBnDigits(aggregatedData.madrassas.toString())}টি` : '১৪টি', icon: BookOpen, color: 'text-sky-600' },
-        { label: 'এতিমখানা', value: aggregatedData.orphanages > 0 ? `${toBnDigits(aggregatedData.orphanages.toString())}টি` : '৫টি', icon: Home, color: 'text-amber-600' },
+        { label: 'রক্তদাতা', value: toBnDigits(aggregatedData.bloodDonors.toString()), icon: Droplets, color: 'text-rose-600', bg: 'bg-rose-50' },
+        { label: 'জনসংখ্যা', value: aggregatedData.population > 0 ? toBnDigits(aggregatedData.population.toLocaleString()) : '৪৫,০০০+', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
+        { label: 'মোট ভোটার', value: aggregatedData.voters > 0 ? toBnDigits(aggregatedData.voters.toLocaleString()) : '২৮,৫০০+', icon: UserCheck, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+        { label: 'পুরুষ', value: toBnDigits(aggregatedData.maleVoters.toLocaleString()), icon: UserCircle, color: 'text-blue-500', bg: 'bg-blue-50/50' },
+        { label: 'মহিলা', value: toBnDigits(aggregatedData.femaleVoters.toLocaleString()), icon: UserCircle, color: 'text-violet-500', bg: 'bg-violet-50' },
+        { label: 'স্কুল', value: toBnDigits(aggregatedData.schools.toString()), icon: School, color: 'text-orange-600', bg: 'bg-orange-50' },
+        { label: 'মসজিদ', value: toBnDigits(aggregatedData.mosques.toString()), icon: Building2, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+        { label: 'মাদ্রাসা', value: toBnDigits(aggregatedData.madrassas.toString()), icon: BookOpen, color: 'text-sky-600', bg: 'bg-sky-50' },
+        { label: 'এতিমখানা', value: toBnDigits(aggregatedData.orphanages.toString()), icon: Home, color: 'text-amber-600', bg: 'bg-amber-50' },
     ];
 
     return (
@@ -237,21 +232,21 @@ export default function UnionPortalClient({ ctx }) {
                     {/* Left Column */}
                     <div className="lg:col-span-8 space-y-6">
                         
-                        {/* Stats Grid */}
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                            {stats.map((s, i) => (
+                        {/* Unified Mini-Stats Grid */}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                            {allStats.map((s, i) => (
                                 <motion.div 
-                                    initial={{ opacity: 0, y: 20 }}
+                                    initial={{ opacity: 0, y: 15 }}
                                     animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: i * 0.1 + 0.3 }}
+                                    transition={{ delay: i * 0.05 + 0.3 }}
                                     key={s.label} 
-                                    className="p-5 rounded-[24px] bg-white border border-slate-100 shadow-xl shadow-slate-200/50 hover:shadow-2xl hover:border-teal-200 transition-all hover:-translate-y-1 group"
+                                    className="p-3.5 rounded-[22px] bg-white border border-slate-100 shadow-lg shadow-slate-200/40 hover:shadow-xl hover:border-teal-200 transition-all hover:-translate-y-1 group"
                                 >
-                                    <div className={`w-12 h-12 rounded-2xl ${s.bg} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
-                                        <s.icon className={s.color} size={24} />
+                                    <div className={`w-10 h-10 rounded-[14px] ${s.bg} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}>
+                                        <s.icon className={s.color} size={18} />
                                     </div>
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1.5">{s.label}</p>
-                                    <p className="text-xl font-black text-slate-800 tracking-tight">{s.value}</p>
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1 leading-none">{s.label}</p>
+                                    <p className="text-sm font-black text-slate-800 tracking-tight leading-none">{s.value}</p>
                                 </motion.div>
                             ))}
                         </div>
@@ -456,29 +451,6 @@ export default function UnionPortalClient({ ctx }) {
                             </div>
                         </div>
 
-                        {/* Education Stats */}
-                        <div className="p-6 sm:p-8 rounded-[32px] bg-white border border-slate-200/60 shadow-sm">
-                            <div className="flex items-center justify-between mb-6">
-                                <h2 className="text-xl font-black text-slate-800 flex items-center gap-2">
-                                    <School className="text-teal-600" />
-                                    শিক্ষা প্রতিষ্ঠান
-                                </h2>
-                                <span className="text-xs font-bold text-teal-600 bg-teal-50 px-3 py-1 rounded-full">ডেটা আপডেট আজ</span>
-                            </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                {educationStats.map((ed) => (
-                                    <div key={ed.label} className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100 group hover:bg-white hover:border-teal-200 transition-all">
-                                        <div className="p-3 rounded-xl bg-white shadow-sm group-hover:scale-110 transition-transform">
-                                            <ed.icon size={20} className={ed.color} />
-                                        </div>
-                                        <div>
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase leading-none mb-1.5">{ed.label}</p>
-                                            <p className="text-base font-black text-slate-700 leading-none">{ed.value}</p>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
                     </div>
 
                     {/* Right Column: Chairman and Sidebar */}
