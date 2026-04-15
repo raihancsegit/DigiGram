@@ -7,7 +7,7 @@ import { motion } from 'framer-motion';
 import { 
     MapPin, Home, Sparkles, ArrowUpRight, ArrowRight,
     Users, UserCheck, ShieldCheck, School, GraduationCap, 
-    BookOpen, Phone, UserCircle, CheckCircle2, LogIn, ChevronLeft, ChevronRight, Building2
+    BookOpen, Phone, UserCircle, CheckCircle2, LogIn, ChevronLeft, ChevronRight, Building2, Droplets
 } from 'lucide-react';
 import { applyLocationSnapshot, openModal } from '@/lib/store/features/locationSlice';
 import { SERVICE_CATEGORIES } from '@/lib/constants/serviceCategories';
@@ -38,12 +38,22 @@ export default function UnionPortalClient({ ctx }) {
             const stats = normalizedVillages.reduce((acc, v) => ({
                 population: acc.population + parseBnInt(v.population || '0'),
                 voters: acc.voters + parseBnInt(v.voters || '0'),
+                maleVoters: acc.maleVoters + parseBnInt(v.maleVoters || '0'),
+                femaleVoters: acc.femaleVoters + parseBnInt(v.femaleVoters || '0'),
                 schools: acc.schools + parseBnInt(v.schools || '0'),
                 mosques: acc.mosques + parseBnInt(v.mosques || '0'),
                 madrassas: acc.madrassas + parseBnInt(v.madrassas || '0'),
-            }), { population: 0, voters: 0, schools: 0, mosques: 0, madrassas: 0 });
+            }), { 
+                population: 0, 
+                voters: 0, 
+                maleVoters: 0, 
+                femaleVoters: 0, 
+                schools: 0, 
+                mosques: 0, 
+                madrassas: 0 
+            });
 
-            if (!dynamic) return { ...ward, villages: normalizedVillages, stats };
+            if (!dynamic) return { ...ward, villages: normalizedVillages, stats, bloodDonorsCount: 0 };
             
             return {
                 ...ward,
@@ -53,8 +63,9 @@ export default function UnionPortalClient({ ctx }) {
                     phone: dynamic.memberPhone || ward.member?.phone,
                 },
                 villages: normalizedVillages,
-                population: toBnDigits(stats.population.toString()), // Dynamic rollup
-                voters: toBnDigits(stats.voters.toString()), // Dynamic rollup
+                population: toBnDigits(stats.population.toString()),
+                voters: toBnDigits(stats.voters.toString()),
+                bloodDonorsCount: dynamic.bloodDonors?.length || 0,
                 stats, // Included for card display
             };
         });
@@ -301,42 +312,81 @@ export default function UnionPortalClient({ ctx }) {
                                                 </div>
                                             </div>
 
-                                            {/* Ward Stats Bar - Added detailed info */}
-                                            <div className="px-5 py-4 border-t border-slate-50 bg-slate-50/50 grid grid-cols-2 md:grid-cols-4 gap-4">
-                                                <div className="flex items-center gap-2">
-                                                    <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
+                                            {/* Ward Stats Bar - Enhanced 8-Grid Layout */}
+                                            <div className="px-5 py-5 border-t border-slate-50 bg-slate-50/30 grid grid-cols-2 sm:grid-cols-4 gap-y-4 gap-x-6">
+                                                {/* Row 1: Demographics */}
+                                                <div className="flex items-center gap-2.5">
+                                                    <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0 shadow-sm border border-blue-100/50">
+                                                        <Users size={16} />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[9px] font-black text-slate-400 uppercase leading-none mb-1">জনগণ</p>
+                                                        <p className="text-[13px] font-black text-slate-800 leading-none">{toBnDigits(ward.stats?.population.toString() || '0')}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-2.5">
+                                                    <div className="w-9 h-9 rounded-xl bg-teal-50 flex items-center justify-center text-teal-600 shrink-0 shadow-sm border border-teal-100/50">
                                                         <UserCheck size={16} />
                                                     </div>
                                                     <div>
-                                                        <p className="text-[9px] font-black text-slate-400 uppercase leading-none mb-1">ভোটার</p>
-                                                        <p className="text-xs font-black text-slate-800 leading-none">{toBnDigits(ward.stats?.voters.toString() || '0')}</p>
+                                                        <p className="text-[9px] font-black text-slate-400 uppercase leading-none mb-1">মোট ভোটার</p>
+                                                        <p className="text-[13px] font-black text-slate-800 leading-none">{toBnDigits(ward.stats?.voters.toString() || '0')}</p>
                                                     </div>
                                                 </div>
-                                                <div className="flex items-center gap-2">
-                                                    <div className="w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center text-orange-600 shrink-0">
+                                                <div className="flex items-center gap-2.5">
+                                                    <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0 shadow-sm border border-indigo-100/50">
+                                                        <UserCircle size={16} />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[9px] font-black text-slate-400 uppercase leading-none mb-1">পুরুষ</p>
+                                                        <p className="text-[13px] font-black text-slate-800 leading-none">{toBnDigits(ward.stats?.maleVoters.toString() || '0')}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-2.5">
+                                                    <div className="w-9 h-9 rounded-xl bg-violet-50 flex items-center justify-center text-violet-600 shrink-0 shadow-sm border border-violet-100/50">
+                                                        <UserCircle size={16} />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[9px] font-black text-slate-400 uppercase leading-none mb-1">মহিলা</p>
+                                                        <p className="text-[13px] font-black text-slate-800 leading-none">{toBnDigits(ward.stats?.femaleVoters.toString() || '0')}</p>
+                                                    </div>
+                                                </div>
+
+                                                {/* Row 2: Institutions & Social */}
+                                                <div className="flex items-center gap-2.5">
+                                                    <div className="w-9 h-9 rounded-xl bg-orange-50 flex items-center justify-center text-orange-600 shrink-0 shadow-sm border border-orange-100/50">
                                                         <School size={16} />
                                                     </div>
                                                     <div>
-                                                        <p className="text-[9px] font-black text-slate-400 uppercase leading-none mb-1">শিক্ষা প্রতিষ্ঠান</p>
-                                                        <p className="text-xs font-black text-slate-800 leading-none">{toBnDigits(ward.stats?.schools.toString() || '0')}টি</p>
+                                                        <p className="text-[9px] font-black text-slate-400 uppercase leading-none mb-1">স্কুল</p>
+                                                        <p className="text-[13px] font-black text-slate-800 leading-none">{toBnDigits(ward.stats?.schools.toString() || '0')}টি</p>
                                                     </div>
                                                 </div>
-                                                <div className="flex items-center gap-2">
-                                                    <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
+                                                <div className="flex items-center gap-2.5">
+                                                    <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0 shadow-sm border border-emerald-100/50">
                                                         <Building2 size={16} />
                                                     </div>
                                                     <div>
                                                         <p className="text-[9px] font-black text-slate-400 uppercase leading-none mb-1">মসজিদ</p>
-                                                        <p className="text-xs font-black text-slate-800 leading-none">{toBnDigits(ward.stats?.mosques.toString() || '0')}টি</p>
+                                                        <p className="text-[13px] font-black text-slate-800 leading-none">{toBnDigits(ward.stats?.mosques.toString() || '0')}টি</p>
                                                     </div>
                                                 </div>
-                                                <div className="flex items-center gap-2">
-                                                    <div className="w-8 h-8 rounded-lg bg-teal-50 flex items-center justify-center text-teal-600 shrink-0">
-                                                        <MapPin size={16} />
+                                                <div className="flex items-center gap-2.5">
+                                                    <div className="w-9 h-9 rounded-xl bg-sky-50 flex items-center justify-center text-sky-600 shrink-0 shadow-sm border border-sky-100/50">
+                                                        <BookOpen size={16} />
                                                     </div>
                                                     <div>
-                                                        <p className="text-[9px] font-black text-slate-400 uppercase leading-none mb-1">গ্রাম সংখ্যা</p>
-                                                        <p className="text-xs font-black text-slate-800 leading-none">{toBnDigits(ward.villages?.length.toString() || '0')}টি</p>
+                                                        <p className="text-[9px] font-black text-slate-400 uppercase leading-none mb-1">মাদ্রাসা</p>
+                                                        <p className="text-[13px] font-black text-slate-800 leading-none">{toBnDigits(ward.stats?.madrassas.toString() || '0')}টি</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-2.5">
+                                                    <div className="w-9 h-9 rounded-xl bg-rose-50 flex items-center justify-center text-rose-600 shrink-0 shadow-sm border border-rose-100/50">
+                                                        <Droplets size={16} />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[9px] font-black text-slate-400 uppercase leading-none mb-1">রক্তদাতা</p>
+                                                        <p className="text-[13px] font-black text-slate-800 leading-none">{toBnDigits(ward.bloodDonorsCount.toString())} জন</p>
                                                     </div>
                                                 </div>
                                             </div>
