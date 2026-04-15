@@ -115,17 +115,17 @@ export default function UnionPortalClient({ ctx }) {
     }, [mergedWards]);
 
     const allStats = [
-        { label: 'মোট ওয়াড', value: toBnDigits(mergedWards.length.toString()), icon: MapPin, color: 'text-teal-600', bg: 'bg-teal-50' },
-        { label: 'মোট গ্রাম', value: toBnDigits(allVillages.length.toString()), icon: MapPin, color: 'text-sky-600', bg: 'bg-sky-50' },
-        { label: 'রক্তদাতা', value: toBnDigits(aggregatedData.bloodDonors.toString()), icon: Droplets, color: 'text-rose-600', bg: 'bg-rose-50' },
-        { label: 'জনসংখ্যা', value: aggregatedData.population > 0 ? toBnDigits(aggregatedData.population.toLocaleString()) : '৪৫,০০০+', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
-        { label: 'মোট ভোটার', value: aggregatedData.voters > 0 ? toBnDigits(aggregatedData.voters.toLocaleString()) : '২৮,৫০০+', icon: UserCheck, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-        { label: 'পুরুষ', value: toBnDigits(aggregatedData.maleVoters.toLocaleString()), icon: UserCircle, color: 'text-blue-500', bg: 'bg-blue-50/50' },
-        { label: 'মহিলা', value: toBnDigits(aggregatedData.femaleVoters.toLocaleString()), icon: UserCircle, color: 'text-violet-500', bg: 'bg-violet-50' },
-        { label: 'স্কুল', value: toBnDigits(aggregatedData.schools.toString()), icon: School, color: 'text-orange-600', bg: 'bg-orange-50' },
-        { label: 'মসজিদ', value: toBnDigits(aggregatedData.mosques.toString()), icon: Building2, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-        { label: 'মাদ্রাসা', value: toBnDigits(aggregatedData.madrassas.toString()), icon: BookOpen, color: 'text-sky-600', bg: 'bg-sky-50' },
-        { label: 'এতিমখানা', value: toBnDigits(aggregatedData.orphanages.toString()), icon: Home, color: 'text-amber-600', bg: 'bg-amber-50' },
+        { label: 'মোট ওয়াড', value: toBnDigits(mergedWards.length.toString()), icon: MapPin, color: 'text-teal-600', shadow: 'hover:shadow-teal-500/20', bg: 'bg-teal-50' },
+        { label: 'মোট গ্রাম', value: toBnDigits(allVillages.length.toString()), icon: MapPin, color: 'text-sky-600', shadow: 'hover:shadow-sky-500/20', bg: 'bg-sky-50' },
+        { label: 'রক্তদাতা', value: toBnDigits(aggregatedData.bloodDonors.toString()), icon: Droplets, color: 'text-rose-600', shadow: 'hover:shadow-rose-500/20', bg: 'bg-rose-50' },
+        { label: 'জনসংখ্যা', value: aggregatedData.population > 0 ? toBnDigits(aggregatedData.population.toLocaleString()) : '৪৫,০০০+', icon: Users, color: 'text-blue-600', shadow: 'hover:shadow-blue-500/20', bg: 'bg-blue-50' },
+        { label: 'মোট ভোটার', value: aggregatedData.voters > 0 ? toBnDigits(aggregatedData.voters.toLocaleString()) : '২৮,৫০০+', icon: UserCheck, color: 'text-indigo-600', shadow: 'hover:shadow-indigo-500/20', bg: 'bg-indigo-50' },
+        { label: 'পুরুষ', value: toBnDigits(aggregatedData.maleVoters.toLocaleString()), icon: UserCircle, color: 'text-blue-500', shadow: 'hover:shadow-blue-500/10', bg: 'bg-blue-50/50' },
+        { label: 'মহিলা', value: toBnDigits(aggregatedData.femaleVoters.toLocaleString()), icon: UserCircle, color: 'text-violet-500', shadow: 'hover:shadow-violet-500/10', bg: 'bg-violet-50' },
+        { label: 'স্কুল', value: toBnDigits(aggregatedData.schools.toString()), icon: School, color: 'text-orange-600', shadow: 'hover:shadow-orange-500/20', bg: 'bg-orange-50' },
+        { label: 'মসজিদ', value: toBnDigits(aggregatedData.mosques.toString()), icon: Building2, color: 'text-emerald-600', shadow: 'hover:shadow-emerald-500/20', bg: 'bg-emerald-50' },
+        { label: 'মাদ্রাসা', value: toBnDigits(aggregatedData.madrassas.toString()), icon: BookOpen, color: 'text-sky-600', shadow: 'hover:shadow-sky-500/20', bg: 'bg-sky-50' },
+        { label: 'এতিমখানা', value: toBnDigits(aggregatedData.orphanages.toString()), icon: Home, color: 'text-amber-600', shadow: 'hover:shadow-amber-500/20', bg: 'bg-amber-50' },
     ];
 
     return (
@@ -232,21 +232,28 @@ export default function UnionPortalClient({ ctx }) {
                     {/* Left Column */}
                     <div className="lg:col-span-8 space-y-6">
                         
-                        {/* Unified Mini-Stats Grid */}
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                        {/* Unified Mini-Stats Grid - Premium Glassmorphism */}
+                        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                             {allStats.map((s, i) => (
                                 <motion.div 
-                                    initial={{ opacity: 0, y: 15 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: i * 0.05 + 0.3 }}
+                                    initial={{ opacity: 0, scale: 0.95 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    transition={{ delay: i * 0.04 + 0.3, duration: 0.4 }}
                                     key={s.label} 
-                                    className="p-3.5 rounded-[22px] bg-white border border-slate-100 shadow-lg shadow-slate-200/40 hover:shadow-xl hover:border-teal-200 transition-all hover:-translate-y-1 group"
+                                    className={`relative flex items-center gap-4 p-4 rounded-[28px] bg-white/70 backdrop-blur-md border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] ${s.shadow} hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 group overflow-hidden`}
                                 >
-                                    <div className={`w-10 h-10 rounded-[14px] ${s.bg} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}>
-                                        <s.icon className={s.color} size={18} />
+                                    <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                                    
+                                    <div className={`w-12 h-12 rounded-2xl ${s.bg} flex items-center justify-center shrink-0 shadow-inner group-hover:scale-110 group-hover:rotate-6 transition-transform duration-500`}>
+                                        <s.icon className={`${s.color} drop-shadow-sm`} size={22} />
                                     </div>
-                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1 leading-none">{s.label}</p>
-                                    <p className="text-sm font-black text-slate-800 tracking-tight leading-none">{s.value}</p>
+                                    
+                                    <div className="min-w-0">
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] mb-1 leading-none group-hover:text-teal-600 transition-colors">{s.label}</p>
+                                        <p className={`text-xl font-black text-slate-900 tracking-tight leading-none`}>
+                                            {s.value}
+                                        </p>
+                                    </div>
                                 </motion.div>
                             ))}
                         </div>
