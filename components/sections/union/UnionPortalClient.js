@@ -27,13 +27,24 @@ export default function UnionPortalClient({ ctx }) {
         return (union.wards || []).map(ward => {
             const key = `${union.slug}-${ward.id}`;
             const dynamic = dynamicWardData[key];
-            if (!dynamic) return ward;
             
             // Normalize villages to objects if they are strings
-            const normalizedVillages = (dynamic.villages || ward.villages || []).map(v => 
+            const villagesSource = dynamic?.villages || ward.villages || [];
+            const normalizedVillages = villagesSource.map(v => 
                 typeof v === 'string' ? { name: v, population: '0', voters: '0' } : v
             );
 
+            // Per-ward stats aggregation
+            const stats = normalizedVillages.reduce((acc, v) => ({
+                population: acc.population + parseBnInt(v.population || '0'),
+                voters: acc.voters + parseBnInt(v.voters || '0'),
+                schools: acc.schools + parseBnInt(v.schools || '0'),
+                mosques: acc.mosques + parseBnInt(v.mosques || '0'),
+                madrassas: acc.madrassas + parseBnInt(v.madrassas || '0'),
+            }), { population: 0, voters: 0, schools: 0, mosques: 0, madrassas: 0 });
+
+            if (!dynamic) return { ...ward, villages: normalizedVillages, stats };
+            
             return {
                 ...ward,
                 member: {
@@ -42,8 +53,9 @@ export default function UnionPortalClient({ ctx }) {
                     phone: dynamic.memberPhone || ward.member?.phone,
                 },
                 villages: normalizedVillages,
-                population: dynamic.population || ward.population,
-                voters: dynamic.voters || ward.voters,
+                population: toBnDigits(stats.population.toString()), // Dynamic rollup
+                voters: toBnDigits(stats.voters.toString()), // Dynamic rollup
+                stats, // Included for card display
             };
         });
     }, [union.wards, union.slug, dynamicWardData]);
@@ -289,19 +301,60 @@ export default function UnionPortalClient({ ctx }) {
                                                 </div>
                                             </div>
 
-                                            {/* Village Pills */}
-                                            <div className="px-5 pb-5 pt-3 border-t border-slate-50 bg-slate-50/30">
-                                                <p className="text-[9px] font-black uppercase text-slate-400 tracking-wider mb-3">অন্তর্ভুক্ত গ্রামসমূহ</p>
+                                            {/* Ward Stats Bar - Added detailed info */}
+                                            <div className="px-5 py-4 border-t border-slate-50 bg-slate-50/50 grid grid-cols-2 md:grid-cols-4 gap-4">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
+                                                        <UserCheck size={16} />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[9px] font-black text-slate-400 uppercase leading-none mb-1">ভোটার</p>
+                                                        <p className="text-xs font-black text-slate-800 leading-none">{toBnDigits(ward.stats?.voters.toString() || '0')}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center text-orange-600 shrink-0">
+                                                        <School size={16} />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[9px] font-black text-slate-400 uppercase leading-none mb-1">শিক্ষা প্রতিষ্ঠান</p>
+                                                        <p className="text-xs font-black text-slate-800 leading-none">{toBnDigits(ward.stats?.schools.toString() || '0')}টি</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
+                                                        <Building2 size={16} />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[9px] font-black text-slate-400 uppercase leading-none mb-1">মসজিদ</p>
+                                                        <p className="text-xs font-black text-slate-800 leading-none">{toBnDigits(ward.stats?.mosques.toString() || '0')}টি</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-8 h-8 rounded-lg bg-teal-50 flex items-center justify-center text-teal-600 shrink-0">
+                                                        <MapPin size={16} />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[9px] font-black text-slate-400 uppercase leading-none mb-1">গ্রাম সংখ্যা</p>
+                                                        <p className="text-xs font-black text-slate-800 leading-none">{toBnDigits(ward.villages?.length.toString() || '0')}টি</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Village Pills - Keep compact */}
+                                            <div className="px-5 pb-5 pt-3 border-t border-slate-50 bg-white group-hover:bg-slate-50/30 transition-colors">
                                                 <div className="flex flex-wrap gap-2">
-                                                    {(ward.villages || []).map((v) => (
+                                                    {(ward.villages || []).slice(0, 4).map((v) => (
                                                         <span
-                                                            key={v}
-                                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-[13px] font-bold text-slate-600 group-hover:border-teal-100 transition-all shadow-sm"
+                                                            key={typeof v === 'string' ? v : v.name}
+                                                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-100 text-[11px] font-bold text-slate-500"
                                                         >
-                                                            <div className="w-1.5 h-1.5 rounded-full bg-teal-400 shrink-0" />
-                                                            {v}
+                                                            {typeof v === 'string' ? v : v.name}
                                                         </span>
                                                     ))}
+                                                    {ward.villages?.length > 4 && (
+                                                        <span className="text-[10px] font-black text-teal-600 pt-1">+{toBnDigits((ward.villages.length - 4).toString())} আরো</span>
+                                                    )}
                                                 </div>
                                             </div>
                                         </Link>

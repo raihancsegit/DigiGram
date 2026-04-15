@@ -37,6 +37,7 @@ export default function WardPortalClient({ ctx, ward: initialWard }) {
                 phone: dynamic.memberPhone || initialWard.member?.phone,
             },
             villages: dynamic.villages || initialWard.villages,
+            bloodDonors: dynamic.bloodDonors || [],
             population: dynamic.population,
             voters: dynamic.voters,
         };
@@ -225,6 +226,62 @@ export default function WardPortalClient({ ctx, ward: initialWard }) {
                                     </tbody>
                                 </table>
                             </div>
+                        </div>
+
+                        {/* Blood Donor List - New Section */}
+                        <div className="p-6 sm:p-8 rounded-[32px] bg-white border border-slate-200/60 shadow-sm overflow-hidden">
+                            <h2 className="text-xl font-black text-slate-800 mb-6 flex items-center gap-2">
+                                <span className="p-2 rounded-xl bg-rose-50 text-rose-500">
+                                    <Droplets size={20} />
+                                </span>
+                                রক্তদাতা ডাটাবেস
+                            </h2>
+                            
+                            {(!ward.bloodDonors || ward.bloodDonors.length === 0) ? (
+                                <div className="text-center py-12 rounded-2xl bg-rose-50/30 border-2 border-dashed border-rose-100">
+                                    <Droplets className="mx-auto text-rose-200 mb-3" size={40} />
+                                    <p className="font-bold text-slate-400 text-sm italic">এই ওয়াডে এখনো কোনো রক্তদাতা তালিকাভুক্ত হয়নি</p>
+                                </div>
+                            ) : (
+                                <div className="overflow-x-auto -mx-6 sm:mx-0">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead>
+                                            <tr className="bg-slate-50 text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                                                <th className="p-4 border-b border-slate-100 first:pl-6">রক্তদাতা</th>
+                                                <th className="p-4 border-b border-slate-100">গ্রুপ</th>
+                                                <th className="p-4 border-b border-slate-100">গ্রাম</th>
+                                                <th className="p-4 border-b border-slate-100 last:pr-6 text-right">যোগাযোগ</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-50">
+                                            {ward.bloodDonors.map((donor, idx) => (
+                                                <tr key={donor.id || idx} className="hover:bg-slate-50 transition-colors">
+                                                    <td className="p-4 pl-6">
+                                                        <p className="font-black text-slate-800 text-sm">{donor.name}</p>
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-600 font-black text-xs border border-rose-100">
+                                                            {donor.group}
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-4 font-bold text-slate-500 text-sm">
+                                                        {donor.village}
+                                                    </td>
+                                                    <td className="p-4 pr-6 text-right">
+                                                        <a 
+                                                            href={`tel:${donor.phone}`}
+                                                            className="inline-flex items-center gap-2 text-teal-600 hover:text-teal-700 font-black text-sm"
+                                                        >
+                                                            <Phone size={14} />
+                                                            {toBnDigits(donor.phone)}
+                                                        </a>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
                         </div>
 
                         {/* Ward News Feed */}

@@ -147,7 +147,7 @@ export default function Header() {
                                 </>
                             ) : (
                                 <Link
-                                    href="/login"
+                                    href={paths.login}
                                     className="flex items-center gap-3 rounded-2xl px-4 py-3.5 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all"
                                     onClick={() => setIsProfileOpen(false)}
                                 >

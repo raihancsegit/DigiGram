@@ -11,6 +11,9 @@ import {
 import { updateWardInfo } from '@/lib/store/features/wardDataSlice';
 import { parseBnInt, toBnDigits } from '@/lib/utils/format';
 
+import BloodGroupManagement from './BloodGroupManagement';
+import { LayoutDashboard, Droplets } from 'lucide-react';
+
 const inputStyles = "w-full p-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 outline-none transition-all font-bold text-slate-700 text-sm";
 const labelStyles = "text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1.5 block flex items-center gap-1.5";
 
@@ -19,6 +22,7 @@ export default function WardManagementSection({ user }) {
     const wardKey = `${user.unionId}-${user.wardId}`;
     const dynamicData = useSelector((state) => state.wardData.dynamicWardData[wardKey]);
 
+    const [activeTab, setActiveTab] = useState('stats'); // 'stats' or 'blood'
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
     const [isAddingVillage, setIsAddingVillage] = useState(false);
@@ -26,9 +30,10 @@ export default function WardManagementSection({ user }) {
     // Village Data Structure
     const [villages, setVillages] = useState(() => {
         if (!dynamicData?.villages) return [];
-        // Support legacy string arrays by converting to objects
         return dynamicData.villages.map(v => typeof v === 'string' ? { name: v, population: '0', voters: '0', femaleVoters: '0', maleVoters: '0', schools: '0', mosques: '0', madrassas: '0', orphanages: '0' } : v);
     });
+
+    const [bloodDonors, setBloodDonors] = useState(dynamicData?.bloodDonors || []);
 
     const [editingIndex, setEditingIndex] = useState(null);
     const [villageForm, setVillageForm] = useState({
@@ -51,8 +56,12 @@ export default function WardManagementSection({ user }) {
         }), { population: 0, voters: 0, femaleVoters: 0, maleVoters: 0 });
     }, [villages]);
 
-    const handleSave = async () => {
+    const handleSave = async (updatedDonors) => {
         setLoading(true);
+        // If updatedDonors is passed, we update that state first
+        const finalDonors = updatedDonors || bloodDonors;
+        if (updatedDonors) setBloodDonors(updatedDonors);
+
         await new Promise(resolve => setTimeout(resolve, 800));
         
         dispatch(updateWardInfo({
@@ -61,7 +70,8 @@ export default function WardManagementSection({ user }) {
                 ...formData,
                 population: toBnDigits(totals.population.toString()),
                 voters: toBnDigits(totals.voters.toString()),
-                villages: villages
+                villages: villages,
+                bloodDonors: finalDonors
             }
         }));
 
@@ -91,6 +101,45 @@ export default function WardManagementSection({ user }) {
 
     return (
         <div className="space-y-8">
+            {/* Header with Tabs */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 pb-6 border-b border-slate-100">
+                <div className="flex items-center gap-2 p-1 bg-slate-100 rounded-2xl">
+                    <button
+                        onClick={() => setActiveTab('stats')}
+                        className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-black transition-all ${
+                            activeTab === 'stats' 
+                            ? 'bg-white text-teal-600 shadow-sm' 
+                            : 'text-slate-500 hover:text-slate-700'
+                        }`}
+                    >
+                        <LayoutDashboard size={18} />
+                        ওয়াড পরিসংখ্যান
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('blood')}
+                        className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-black transition-all ${
+                            activeTab === 'blood' 
+                            ? 'bg-white text-rose-600 shadow-sm' 
+                            : 'text-slate-500 hover:text-slate-700'
+                        }`}
+                    >
+                        <Droplets size={18} />
+                        রক্তদাতা ডাটাবেস
+                    </button>
+                </div>
+
+                {activeTab === 'stats' && (
+                    <button 
+                        onClick={() => handleSave()}
+                        disabled={loading}
+                        className="w-full sm:w-auto px-8 py-3 rounded-2xl bg-slate-900 text-white font-black text-sm shadow-xl hover:bg-teal-600 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                    >
+                        {loading ? 'আপডেট হচ্ছে...' : 'সব তথ্য সেভ করুন'}
+                        {!loading && <Save size={18} />}
+                    </button>
+                )}
+            </div>
+
             {/* Success Toast Overlay */}
             <AnimatePresence>
                 {success && (
@@ -106,153 +155,153 @@ export default function WardManagementSection({ user }) {
                 )}
             </AnimatePresence>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                {/* Left: Member & Ward Summary */}
-                <div className="lg:col-span-4 space-y-6">
-                    <div className="p-6 rounded-[28px] bg-white border border-slate-200/60 shadow-sm space-y-6">
-                        <h4 className="text-xs font-black uppercase tracking-widest text-teal-600 flex items-center gap-2">
-                            <ShieldCheck size={14} />
-                            মেম্বার প্রোফাইল
-                        </h4>
-                        
-                        <div className="space-y-4">
-                            <div>
-                                <label className={labelStyles}>আপনার নাম</label>
-                                <input 
-                                    type="text"
-                                    className={inputStyles}
-                                    value={formData.memberName}
-                                    onChange={(e) => setFormData({...formData, memberName: e.target.value})}
-                                />
-                            </div>
-                            <div>
-                                <label className={labelStyles}>ফোন নম্বর</label>
-                                <input 
-                                    type="tel"
-                                    className={inputStyles}
-                                    value={formData.memberPhone}
-                                    onChange={(e) => setFormData({...formData, memberPhone: e.target.value})}
-                                />
-                            </div>
-                        </div>
-
-                        <div className="pt-6 border-t border-slate-100 space-y-4">
-                            <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">ওয়াড সারসংক্ষেপ (অটোমেটিক)</h4>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
-                                    <p className="text-[10px] font-bold text-slate-400 mb-1">মোট জনসংখ্যা</p>
-                                    <p className="text-lg font-black text-slate-800">{toBnDigits(totals.population.toString())}</p>
+            {activeTab === 'stats' ? (
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                    {/* Left: Member & Ward Summary */}
+                    <div className="lg:col-span-4 space-y-6">
+                        <div className="p-6 rounded-[28px] bg-white border border-slate-200/60 shadow-sm space-y-6">
+                            <h4 className="text-xs font-black uppercase tracking-widest text-teal-600 flex items-center gap-2">
+                                <ShieldCheck size={14} />
+                                মেম্বার প্রোফাইল
+                            </h4>
+                            
+                            <div className="space-y-4">
+                                <div>
+                                    <label className={labelStyles}>আপনার নাম</label>
+                                    <input 
+                                        type="text"
+                                        className={inputStyles}
+                                        value={formData.memberName}
+                                        onChange={(e) => setFormData({...formData, memberName: e.target.value})}
+                                    />
                                 </div>
-                                <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
-                                    <p className="text-[10px] font-bold text-slate-400 mb-1">মোট ভোটার</p>
-                                    <p className="text-lg font-black text-slate-800">{toBnDigits(totals.voters.toString())}</p>
+                                <div>
+                                    <label className={labelStyles}>ফোন নম্বর</label>
+                                    <input 
+                                        type="tel"
+                                        className={inputStyles}
+                                        value={formData.memberPhone}
+                                        onChange={(e) => setFormData({...formData, memberPhone: e.target.value})}
+                                    />
                                 </div>
                             </div>
+
+                            <div className="pt-6 border-t border-slate-100 space-y-4">
+                                <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">ওয়াড সারসংক্ষেপ (অটোমেটিক)</h4>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                                        <p className="text-[10px] font-bold text-slate-400 mb-1">মোট জনসংখ্যা</p>
+                                        <p className="text-lg font-black text-slate-800">{toBnDigits(totals.population.toString())}</p>
+                                    </div>
+                                    <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                                        <p className="text-[10px] font-bold text-slate-400 mb-1">মোট ভোটার</p>
+                                        <p className="text-lg font-black text-slate-800">{toBnDigits(totals.voters.toString())}</p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        
-                        <button 
-                            onClick={handleSave}
-                            disabled={loading}
-                            className="w-full py-4 rounded-2xl bg-slate-900 text-white font-black text-sm shadow-xl hover:bg-teal-600 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
-                        >
-                            {loading ? 'আপডেট হচ্ছে...' : 'সব পরিবর্তন সেভ করুন'}
-                            {!loading && <Save size={18} />}
-                        </button>
-                    </div>
-                </div>
-
-                {/* Right: Village Management Table */}
-                <div className="lg:col-span-8 space-y-6">
-                    <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-black uppercase tracking-widest text-slate-800 flex items-center gap-2">
-                            <MapPin size={18} className="text-teal-600" />
-                            ওয়াডভুক্ত গ্রামসমূহ ({villages.length})
-                        </h4>
-                        <button 
-                            onClick={() => { setIsAddingVillage(true); setEditingIndex(null); }}
-                            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-teal-500 text-white text-xs font-black shadow-lg shadow-teal-500/20 hover:bg-teal-600 transition-all"
-                        >
-                            <Plus size={16} />
-                            নতুন গ্রাম যোগ করুন
-                        </button>
                     </div>
 
-                    <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left border-collapse">
-                                <thead>
-                                    <tr className="bg-slate-50/80 border-b border-slate-100">
-                                        <th className="p-5 text-[10px] font-black uppercase text-slate-400 tracking-wider">গ্রামের নাম</th>
-                                        <th className="p-5 text-[10px] font-black uppercase text-slate-400 tracking-wider">জনসংখ্যা</th>
-                                        <th className="p-5 text-[10px] font-black uppercase text-slate-400 tracking-wider">ভোটার (পু:/ম:)</th>
-                                        <th className="p-5 text-[10px] font-black uppercase text-slate-400 tracking-wider">প্রতিষ্ঠান</th>
-                                        <th className="p-5 text-[10px] font-black uppercase text-slate-400 tracking-wider text-right">অ্যাকশন</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-50">
-                                    {villages.length === 0 ? (
-                                        <tr>
-                                            <td colSpan="5" className="p-12 text-center">
-                                                <div className="flex flex-col items-center gap-3 grayscale opacity-30">
-                                                    <MapPin size={40} />
-                                                    <p className="text-sm font-black">কোনো গ্রাম যোগ করা হয়নি</p>
-                                                </div>
-                                            </td>
+                    {/* Right: Village Management Table */}
+                    <div className="lg:col-span-8 space-y-6">
+                        <div className="flex items-center justify-between">
+                            <h4 className="text-sm font-black uppercase tracking-widest text-slate-800 flex items-center gap-2">
+                                <MapPin size={18} className="text-teal-600" />
+                                ওয়াডভুক্ত গ্রামসমূহ ({toBnDigits(villages.length.toString())})
+                            </h4>
+                            <button 
+                                onClick={() => { setIsAddingVillage(true); setEditingIndex(null); }}
+                                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-teal-500 text-white text-xs font-black shadow-lg shadow-teal-500/20 hover:bg-teal-600 transition-all"
+                            >
+                                <Plus size={16} />
+                                নতুন গ্রাম যোগ করুন
+                            </button>
+                        </div>
+
+                        <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr className="bg-slate-50/80 border-b border-slate-100">
+                                            <th className="p-5 text-[10px] font-black uppercase text-slate-400 tracking-wider">গ্রামের নাম</th>
+                                            <th className="p-5 text-[10px] font-black uppercase text-slate-400 tracking-wider">জনসংখ্যা</th>
+                                            <th className="p-5 text-[10px] font-black uppercase text-slate-400 tracking-wider">ভোটার (পু:/ম:)</th>
+                                            <th className="p-5 text-[10px] font-black uppercase text-slate-400 tracking-wider">প্রতিষ্ঠান</th>
+                                            <th className="p-5 text-[10px] font-black uppercase text-slate-400 tracking-wider text-right">অ্যাকশন</th>
                                         </tr>
-                                    ) : (
-                                        villages.map((v, idx) => (
-                                            <tr key={idx} className="hover:bg-slate-50/50 transition-colors group">
-                                                <td className="p-5">
-                                                    <p className="font-black text-slate-800">{v.name}</p>
-                                                </td>
-                                                <td className="p-5">
-                                                    <p className="text-sm font-bold text-slate-600">{toBnDigits(v.population)} জন</p>
-                                                </td>
-                                                <td className="p-5">
-                                                    <div className="flex flex-col">
-                                                        <p className="text-sm font-black text-slate-800">{toBnDigits(v.voters)}</p>
-                                                        <p className="text-[10px] font-bold text-slate-400">
-                                                            {toBnDigits(v.maleVoters)}/ {toBnDigits(v.femaleVoters)}
-                                                        </p>
-                                                    </div>
-                                                </td>
-                                                <td className="p-5">
-                                                    <div className="flex gap-2">
-                                                        <div className="flex flex-col items-center p-1.5 rounded-lg bg-teal-50 text-teal-700 min-w-[32px]" title="স্কুল">
-                                                            <span className="text-[10px] font-black leading-none mb-1">{toBnDigits(v.schools)}</span>
-                                                            <School size={10} />
-                                                        </div>
-                                                        <div className="flex flex-col items-center p-1.5 rounded-lg bg-emerald-50 text-emerald-700 min-w-[32px]" title="মসজিদ">
-                                                            <span className="text-[10px] font-black leading-none mb-1">{toBnDigits(v.mosques)}</span>
-                                                            <Building2 size={10} />
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className="p-5 text-right">
-                                                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <button 
-                                                            onClick={() => { setVillageForm(v); setEditingIndex(idx); setIsAddingVillage(true); }}
-                                                            className="p-2 rounded-lg bg-white border border-slate-200 text-slate-600 hover:border-teal-500 hover:text-teal-600 shadow-sm"
-                                                        >
-                                                            <Edit3 size={14} />
-                                                        </button>
-                                                        <button 
-                                                            onClick={() => setVillages(villages.filter((_, i) => i !== idx))}
-                                                            className="p-2 rounded-lg bg-white border border-slate-200 text-slate-600 hover:border-red-500 hover:text-red-500 shadow-sm"
-                                                        >
-                                                            <Trash2 size={14} />
-                                                        </button>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-50">
+                                        {villages.length === 0 ? (
+                                            <tr>
+                                                <td colSpan="5" className="p-12 text-center">
+                                                    <div className="flex flex-col items-center gap-3 grayscale opacity-30">
+                                                        <MapPin size={40} />
+                                                        <p className="text-sm font-black">কোনো গ্রাম যোগ করা হয়নি</p>
                                                     </div>
                                                 </td>
                                             </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
+                                        ) : (
+                                            villages.map((v, idx) => (
+                                                <tr key={idx} className="hover:bg-slate-50/50 transition-colors group">
+                                                    <td className="p-5">
+                                                        <p className="font-black text-slate-800">{v.name}</p>
+                                                    </td>
+                                                    <td className="p-5">
+                                                        <p className="text-sm font-bold text-slate-600">{toBnDigits(v.population)} জন</p>
+                                                    </td>
+                                                    <td className="p-5">
+                                                        <div className="flex flex-col">
+                                                            <p className="text-sm font-black text-slate-800">{toBnDigits(v.voters)}</p>
+                                                            <p className="text-[10px] font-bold text-slate-400">
+                                                                {toBnDigits(v.maleVoters)}/ {toBnDigits(v.femaleVoters)}
+                                                            </p>
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-5">
+                                                        <div className="flex gap-2">
+                                                            <div className="flex flex-col items-center p-1.5 rounded-lg bg-teal-50 text-teal-700 min-w-[32px]" title="স্কুল">
+                                                                <span className="text-[10px] font-black leading-none mb-1">{toBnDigits(v.schools)}</span>
+                                                                <School size={10} />
+                                                            </div>
+                                                            <div className="flex flex-col items-center p-1.5 rounded-lg bg-emerald-50 text-emerald-700 min-w-[32px]" title="মসজিদ">
+                                                                <span className="text-[10px] font-black leading-none mb-1">{toBnDigits(v.mosques)}</span>
+                                                                <Building2 size={10} />
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-5 text-right">
+                                                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <button 
+                                                                onClick={() => { setVillageForm(v); setEditingIndex(idx); setIsAddingVillage(true); }}
+                                                                className="p-2 rounded-lg bg-white border border-slate-200 text-slate-600 hover:border-teal-500 hover:text-teal-600 shadow-sm"
+                                                            >
+                                                                <Edit3 size={14} />
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => setVillages(villages.filter((_, i) => i !== idx))}
+                                                                className="p-2 rounded-lg bg-white border border-slate-200 text-slate-600 hover:border-red-500 hover:text-red-500 shadow-sm"
+                                                            >
+                                                                <Trash2 size={14} />
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            ) : (
+                <div className="min-h-[500px]">
+                    <BloodGroupManagement 
+                        donors={bloodDonors} 
+                        onUpdate={(updated) => handleSave(updated)} 
+                    />
+                </div>
+            )}
 
             {/* Village Edit Modal */}
             <AnimatePresence>
