@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useDispatch, useSelector } from 'react-redux';
 import { motion } from 'framer-motion';
@@ -14,11 +14,31 @@ import { paths } from '@/lib/constants/paths';
 import { layout } from '@/lib/theme';
 import PowerWatchSection from '../community/PowerWatchSection';
 
-export default function WardPortalClient({ ctx, ward }) {
+export default function WardPortalClient({ ctx, ward: initialWard }) {
     const dispatch = useDispatch();
     const { district, upazila, union } = ctx;
     const { dynamicNews } = useSelector((s) => s.news);
     const { user, isAuthenticated } = useSelector((s) => s.auth);
+    const { dynamicWardData } = useSelector((state) => state.wardData);
+
+    // Merge static and dynamic ward data
+    const ward = useMemo(() => {
+        const key = `${union.slug}-${initialWard.id}`;
+        const dynamic = dynamicWardData[key];
+        if (!dynamic) return initialWard;
+
+        return {
+            ...initialWard,
+            member: {
+                ...initialWard.member,
+                name: dynamic.memberName || initialWard.member?.name,
+                phone: dynamic.memberPhone || initialWard.member?.phone,
+            },
+            villages: dynamic.villages || initialWard.villages,
+            population: dynamic.population,
+            voters: dynamic.voters,
+        };
+    }, [initialWard, union.slug, dynamicWardData]);
 
     const isMyWard = isAuthenticated &&
         user?.role === 'WARD_MEMBER' &&
@@ -108,7 +128,7 @@ export default function WardPortalClient({ ctx, ward }) {
                             ) : (
                                 <div className="p-6 rounded-[28px] bg-white/5 border border-white/10">
                                     <p className="text-[10px] font-black uppercase text-teal-300 tracking-widest mb-3">মেম্বার পোর্টাল</p>
-                                    <p className="text-sm font-bold text-slate-300 mb-4">আপনি কি এই ওয়াডের নির্বাচিত মেম্বার?</p>
+                                    <p className="text-sm font-bold text-slate-300 mb-4">আপনি কি এই ওয়াডের নির্বাচিত মেম্বার?</p>
                                     <Link
                                         href="/login"
                                         className="flex items-center gap-2 justify-center bg-teal-500 text-white font-black text-sm px-4 py-3 rounded-2xl hover:bg-teal-400 transition-all"
@@ -162,7 +182,7 @@ export default function WardPortalClient({ ctx, ward }) {
                             <div className="flex items-center justify-between mb-6">
                                 <h2 className="text-xl font-black text-slate-800 flex items-center gap-2">
                                     <Newspaper className="text-teal-600" />
-                                    ওয়াড নিউজ ফিড
+                                    ওয়াড নিউজ ফিড
                                 </h2>
                                 <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">{wardNews.length} টি খবর</span>
                             </div>
@@ -170,7 +190,7 @@ export default function WardPortalClient({ ctx, ward }) {
                             {wardNews.length === 0 ? (
                                 <div className="text-center py-12 rounded-2xl bg-slate-50 border-2 border-dashed border-slate-200">
                                     <Newspaper className="mx-auto text-slate-300 mb-3" size={40} />
-                                    <p className="font-bold text-slate-400 text-sm">এখনো কোনো খবর পোস্ট হয়নি</p>
+                                    <p className="font-bold text-slate-400 text-sm">এখনো কোনো খবর পোস্ট হয়নি</p>
                                     {!isMyWard && (
                                         <Link href="/login" className="inline-flex items-center gap-1.5 mt-3 text-teal-600 font-bold text-sm hover:underline">
                                             <LogIn size={14} />
@@ -246,17 +266,17 @@ export default function WardPortalClient({ ctx, ward }) {
 
                         {/* Stats mini card */}
                         <div className="p-6 rounded-[28px] bg-white border border-slate-200/60 shadow-sm space-y-4">
-                            <h4 className="text-sm font-black uppercase text-slate-400 tracking-wider">ওয়াড তথ্য</h4>
+                            <h4 className="text-sm font-black uppercase text-slate-400 tracking-wider">ওয়াড তথ্য</h4>
                             <div className="flex items-center justify-between py-3 border-b border-slate-100">
-                                <span className="text-sm font-bold text-slate-600">মোট গ্রাম</span>
-                                <span className="text-base font-black text-slate-800">{ward.villages?.length || 0}টি</span>
+                                <span className="text-sm font-bold text-slate-600">জনসংখ্যা</span>
+                                <span className="text-base font-black text-slate-800">{ward.population || '৪৫০০'}</span>
                             </div>
                             <div className="flex items-center justify-between py-3 border-b border-slate-100">
-                                <span className="text-sm font-bold text-slate-600">পোস্ট করা খবর</span>
-                                <span className="text-base font-black text-teal-600">{wardNews.length}টি</span>
+                                <span className="text-sm font-bold text-slate-600">মোট ভোটার</span>
+                                <span className="text-base font-black text-slate-800">{ward.voters || '২৮০০'}</span>
                             </div>
                             <div className="flex items-center justify-between py-3">
-                                <span className="text-sm font-bold text-slate-600">ইউনিয়নের ওয়াড</span>
+                                <span className="text-sm font-bold text-slate-600">ইউনিয়নের ওয়াড</span>
                                 <span className="text-base font-black text-slate-800">{ctx.union.wards?.length || 0}টির মধ্যে ১টি</span>
                             </div>
                         </div>

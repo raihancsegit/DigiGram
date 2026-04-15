@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { motion } from 'framer-motion';
 import { 
     MapPin, Home, Sparkles, ArrowUpRight, ArrowRight,
@@ -15,19 +15,42 @@ import { paths } from '@/lib/constants/paths';
 import { layout } from '@/lib/theme';
 import UnionNewsSection from './UnionNewsSection';
 import { Activity, BellRing, Navigation } from 'lucide-react';
+import { parseBnInt, toBnDigits } from '@/lib/utils/format';
 
 export default function UnionPortalClient({ ctx }) {
     const dispatch = useDispatch();
     const { district, upazila, union } = ctx;
+    const { dynamicWardData } = useSelector((state) => state.wardData);
+
+    // Merge static and dynamic ward data
+    const mergedWards = useMemo(() => {
+        return (union.wards || []).map(ward => {
+            const key = `${union.slug}-${ward.id}`;
+            const dynamic = dynamicWardData[key];
+            if (!dynamic) return ward;
+            
+            return {
+                ...ward,
+                member: {
+                    ...ward.member,
+                    name: dynamic.memberName || ward.member?.name,
+                    phone: dynamic.memberPhone || ward.member?.phone,
+                },
+                villages: dynamic.villages || ward.villages,
+                population: dynamic.population,
+                voters: dynamic.voters,
+            };
+        });
+    }, [union.wards, union.slug, dynamicWardData]);
 
     // Aggregate all villages from all wards
-    const allVillages = union.wards?.reduce((acc, ward) => [...acc, ...(ward.villages || [])], []) || [];
+    const allVillages = mergedWards.reduce((acc, ward) => [...acc, ...(ward.villages || [])], []);
 
     const WARDS_PER_PAGE = 2;
     const [wardPage, setWardPage] = useState(0);
-    const totalWards = union.wards?.length || 0;
+    const totalWards = mergedWards.length;
     const totalWardPages = Math.ceil(totalWards / WARDS_PER_PAGE);
-    const pagedWards = (union.wards || []).slice(wardPage * WARDS_PER_PAGE, wardPage * WARDS_PER_PAGE + WARDS_PER_PAGE);
+    const pagedWards = mergedWards.slice(wardPage * WARDS_PER_PAGE, wardPage * WARDS_PER_PAGE + WARDS_PER_PAGE);
 
     useEffect(() => {
         dispatch(
@@ -43,11 +66,15 @@ export default function UnionPortalClient({ ctx }) {
         );
     }, [dispatch, district.id, district.name, upazila.id, upazila.name, union.name, union.slug]);
 
+    // Aggregate dynamic stats
+    const totalPopulation = mergedWards.reduce((acc, w) => acc + parseBnInt(w.population), 0);
+    const totalVoters = mergedWards.reduce((acc, w) => acc + parseBnInt(w.voters), 0);
+
     const stats = [
-        { label: 'মোট ওয়াড', value: union.wards?.length || 0, icon: MapPin, color: 'text-teal-600', bg: 'bg-teal-50' },
+        { label: 'মোট ওয়াড', value: totalWards, icon: MapPin, color: 'text-teal-600', bg: 'bg-teal-50' },
         { label: 'মোট গ্রাম', value: allVillages.length, icon: MapPin, color: 'text-sky-600', bg: 'bg-sky-50' },
-        { label: 'মোট জনসংখ্যা', value: '৪৫,০০০+', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
-        { label: 'মোট ভোটার', value: '২৮,৫০০+', icon: UserCheck, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+        { label: 'মোট জনসংখ্যা', value: totalPopulation > 0 ? `${toBnDigits(totalPopulation.toLocaleString())}+` : '৪৫,০০০+', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
+        { label: 'মোট ভোটার', value: totalVoters > 0 ? `${toBnDigits(totalVoters.toLocaleString())}+` : '২৮,৫০০+', icon: UserCheck, color: 'text-indigo-600', bg: 'bg-indigo-50' },
     ];
 
     const educationStats = [
@@ -118,7 +145,7 @@ export default function UnionPortalClient({ ctx }) {
                                 </div>
                                 <div className="inline-flex items-center gap-2 rounded-2xl bg-teal-500/20 text-teal-100 px-4 py-2 text-xs font-bold border border-teal-500/20 shadow-lg shadow-black/20">
                                     <MapPin size={14} className="text-teal-400" />
-                                    {union.wards?.length || 0}টি ওয়াড · {allVillages.length}টি গ্রাম
+                                    {mergedWards.length || 0}টি ওয়াড · {allVillages.length}টি গ্রাম
                                 </div>
                             </div>
                         </div>
@@ -373,7 +400,7 @@ export default function UnionPortalClient({ ctx }) {
                                 ওয়াড মেম্বারগণ
                             </h4>
                             <div className="space-y-3">
-                                {(union.wards || []).map((ward) => (
+                                {mergedWards.map((ward) => (
                                     ward.member && (
                                         <div key={ward.id} className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 border border-slate-100 hover:border-teal-100 transition-all">
                                             <div className="w-9 h-9 rounded-full bg-teal-50 flex items-center justify-center text-teal-600 border border-teal-100 shrink-0">
@@ -412,7 +439,7 @@ export default function UnionPortalClient({ ctx }) {
                                 ইউনিয়ন সেবাসমূহ
                             </p>
                             <h2 className="text-3xl sm:text-4xl font-black text-slate-800 tracking-tight">
-                                প্রয়োজনীয় ডিজিটাল সেবা
+                                প্রয়োজনীয় ডিজিটাল সেবা
                             </h2>
                         </div>
                     </div>
@@ -453,6 +480,31 @@ export default function UnionPortalClient({ ctx }) {
                                         <span
                                             className={`shrink-0 rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-wide ${
                                                 cat.free ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-900 border border-amber-200'
+                                            }`}
+                                        >
+                                            {cat.free ? 'ফ্রি' : 'প্রিমিয়াম'}
+                                        </span>
+                                    </div>
+                                    <h3 className="relative mt-auto text-base sm:text-lg font-black text-slate-800 leading-tight">
+                                        {cat.title}
+                                    </h3>
+                                    <p className="relative mt-1 text-xs font-bold text-slate-400 group-hover:text-slate-500 transition-colors leading-relaxed">
+                                        {cat.subtitle}
+                                    </p>
+                                    <div className="relative mt-4 flex items-center gap-1.5 text-[11px] font-black text-teal-600 group-hover:translate-x-1 transition-transform">
+                                        বিস্তারিত দেখুন
+                                        <ArrowUpRight size={14} />
+                                    </div>
+                                </Link>
+                            </motion.li>
+                        ))}
+                    </motion.ul>
+                </section>
+            </div>
+        </div>
+    );
+}
+00 text-emerald-800' : 'bg-amber-100 text-amber-900 border border-amber-200'
                                             }`}
                                         >
                                             {cat.free ? 'ফ্রি' : 'প্রিমিয়াম'}
