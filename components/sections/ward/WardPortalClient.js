@@ -8,7 +8,7 @@ import {
     MapPin, Home, Sparkles, ArrowUpRight,
     Users, UserCircle, ShieldCheck,
     Phone, CheckCircle2, LogIn, Newspaper, ArrowLeft,
-    School, Building2, BookOpen, UserCheck
+    School, Building2, BookOpen, UserCheck, Droplets
 } from 'lucide-react';
 import { applyLocationSnapshot } from '@/lib/store/features/locationSlice';
 import { paths } from '@/lib/constants/paths';
