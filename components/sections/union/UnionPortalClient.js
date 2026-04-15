@@ -504,28 +504,3 @@ export default function UnionPortalClient({ ctx }) {
         </div>
     );
 }
-00 text-emerald-800' : 'bg-amber-100 text-amber-900 border border-amber-200'
-                                            }`}
-                                        >
-                                            {cat.free ? 'ফ্রি' : 'প্রিমিয়াম'}
-                                        </span>
-                                    </div>
-                                    <h3 className="relative mt-auto text-base sm:text-lg font-black text-slate-800 leading-tight">
-                                        {cat.title}
-                                    </h3>
-                                    <p className="relative mt-1 text-xs font-bold text-slate-400 group-hover:text-slate-500 transition-colors leading-relaxed">
-                                        {cat.subtitle}
-                                    </p>
-                                    <div className="relative mt-4 flex items-center gap-1.5 text-[11px] font-black text-teal-600 group-hover:translate-x-1 transition-transform">
-                                        বিস্তারিত দেখুন
-                                        <ArrowUpRight size={14} />
-                                    </div>
-                                </Link>
-                            </motion.li>
-                        ))}
-                    </motion.ul>
-                </section>
-            </div>
-        </div>
-    );
-}
