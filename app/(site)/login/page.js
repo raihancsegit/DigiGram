@@ -156,6 +156,33 @@ export default function LoginPage() {
                             OTP পাঠান
                             <ArrowRight size={18} />
                         </button>
+
+                        <div className="relative py-2">
+                            <div className="absolute inset-0 flex items-center">
+                                <div className="w-full border-t border-slate-100"></div>
+                            </div>
+                            <span className="relative px-3 bg-slate-50 text-[9px] font-black uppercase text-slate-300 tracking-tighter left-1/2 -translate-x-1/2">
+                                ডেমো টেস্টের জন্য
+                            </span>
+                        </div>
+
+                        <button 
+                            onClick={() => {
+                                dispatch(login({
+                                    role: 'WARD_MEMBER',
+                                    name: 'মোঃ মেম্বার আলী',
+                                    unionId: 'dumuria',
+                                    unionName: 'দামকুড়া',
+                                    wardId: 'ward-1',
+                                    wardName: 'ওয়াড নং ১'
+                                }));
+                                router.push('/ward-member/dashboard');
+                            }}
+                            className="w-full flex items-center justify-center gap-2 p-4 rounded-[20px] bg-teal-50 border-2 border-teal-200 text-teal-700 font-extrabold text-sm hover:bg-teal-100 transition-all active:scale-95"
+                        >
+                            <ShieldCheck size={18} />
+                            মেম্বার ডেমো লগইন করুন
+                        </button>
                     </div>
 
                     <div className="mt-12 text-center">
