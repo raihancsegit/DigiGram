@@ -54,6 +54,7 @@ self.addEventListener('fetch', (event) => {
         return response;
       }).catch(() => {
         // Fallback for offline if needed
+        return Response.error();
       });
     })
   );
