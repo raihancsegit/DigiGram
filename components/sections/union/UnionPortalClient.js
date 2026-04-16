@@ -219,12 +219,31 @@ export default function UnionPortalClient({ ctx }) {
                             </div>
                         </motion.div>
                     </div>
+
+                    {/* Integrated Vertical Mini-Stats Grid */}
+                    <div className="mt-12 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-11 gap-2.5">
+                        {allStats.map((s, i) => (
+                            <motion.div 
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: i * 0.03 + 0.4 }}
+                                key={s.label} 
+                                className={`flex flex-col items-center text-center p-2.5 rounded-[22px] bg-white/10 backdrop-blur-md border border-white/10 hover:bg-white/15 hover:border-white/20 hover:-translate-y-1 transition-all duration-300 group min-w-[85px]`}
+                            >
+                                <div className={`w-9 h-9 rounded-xl ${s.bg} flex items-center justify-center mb-2 shadow-lg shadow-black/20 group-hover:scale-110 transition-transform duration-500`}>
+                                    <s.icon className={`${s.color}`} size={16} />
+                                </div>
+                                <p className="text-[8px] font-black text-slate-400/80 uppercase tracking-[0.1em] mb-0.5 leading-tight group-hover:text-teal-400 transition-colors">{s.label}</p>
+                                <p className="text-xs font-black text-white tracking-tight leading-none">{s.value}</p>
+                            </motion.div>
+                        ))}
+                    </div>
                 </motion.section>
             </div>
         </div>
 
             {/* Main Content Area - Pulled up to overlap hero */}
-            <div className="max-w-[1200px] mx-auto px-4 -mt-24 relative z-20">
+            <div className="max-w-[1200px] mx-auto px-4 -mt-12 relative z-20">
 
                 {/* Main Dashboard Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-12">
@@ -232,32 +251,6 @@ export default function UnionPortalClient({ ctx }) {
                     {/* Left Column */}
                     <div className="lg:col-span-8 space-y-6">
                         
-                        {/* Unified Mini-Stats Grid - Premium Glassmorphism */}
-                        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                            {allStats.map((s, i) => (
-                                <motion.div 
-                                    initial={{ opacity: 0, scale: 0.95 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    transition={{ delay: i * 0.04 + 0.3, duration: 0.4 }}
-                                    key={s.label} 
-                                    className={`relative flex items-center gap-4 p-4 rounded-[28px] bg-white/70 backdrop-blur-md border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] ${s.shadow} hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 group overflow-hidden`}
-                                >
-                                    <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-                                    
-                                    <div className={`w-12 h-12 rounded-2xl ${s.bg} flex items-center justify-center shrink-0 shadow-inner group-hover:scale-110 group-hover:rotate-6 transition-transform duration-500`}>
-                                        <s.icon className={`${s.color} drop-shadow-sm`} size={22} />
-                                    </div>
-                                    
-                                    <div className="min-w-0">
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] mb-1 leading-none group-hover:text-teal-600 transition-colors">{s.label}</p>
-                                        <p className={`text-xl font-black text-slate-900 tracking-tight leading-none`}>
-                                            {s.value}
-                                        </p>
-                                    </div>
-                                </motion.div>
-                            ))}
-                        </div>
-
                         {/* ===== WARD SECTION ===== */}
                         <div className="p-6 sm:p-8 rounded-[32px] bg-white border border-slate-200/60 shadow-sm">
                             <div className="flex items-center justify-between mb-8">
