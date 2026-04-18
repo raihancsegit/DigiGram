@@ -50,7 +50,7 @@ export default function HomeHeroSection() {
                             </span>
                         </motion.div>
 
-                        <motion.h1 
+                        <motion.h1
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.1 }}
@@ -60,7 +60,7 @@ export default function HomeHeroSection() {
                             <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-400 via-sky-400 to-rose-400">সুপার-অ্যাপ</span>
                         </motion.h1>
 
-                        <motion.p 
+                        <motion.p
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             transition={{ delay: 0.2 }}

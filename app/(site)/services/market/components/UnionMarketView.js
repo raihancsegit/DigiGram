@@ -1,11 +1,14 @@
 "use client";
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { MARKETS_LIST, DAILY_PRICES, COMMODITIES } from '@/lib/constants/marketData';
 import { findUnionBySlug } from '@/lib/constants/locations';
 import { MapPin, CalendarDays, TrendingUp, TrendingDown, Minus, Info, CheckCircle2, ChevronRight } from 'lucide-react';
 import { MarketReviewSection } from './MarketReviewSection';
 import { PriceComparisonTable } from './PriceComparisonTable';
+import { toBnDigits } from '@/lib/utils/format';
+import { paths } from '@/lib/constants/paths';
 
 export function UnionMarketView({ unionSlug }) {
     const unionInfo = findUnionBySlug(unionSlug);
@@ -117,123 +120,151 @@ export function UnionMarketView({ unionSlug }) {
     };
 
     return (
-        <div className="space-y-10 mb-20 animate-in fade-in duration-700">
-            {/* Header Section */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-                <div className="space-y-1">
-                    <div className="flex items-center gap-2 text-green-600 mb-1">
-                        <MapPin size={18} />
-                        <span className="text-sm font-bold uppercase tracking-widest">{unionInfo.upazila.name} উপজেলা</span>
+        <div className="space-y-12 mb-20 animate-in fade-in duration-700">
+            {/* Hero Section */}
+            <div className="relative overflow-hidden p-8 md:p-14 rounded-[50px] bg-gradient-to-br from-emerald-800 via-emerald-900 to-slate-900 text-white shadow-2xl">
+                <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+                <div className="absolute bottom-0 left-0 w-64 h-64 bg-teal-500/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
+                
+                <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-8">
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-1.5 rounded-full w-fit border border-white/10">
+                            <MapPin size={16} className="text-emerald-300" />
+                            <span className="text-[10px] font-black uppercase tracking-widest">{unionInfo.upazila.name} উপজেলা</span>
+                        </div>
+                        <h1 className="text-4xl md:text-6xl font-black tracking-tight leading-tight">
+                            {unionInfo.union.name} <span className="text-emerald-400">ডিজিটাল হাট</span>
+                        </h1>
+                        <p className="text-emerald-100/70 max-w-xl font-medium">ইউনিয়নের স্থানীয় হাটগুলোর লাইভ বাজারদর এবং আজকের সেরা ডিল এক নজরে দেখে নিন।</p>
                     </div>
-                    <h1 className="text-4xl font-black text-gray-900 leading-tight">
-                        {unionInfo.union.name} <span className="text-green-600">গ্রাম বাজার</span>
-                    </h1>
-                    <p className="text-gray-500 max-w-xl">ইউনিয়নের স্থানীয় হাটগুলোর আজকের বাজারদর এবং সরবরাহ পরিস্থিতি এক নজরে দেখে নিন।</p>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="p-4 rounded-3xl bg-white/5 border border-white/10 backdrop-blur-md">
+                            <p className="text-[9px] font-black text-emerald-300 uppercase tracking-widest mb-1">মোট বাজার</p>
+                            <p className="text-2xl font-black">{toBnDigits(unionHats.length)}টি</p>
+                        </div>
+                        <div className="p-4 rounded-3xl bg-white/5 border border-white/10 backdrop-blur-md">
+                            <p className="text-[9px] font-black text-emerald-300 uppercase tracking-widest mb-1">আজকের সেরা</p>
+                            <p className="text-2xl font-black text-emerald-400">সাশ্রয়</p>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            {/* Hat Selection Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {unionHats.map(hat => {
-                    const isOpen = hat.days.includes(today) || hat.days.includes('Everyday');
-                    const isSelected = selectedHatId === hat.id;
-                    return (
-                        <button
-                            key={hat.id}
-                            onClick={() => setSelectedHatId(hat.id)}
-                            className={`group relative p-5 rounded-2xl border-2 text-left transition-all duration-300 overflow-hidden ${
-                                isSelected 
-                                    ? 'border-green-600 bg-white shadow-xl shadow-green-100 ring-1 ring-green-600 translate-y-[-4px]' 
-                                    : 'border-white bg-white shadow-sm hover:border-green-200 hover:shadow-md'
-                            }`}
-                        >
-                            {isOpen && (
-                                <div className="absolute top-0 right-0 bg-red-500 text-white text-[9px] font-black px-3 py-1 rounded-bl-xl uppercase tracking-tighter animate-pulse z-10">
-                                    LIVE আজ হাট
-                                </div>
-                            )}
-                            <h3 className={`font-black text-lg transition-colors ${isSelected ? 'text-green-800' : 'text-gray-800 group-hover:text-green-700'}`}>{hat.name}</h3>
-                            <div className="flex items-center gap-2 mt-1">
-                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-widest ${isSelected ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                                    {hat.type}
-                                </span>
-                            </div>
-                            <div className="mt-4 flex items-center justify-between">
-                                <p className={`text-[11px] font-bold flex items-center gap-1 ${isSelected ? 'text-green-600' : 'text-gray-400'}`}>
-                                    <CalendarDays size={12}/> {hat.days.length === 1 ? hat.days[0] : `${hat.days.length} দিন`}
-                                </p>
-                                <ChevronRight size={16} className={`transition-transform duration-300 ${isSelected ? 'text-green-600 translate-x-1' : 'text-gray-300'}`} />
-                            </div>
-                        </button>
-                    )
-                })}
+            {/* Agri Alerts Bar */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="col-span-1 md:col-span-2 p-6 rounded-[32px] bg-amber-50 border border-amber-100 flex items-center gap-6 group hover:shadow-lg transition-all">
+                    <div className="p-4 rounded-2xl bg-amber-500 text-white shadow-lg shadow-amber-200 group-hover:scale-110 transition-transform">
+                        <TrendingUp size={24} />
+                    </div>
+                    <div>
+                        <h4 className="text-sm font-black text-amber-900 flex items-center gap-2 uppercase tracking-tight">
+                            সতর্কবার্তা: সার ও বীজ আপডেট
+                        </h4>
+                        <p className="text-xs font-bold text-amber-700 mt-1">দামকুড়া বিএডিসিতে ইউরিয়া ও ডিএপি সারের নতুন চালান এসেছে। সরকারি দামে ডিলারের কাছ থেকে সংগ্রহ করুন।</p>
+                    </div>
+                </div>
+                <div className="p-6 rounded-[32px] bg-sky-50 border border-sky-100 flex items-center gap-4 hover:shadow-lg transition-all">
+                    <div className="p-3 rounded-xl bg-sky-500 text-white">
+                        <CalendarDays size={20} />
+                    </div>
+                    <div>
+                        <p className="text-[10px] font-black text-sky-800 uppercase">আবহাওয়া পূর্বাভাস</p>
+                        <p className="text-sm font-black text-sky-900">আগামী ৩ দিন রৌদ্রোজ্জ্বল</p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Hat Selection Tabs */}
+            <div className="space-y-6">
+                <h2 className="text-xl font-black text-slate-800 px-2">ইউনিয়নের সকল হাট</h2>
+                <div className="flex flex-wrap gap-4">
+                    {unionHats.map(hat => {
+                        const isOpen = hat.days.includes(today) || hat.days.includes('Everyday');
+                        const isSelected = selectedHatId === hat.id;
+                        return (
+                            <button
+                                key={hat.id}
+                                onClick={() => setSelectedHatId(hat.id)}
+                                className={`px-6 py-4 rounded-3xl border-2 transition-all duration-300 text-left relative overflow-hidden ${
+                                    isSelected 
+                                        ? 'border-emerald-600 bg-white shadow-xl shadow-emerald-900/10 -translate-y-1' 
+                                        : 'border-slate-100 bg-white hover:border-emerald-200'
+                                }`}
+                            >
+                                {isOpen && (
+                                    <div className="absolute top-0 right-0 h-1.5 w-full bg-emerald-500">
+                                        <div className="absolute inset-0 bg-white/40 animate-pulse" />
+                                    </div>
+                                )}
+                                <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${isSelected ? 'text-emerald-600' : 'text-slate-400'}`}>{hat.type}</p>
+                                <h3 className={`font-black tracking-tight ${isSelected ? 'text-slate-900' : 'text-slate-600'}`}>{hat.name}</h3>
+                            </button>
+                        )
+                    })}
+                </div>
             </div>
 
             {/* Main Content Area */}
             {selectedHat && (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 items-start">
-                    {/* Price List */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
                     <div className="lg:col-span-2 space-y-6">
                         <div className="flex items-center justify-between px-2">
-                            <h2 className="text-2xl font-black text-gray-800 flex items-center gap-3">
-                                {selectedHat.name} <span className="text-gray-400 text-lg font-medium">| আজকের দর</span>
-                            </h2>
-                            <div className="h-1 flex-grow mx-4 bg-gray-100 rounded-full hidden md:block"></div>
+                            <h3 className="text-2xl font-black text-slate-800">{selectedHat.name} বাজারদর</h3>
                             {isMarketOpenToday ? (
-                                <span className="bg-red-50 text-red-600 px-3 py-1 rounded-full text-xs font-black uppercase tracking-widest flex items-center gap-1 border border-red-100">
-                                    <span className="w-1.5 h-1.5 bg-red-600 rounded-full animate-ping"></span> হাট খোলা
+                                <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100 flex items-center gap-1.5">
+                                    <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" /> আজ হাট খোলা
                                 </span>
                             ) : (
-                                <span className="bg-gray-100 text-gray-500 px-3 py-1 rounded-full text-xs font-bold">আজ হাট বন্ধ</span>
+                                <span className="text-[10px] font-bold text-slate-400 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-100">আজ হাট বন্ধ</span>
                             )}
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                            {prices ? (
-                                Object.entries(prices).map(([comId, data]) => renderPriceCard(comId, data))
-                            ) : (
-                                <div className="sm:col-span-2 py-20 bg-white rounded-3xl border border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-400 shadow-sm">
-                                    <Info size={48} className="mb-4 text-gray-200" />
-                                    <p className="font-bold text-gray-500">আজকের কোনো আপডেট পাওয়া যায়নি।</p>
-                                    <p className="text-xs max-w-[250px] text-center mt-2">আমাদের প্রতিনিধিরা হাটে গিয়ে তথ্য সংগ্রহ করার পর শীঘ্রই এখানে দাম আপডেট করা হবে।</p>
+                            {prices ? Object.entries(prices).map(([comId, data]) => renderPriceCard(comId, data)) : (
+                                <div className="sm:col-span-2 py-20 bg-white rounded-[40px] border-2 border-dashed border-slate-100 flex flex-col items-center justify-center text-slate-400">
+                                    <p className="font-black text-lg">তথ্য পাওয়া যায়নি</p>
+                                    <p className="text-sm">আজকের আপডেট এখনও আসেনি।</p>
                                 </div>
                             )}
                         </div>
                     </div>
 
-                    {/* Sidebar: Reviews & Local Info */}
-                    <div className="space-y-8 sticky top-24">
+                    <div className="space-y-8">
                         <MarketReviewSection unionSlug={unionSlug} hatId={selectedHat.id} marketName={selectedHat.name} />
+                        
+                        <div className="p-8 rounded-[40px] bg-slate-900 text-white relative overflow-hidden group">
+                            <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-emerald-500 rounded-full blur-3xl opacity-20" />
+                            <h4 className="text-emerald-400 font-black uppercase tracking-widest text-[10px] mb-2">ইউনিয়ন প্রতিনিধি</h4>
+                            <p className="text-base font-black mb-4">স্বচ্ছ বাজার নিশ্চিত করতে আমাদের প্রতিনিধিরা প্রতিদিন দাম সংগ্রহ করেন।</p>
+                            <button className="text-xs font-bold text-slate-400 hover:text-white transition-colors flex items-center gap-2">
+                                আরও জানুন <ChevronRight size={14} />
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
 
-            {/* Comparison Section (The requested "Comprize" part) */}
-            <div className="pt-10 space-y-6">
-                <div className="bg-gray-900 rounded-[2.5rem] p-10 text-white relative overflow-hidden shadow-2xl shadow-green-900/20">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-green-500/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl"></div>
-                    <div className="absolute bottom-0 left-0 w-64 h-64 bg-green-500/5 rounded-full translate-y-1/2 -translate-x-1/2 blur-3xl"></div>
-                    
-                    <div className="relative z-10">
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
-                            <div>
-                                <h2 className="text-3xl font-black mb-2 flex items-center gap-3">
-                                    <TrendingUp className="text-green-400" /> ইউনিয়ন বাজার দর তুলনা
-                                </h2>
-                                <p className="text-gray-400 font-medium">{unionInfo.union.name} ইউনিয়নের সবকটি হাটের দাম একসাথে মিলিয়ে দেখুন এবং সাশ্রয় করুন।</p>
-                            </div>
-                        </div>
-                        
-                        <PriceComparisonTable hatIds={unionHats.map(h => h.id)} />
+            {/* Comparison Section */}
+            <section className="space-y-8">
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 px-2">
+                    <div>
+                        <h2 className="text-3xl font-black text-slate-800">বাজারদর তুলনা</h2>
+                        <p className="text-slate-500 font-medium">পুরো ইউনিয়নের সব হাটের দাম একসাথে দেখে সাশ্রয় করুন।</p>
                     </div>
                 </div>
-            </div>
+                
+                <div className="rounded-[44px] overflow-hidden border border-slate-100 shadow-2xl shadow-slate-200/50 bg-white">
+                    <PriceComparisonTable hatIds={unionHats.map(h => h.id)} />
+                </div>
+            </section>
             
             <div className="pt-10 flex justify-center">
-                <a href="/services/market" className="group bg-white border border-gray-200 px-8 py-4 rounded-2xl text-gray-700 font-black hover:border-green-500 hover:text-green-600 transition-all flex items-center gap-3 shadow-sm hover:shadow-lg">
-                    ← সব ইউনিয়নের তালিকা ও জেলা ড্যাশবোর্ড
-                </a>
+                <Link href={paths.home} className="px-10 py-5 rounded-[24px] bg-white border border-slate-200 text-slate-700 font-black hover:border-emerald-500 hover:text-emerald-600 transition-all flex items-center gap-3 shadow-xl shadow-slate-200/40">
+                    ← হোমে ফিরে যান
+                </Link>
             </div>
         </div>
+
     );
 }

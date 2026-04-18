@@ -6,7 +6,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { motion } from 'framer-motion';
 import { 
     MapPin, Home, Sparkles, ArrowUpRight,
-    Users, UserCircle, ShieldCheck,
+    Users, UserCircle, ShieldCheck, Heart, MoveRight,
     Phone, CheckCircle2, LogIn, Newspaper, ArrowLeft,
     School, Building2, BookOpen, UserCheck, Droplets
 } from 'lucide-react';
@@ -114,7 +114,7 @@ export default function WardPortalClient({ ctx, ward: initialWard }) {
                             <h1 className="text-4xl sm:text-5xl font-black tracking-tight leading-[1.1] mb-4 text-white">
                                 {ward.name} <span className="text-teal-400">পোর্টাল</span>
                             </h1>
-                            <div className="flex flex-wrap gap-3 mb-2">
+                            <div className="flex flex-wrap gap-3 mb-6">
                                 <div className="inline-flex items-center gap-2 rounded-2xl bg-white/10 px-4 py-2 text-xs font-bold backdrop-blur-md border border-white/10">
                                     <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                                     {ward.villages?.length || 0}টি গ্রাম
@@ -125,6 +125,32 @@ export default function WardPortalClient({ ctx, ward: initialWard }) {
                                         মেম্বার: {ward.member.name}
                                     </div>
                                 )}
+                            </div>
+                            
+                            <div className="flex flex-wrap gap-4">
+                                <div className="p-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 w-fit min-w-[120px] pr-8">
+                                    <p className="text-[10px] font-black uppercase text-teal-300 tracking-wider mb-1 flex items-center gap-1.5"><Users size={12}/> মোট জনসংখ্যা</p>
+                                    <p className="text-2xl font-black text-white">{toBnDigits(wardStats.population)}</p>
+                                </div>
+                                <div className="p-4 rounded-2xl bg-teal-500/20 backdrop-blur-md border border-teal-400/20 w-fit min-w-[120px] pr-8">
+                                    <p className="text-[10px] font-black uppercase text-teal-200 tracking-wider mb-1 flex items-center gap-1.5"><UserCheck size={12}/> মোট ভোটার</p>
+                                    <p className="text-2xl font-black text-white">{toBnDigits(wardStats.voters)}</p>
+                                </div>
+                                <div className="p-4 rounded-2xl bg-slate-800/40 backdrop-blur-md border border-slate-700/50 w-fit min-w-[120px] pr-8">
+                                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1 flex items-center gap-1.5"><UserCircle size={12}/> পুরুষ ভোটার</p>
+                                    <p className="text-2xl font-black text-white">{toBnDigits(wardStats.maleVoters)}</p>
+                                </div>
+                                <div className="p-4 rounded-2xl bg-slate-800/40 backdrop-blur-md border border-slate-700/50 w-fit min-w-[120px] pr-8">
+                                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1 flex items-center gap-1.5"><UserCircle size={12}/> মহিলা ভোটার</p>
+                                    <p className="text-2xl font-black text-white">{toBnDigits(wardStats.femaleVoters)}</p>
+                                </div>
+                                
+                                <div className="w-full"></div> {/* Break to next line for links */}
+                                
+                                <Link href={`/u/${union.slug}`} className="p-4 rounded-2xl bg-emerald-600/20 hover:bg-emerald-600/40 backdrop-blur-md border border-emerald-500/30 w-fit transition-colors group hidden sm:block">
+                                    <p className="text-[10px] font-black uppercase text-emerald-200 tracking-wider mb-1 flex items-center gap-1.5 group-hover:text-emerald-100 transition-colors"><Building2 size={12}/> ইউনিয়ন মেইন পোর্টাল</p>
+                                    <p className="text-base font-black text-white flex items-center gap-2">{union.name} <MoveRight size={16} className="text-emerald-400 group-hover:text-emerald-300 group-hover:translate-x-1 transition-all"/></p>
+                                </Link>
                             </div>
                         </div>
 
@@ -191,7 +217,9 @@ export default function WardPortalClient({ ctx, ward: initialWard }) {
                                             return (
                                                 <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
                                                     <td className="p-4 pl-6">
-                                                        <span className="font-black text-slate-800 text-sm">{isObj ? v.name : v}</span>
+                                                        <Link href={`/u/${union.slug}/w/${ward.id}/v/${idx}`} className="font-black text-teal-600 hover:text-teal-700 underline-offset-4 hover:underline text-sm flex items-center gap-1.5 w-fit">
+                                                            {isObj ? v.name : v} <ArrowUpRight size={14} />
+                                                        </Link>
                                                     </td>
                                                     <td className="p-4">
                                                         <span className="font-bold text-slate-600 text-sm">{isObj ? toBnDigits(v.population) : '---'}</span>
