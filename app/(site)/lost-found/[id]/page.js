@@ -2,6 +2,8 @@ import { lostFoundService } from '@/lib/services/lostFoundService';
 import LostFoundDetailView from '@/components/templates/LostFoundDetailView';
 import { notFound } from 'next/navigation';
 
+export const dynamic = 'force-dynamic';
+
 export async function generateMetadata({ params }) {
     const { id } = await params;
     const post = await lostFoundService.getPostById(id);
@@ -20,6 +22,3 @@ export default async function LostFoundDetailPage({ params }) {
     return <LostFoundDetailView post={post} />;
 }
 
-export async function generateStaticParams() {
-    return [];
-}

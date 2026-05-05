@@ -2,6 +2,8 @@ import { donationService } from '@/lib/services/donationService';
 import DonationDetailView from '@/components/templates/DonationDetailView';
 import { notFound } from 'next/navigation';
 
+export const dynamic = 'force-dynamic';
+
 export async function generateMetadata({ params }) {
     const { id } = await params;
     const project = await donationService.getProjectById(id);

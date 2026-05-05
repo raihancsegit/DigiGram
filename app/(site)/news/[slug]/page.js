@@ -2,6 +2,8 @@ import { newsService } from '@/lib/services/newsService';
 import NewsDetailsView from '@/components/templates/NewsDetailsView';
 import { notFound } from 'next/navigation';
 
+export const dynamic = 'force-dynamic';
+
 export async function generateMetadata({ params }) {
     const { slug } = await params;
     const news = await newsService.getNewsBySlugOrId(slug);
@@ -28,7 +30,3 @@ export default async function NewsPage({ params }) {
     return <NewsDetailsView news={news} />;
 }
 
-export async function generateStaticParams() {
-    // We can fetch initial slugs for static generation if needed
-    return [];
-}
