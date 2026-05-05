@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getInstitutionsByLocation } from '@/lib/services/hierarchyService';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const location_id = searchParams.get('location_id');
