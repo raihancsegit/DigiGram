@@ -1,6 +1,8 @@
 import { notFound } from 'next/navigation';
 import { getInstitutionByDomain } from '@/lib/services/hierarchyService';
 
+export const dynamic = 'force-dynamic';
+
 export default async function TenantLayout({ children, params }) {
     const resolvedParams = await params;
     const { domain } = resolvedParams;

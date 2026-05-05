@@ -1,5 +1,7 @@
 import { getInstitutionByDomain } from '@/lib/services/hierarchyService';
 
+export const dynamic = 'force-dynamic';
+
 export default async function TenantHomePage({ params }) {
     const resolvedParams = await params;
     const { domain } = resolvedParams;
