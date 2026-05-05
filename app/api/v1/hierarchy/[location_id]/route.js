@@ -1,4 +1,4 @@
-import { getLocationDetails } from '@/lib/services/hierarchyService';
+import { getLocationPath } from '@/lib/services/hierarchyService';
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -8,6 +8,6 @@ export const runtime = 'nodejs';
 
 export async function GET(request, { params }) {
     const { location_id } = await params;
-    const details = await getLocationDetails(location_id);
+    const details = await getLocationPath(location_id);
     return NextResponse.json(details);
 }
