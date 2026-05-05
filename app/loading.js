@@ -1,12 +1,12 @@
-
+import { ShieldCheck } from 'lucide-react';
 
 export default function Loading() {
     return (
-        <div className="fixed inset-0 z-[9999] bg-white flex flex-col items-center justify-center">
+        <div className="min-h-screen bg-white flex flex-col items-center justify-center p-4">
             <div className="relative">
                 <div className="w-20 h-20 rounded-full border-4 border-slate-100 border-t-teal-500 animate-spin shadow-xl" />
                 <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-teal-600 animate-pulse text-2xl font-bold">...</span>
+                    <ShieldCheck className="text-teal-600 animate-pulse" size={32} />
                 </div>
             </div>
             
