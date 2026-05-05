@@ -4,8 +4,13 @@ import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { useSelector, useDispatch } from 'react-redux';
-import { MapPin, Bell, UserCircle, ChevronDown, Clock, BookOpen, Sparkles, LogOut, User, Search, Menu } from 'lucide-react';
+import { 
+    MapPin, Bell, UserCircle, ChevronDown, Clock, BookOpen, 
+    Sparkles, LogOut, User, Search, Menu, LayoutDashboard, Settings,
+    Globe, ShieldCheck, Zap
+} from 'lucide-react';
 import { openModal } from '@/lib/store/features/locationSlice';
+import { performLogout } from '@/lib/store/features/authSlice';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HEADER_QUICK_LINKS } from '@/lib/constants/serviceCategories';
 import { paths } from '@/lib/constants/paths';
@@ -28,10 +33,17 @@ export default function Header() {
 
     useEffect(() => {
         setMounted(true);
-        const handleScroll = () => setIsScrolled(window.scrollY > 20);
-        window.addEventListener('scroll', handleScroll);
+        const handleScroll = () => {
+            const scrollThreshold = 10;
+            if (window.scrollY > scrollThreshold) {
+                if (!isScrolled) setIsScrolled(true);
+            } else {
+                if (isScrolled) setIsScrolled(false);
+            }
+        };
+        window.addEventListener('scroll', handleScroll, { passive: true });
         return () => window.removeEventListener('scroll', handleScroll);
-    }, []);
+    }, [isScrolled]);
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -43,8 +55,8 @@ export default function Header() {
         if (!el) return;
         const r = el.getBoundingClientRect();
         setMenuPos({
-            top: r.bottom + 10,
-            right: Math.max(12, window.innerWidth - r.right),
+            top: r.bottom + 12,
+            right: Math.max(16, window.innerWidth - r.right),
         });
     }, []);
 
@@ -61,10 +73,10 @@ export default function Header() {
         updateMenuPosition();
         const onWin = () => updateMenuPosition();
         window.addEventListener('resize', onWin);
-        window.addEventListener('scroll', onWin, true);
+        window.addEventListener('scroll', onWin, { passive: true });
         return () => {
             window.removeEventListener('resize', onWin);
-            window.removeEventListener('scroll', onWin, true);
+            window.removeEventListener('scroll', onWin);
         };
     }, [isProfileOpen, updateMenuPosition]);
 
@@ -77,19 +89,16 @@ export default function Header() {
             setIsProfileOpen(false);
         };
         document.addEventListener('mousedown', close);
-        document.addEventListener('touchstart', close, { passive: true });
-        return () => {
-            document.removeEventListener('mousedown', close);
-            document.removeEventListener('touchstart', close);
-        };
+        return () => document.removeEventListener('mousedown', close);
     }, [isProfileOpen]);
 
     const dateStr = currentTime.toLocaleDateString('bn-BD', { day: 'numeric', month: 'long' });
     const timeStr = currentTime.toLocaleTimeString('bn-BD', { hour: '2-digit', minute: '2-digit' });
 
-    const handleLogout = () => {
-        dispatch(logout());
+    const handleLogout = async () => {
+        await dispatch(performLogout());
         setIsProfileOpen(false);
+        router.push('/login');
     };
 
     const profileMenu =
@@ -101,45 +110,71 @@ export default function Header() {
                         key="dg-profile-menu"
                         id="dg-profile-menu"
                         role="menu"
-                        initial={{ opacity: 0, y: -8, scale: 0.96 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: -8, scale: 0.96 }}
-                        transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                        initial={{ opacity: 0, y: -10, scale: 0.95, filter: 'blur(10px)' }}
+                        animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
+                        exit={{ opacity: 0, y: -10, scale: 0.95, filter: 'blur(10px)' }}
+                        transition={{ type: 'spring', stiffness: 350, damping: 28 }}
                         style={{
                             position: 'fixed',
                             top: menuPos.top,
                             right: menuPos.right,
                             zIndex: 9999,
                         }}
-                        className="w-[min(18rem,calc(100vw-1.5rem))] overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-[0_32px_120px_-20px_rgba(15,23,42,0.5)] backdrop-blur-3xl"
+                        className="w-[min(19rem,calc(100vw-2rem))] overflow-hidden rounded-[32px] border border-white/20 bg-slate-900/90 backdrop-blur-3xl shadow-[0_40px_100px_-20px_rgba(0,0,0,0.5)]"
                     >
-                        <div className="px-5 py-4 border-b border-slate-100 bg-gradient-to-br from-teal-50/50 to-sky-50/30">
-                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-teal-600/80 mb-1">অ্যাকাউন্ট প্রোফাইল</p>
-                            <p className="text-sm font-black text-slate-800 truncate">
-                                {isAuthenticated ? user.name : "ভিজিটর ইউজার"}
+                        <div className="px-6 py-5 border-b border-white/10 bg-gradient-to-br from-white/10 to-transparent">
+                            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-teal-400 mb-1.5">অ্যাকাউন্ট প্রোফাইল</p>
+                            <p className="text-base font-black text-white truncate">
+                                {isAuthenticated && user ? `${user.first_name || ''} ${user.last_name || ''}` : "ভিজিটর ইউজার"}
                             </p>
                         </div>
-                        <div className="p-2">
-                            {isAuthenticated ? (
+                        <div className="p-3 space-y-1.5">
+                            {isAuthenticated && user ? (
                                 <>
-                                    {user.role === 'WARD_MEMBER' && (
-                                        <Link
-                                            href="/ward-member/dashboard"
-                                            className="flex items-center gap-3 rounded-2xl px-4 py-3.5 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all"
-                                            onClick={() => setIsProfileOpen(false)}
-                                        >
-                                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50 text-teal-600">
-                                                <LayoutDashboard size={20} />
-                                            </div>
-                                            ড্যাশবোর্ড
-                                        </Link>
-                                    )}
+                                    {(() => {
+                                        const dashLink = user.role === 'super_admin' ? '/admin' : 
+                                                       user.role === 'chairman' ? '/chairman/dashboard' : 
+                                                       user.role === 'ward_member' ? '/ward-member/dashboard' : 
+                                                       user.role === 'volunteer' ? '/volunteer/dashboard' : null;
+                                        if (!dashLink) return null;
+                                        return (
+                                            <Link
+                                                href={dashLink}
+                                                className="flex items-center gap-3.5 rounded-2xl px-4 py-4 text-sm font-black text-white hover:bg-teal-500 transition-all group"
+                                                onClick={() => setIsProfileOpen(false)}
+                                            >
+                                                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-teal-500/20 text-teal-400 group-hover:bg-white group-hover:text-teal-600 transition-all shadow-inner">
+                                                    <LayoutDashboard size={20} />
+                                                </div>
+                                                <div className="flex flex-col leading-tight">
+                                                    <span>ড্যাশবোর্ড প্রবেশ</span>
+                                                    <span className="text-[10px] font-bold text-teal-400/80 group-hover:text-white/90">ম্যানেজমেন্ট প্যানেল</span>
+                                                </div>
+                                            </Link>
+                                        );
+                                    })()}
+
+                                    <Link
+                                        href={user.role === 'super_admin' ? '/admin/settings' : 
+                                              user.role === 'chairman' ? '/chairman/settings' : 
+                                              user.role === 'ward_member' ? '/ward-member/settings' : '/settings'}
+                                        className="flex items-center gap-3.5 rounded-2xl px-4 py-3.5 text-sm font-black text-slate-300 hover:bg-white/10 hover:text-white transition-all group"
+                                        onClick={() => setIsProfileOpen(false)}
+                                    >
+                                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 text-slate-400 group-hover:text-white transition-all">
+                                            <Settings size={20} />
+                                        </div>
+                                        প্রোফাইল সেটিংস
+                                    </Link>
+
+                                    <div className="h-px bg-white/10 mx-4 my-2" />
+
                                     <button
                                         type="button"
-                                        className="flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-sm font-bold text-rose-600 hover:bg-rose-50 transition-all"
+                                        className="flex w-full items-center gap-3.5 rounded-2xl px-4 py-3.5 text-sm font-black text-rose-400 hover:bg-rose-500 hover:text-white transition-all group"
                                         onClick={handleLogout}
                                     >
-                                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-100/50 text-rose-500">
+                                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-500/10 text-rose-400 group-hover:bg-white group-hover:text-rose-600 transition-all">
                                             <LogOut size={20} />
                                         </div>
                                         লগআউট
@@ -148,11 +183,11 @@ export default function Header() {
                             ) : (
                                 <Link
                                     href={paths.login}
-                                    className="flex items-center gap-3 rounded-2xl px-4 py-3.5 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all"
+                                    className="flex items-center gap-3.5 rounded-2xl px-4 py-4 text-sm font-black text-white hover:bg-teal-500 transition-all group"
                                     onClick={() => setIsProfileOpen(false)}
                                 >
-                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50 text-teal-600">
-                                        <User size={20} />
+                                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-teal-500 text-white shadow-lg shadow-teal-500/20">
+                                        <User size={22} />
                                     </div>
                                     লগইন করুন
                                 </Link>
@@ -165,162 +200,180 @@ export default function Header() {
         );
 
     return (
-        <header className={`sticky top-0 z-[200] transition-all duration-700 ${
-            isScrolled
-            ? 'bg-slate-900/98 backdrop-blur-2xl shadow-[0_4px_32px_-8px_rgba(15,23,42,0.45)]'
-            : 'bg-white/90 backdrop-blur-xl shadow-[0_2px_20px_-6px_rgba(15,23,42,0.1)]'
-        }`}>
-            <div className="max-w-[1440px] mx-auto px-1 sm:px-4 md:px-6 py-2 transition-all duration-700">
-                <nav className={`relative flex justify-between items-center transition-all duration-700 h-14 sm:h-16 ${
+        <header className="sticky top-0 z-[200]">
+            <div className="py-0 px-0">
+                <div className={`mx-auto max-w-[1440px] transition-all duration-500 ease-in-out px-4 sm:px-8 ${
                     isScrolled 
-                    ? 'bg-slate-900/95 backdrop-blur-2xl px-4 sm:px-8 rounded-[24px] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.4)] border border-white/10' 
-                    : 'bg-white/60 backdrop-blur-2xl border border-white/80 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.08)] rounded-[28px] px-4 sm:px-8'}`}>
-                    
-                    {/* Left: Branding & Location */}
-                    <div className="flex items-center gap-4 sm:gap-6 shrink-0">
-                        <Link href={paths.home} className="shrink-0 flex items-center gap-3 group">
-                            <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-[20px] flex items-center justify-center transition-all duration-500 ${
-                                isScrolled 
-                                ? 'bg-teal-500 shadow-[0_0_20px_rgba(20,184,166,0.3)]' 
-                                : 'bg-slate-900 shadow-xl'
-                            }`}>
-                                <Sparkles size={24} className={isScrolled ? 'text-white' : 'text-teal-400'} />
-                            </div>
-                            <div className="hidden lg:block">
-                                <p className={`text-[10px] font-black uppercase tracking-[0.2em] leading-none mb-1 transition-colors ${isScrolled ? 'text-teal-400' : 'text-teal-600'}`}>ডিজিটাল পল্লী</p>
-                                <h1 className={`text-2xl font-black leading-none tracking-tight transition-colors ${isScrolled ? 'text-white' : 'text-slate-900'}`}>ডিজিগ্রাম</h1>
-                            </div>
-                        </Link>
+                    ? 'bg-slate-900/95 backdrop-blur-2xl border-b border-white/10 shadow-xl' 
+                    : 'bg-white/95 backdrop-blur-md border-b border-slate-100'
+                }`}>
+                    <nav className="flex items-center justify-between h-16 sm:h-20">
+                        
+                        {/* Left: Branding & Location */}
+                        <div className="flex items-center gap-4 sm:gap-8">
+                            <Link href={paths.home} className="flex items-center gap-3 group shrink-0">
+                                <div className={`w-11 h-11 sm:w-13 sm:h-13 rounded-2xl flex items-center justify-center transition-all duration-500 group-hover:rotate-6 ${
+                                    isScrolled ? 'bg-teal-500 shadow-[0_0_25px_rgba(20,184,166,0.4)]' : 'bg-slate-900 shadow-xl'
+                                }`}>
+                                    <Sparkles size={24} className={isScrolled ? 'text-white' : 'text-teal-400'} />
+                                </div>
+                                <div className="hidden lg:block">
+                                    <p className={`text-[9px] font-black uppercase tracking-[0.25em] leading-none mb-1.5 transition-colors ${isScrolled ? 'text-teal-400' : 'text-teal-600'}`}>ডিজিটাল পল্লী</p>
+                                    <h1 className={`text-2xl sm:text-3xl font-black leading-none tracking-tight transition-colors ${isScrolled ? 'text-white' : 'text-slate-900'}`}>ডিজিগ্রাম</h1>
+                                </div>
+                            </Link>
 
-                        <div className={`w-px h-10 transition-colors hidden sm:block ${isScrolled ? 'bg-white/10' : 'bg-slate-200'}`} />
+                            <div className={`hidden sm:block w-px h-10 transition-colors ${isScrolled ? 'bg-white/10' : 'bg-slate-200'}`} />
 
-                        {/* High-End Location Widget */}
-                        <div className={`flex items-center rounded-xl border transition-all h-10 sm:h-12 overflow-hidden group/location ${
-                            isScrolled 
-                            ? 'bg-white/5 border-white/10 hover:bg-white/10' 
-                            : 'bg-slate-50/50 border-slate-100/80 shadow-inner hover:border-teal-200/50 hover:bg-white'
+                            {/* Advanced Location Picker */}
+                            {mounted && (
+                                <div className={`flex items-center rounded-2xl border transition-all h-11 sm:h-13 overflow-hidden group/loc ${
+                                    isScrolled 
+                                    ? 'bg-white/5 border-white/10 hover:bg-white/10' 
+                                    : 'bg-slate-50 border-slate-100 hover:border-teal-200 hover:bg-white'
+                                }`}>
+                                    <button
+                                        onClick={() => dispatch(openModal())}
+                                        className="flex items-center gap-3 px-4 sm:px-6 h-full transition-all min-w-0 md:w-auto"
+                                    >
+                                        <div className={`p-1.5 rounded-xl transition-colors shrink-0 ${
+                                            isScrolled ? 'bg-teal-500/20 text-teal-400' : 'bg-teal-50 text-teal-600'
+                                        }`}>
+                                            <MapPin size={18} />
+                                        </div>
+                                        <div className="flex flex-col items-start min-w-0 leading-tight">
+                                            <span className={`text-[8px] font-black uppercase tracking-[0.2em] mb-1 opacity-60 ${isScrolled ? 'text-teal-400' : 'text-slate-500'}`}>
+                                                {selected.ward ? `${selected.ward} নং ওয়ার্ড` : 'আপনার অবস্থান'}
+                                            </span>
+                                            <span className={`text-sm font-black truncate tracking-tight ${isScrolled ? 'text-white' : 'text-slate-900'}`}>
+                                                {selected.union || 'নির্বাচন করুন'}
+                                            </span>
+                                        </div>
+                                    </button>
+                                    <button
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            dispatch(openModal());
+                                        }}
+                                        className={`px-3 sm:px-4 h-full border-l flex items-center justify-center transition-all group-hover/loc:bg-teal-500/10 ${
+                                            isScrolled ? 'border-white/10 text-teal-400' : 'border-slate-100 text-slate-400'
+                                        }`}
+                                    >
+                                        <ChevronDown size={14} className="transition-transform group-hover/loc:rotate-180" />
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Middle: Desktop Nav Quick Links */}
+                        <div className={`hidden xl:flex items-center gap-1 p-1 rounded-2xl transition-all duration-500 ${
+                            isScrolled ? 'bg-white/5 border border-white/10' : 'bg-slate-100 border border-slate-200/50 shadow-inner'
                         }`}>
-                            {selected.unionSlug ? (
-                                <button
-                                    onClick={() => router.push(paths.unionPortal(selected.unionSlug))}
-                                    className="flex items-center gap-3 px-4 sm:px-6 h-full transition-colors min-w-0 md:w-auto"
+                            {HEADER_QUICK_LINKS.map((item) => (
+                                <Link
+                                    key={item.id}
+                                    href={item.href}
+                                    className={`flex items-center gap-2.5 px-5 py-2 rounded-xl transition-all duration-300 group relative overflow-hidden ${
+                                        isScrolled 
+                                        ? 'text-white/70 hover:text-white' 
+                                        : 'text-slate-600 hover:text-teal-700'
+                                    }`}
                                 >
-                                    <div className={`p-1.5 rounded-lg transition-colors shrink-0 ${
-                                        isScrolled ? 'bg-teal-500/20 text-teal-400' : 'bg-teal-50 text-teal-600'
-                                    }`}>
-                                        <MapPin size={16} />
+                                    <item.icon size={16} className={`transition-all duration-500 group-hover:scale-125 group-hover:rotate-6 ${isScrolled ? 'text-teal-400' : 'text-teal-600'}`} />
+                                    <span className="text-[13px] font-black tracking-tight">{item.title}</span>
+                                    {pathname === item.href && (
+                                        <motion.div 
+                                            layoutId="active-nav"
+                                            className={`absolute inset-0 -z-10 rounded-xl ${isScrolled ? 'bg-white/10' : 'bg-white shadow-sm ring-1 ring-slate-200/50'}`}
+                                        />
+                                    )}
+                                </Link>
+                            ))}
+                        </div>
+
+                        {/* Right: Info & Profile */}
+                        <div className="flex items-center gap-3 sm:gap-5">
+                            
+                            {/* Time & Info (Desktop) */}
+                            {mounted && (
+                                <div className="hidden lg:flex flex-col text-right leading-tight">
+                                    <div className={`flex items-center justify-end gap-1.5 mb-1 ${isScrolled ? 'text-teal-400' : 'text-teal-600'}`}>
+                                        <div className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
+                                        <span className="text-[9px] font-black uppercase tracking-[0.25em]">{getGreeting()}</span>
                                     </div>
-                                    <div className="flex flex-col items-start min-w-0 leading-none">
-                                        <span className={`text-[8px] font-black uppercase tracking-[0.2em] mb-1 opacity-50 ${isScrolled ? 'text-white' : 'text-slate-500'}`}>
-                                            {selected.ward ? selected.ward : 'আপনার ইউনিয়ন'}
-                                        </span>
-                                        <span className={`text-sm font-black truncate tracking-tight ${isScrolled ? 'text-white' : 'text-slate-900'}`}>
-                                            {selected.union}
-                                        </span>
-                                    </div>
-                                </button>
-                            ) : (
-                                <button
-                                    onClick={() => dispatch(openModal())}
-                                    className="flex items-center gap-3 px-4 sm:px-6 h-full transition-colors min-w-0"
-                                >
-                                    <div className={`p-1.5 rounded-lg transition-colors shrink-0 ${
-                                        isScrolled ? 'bg-teal-500/20 text-teal-400' : 'bg-teal-50 text-teal-600'
-                                    }`}>
-                                        <MapPin size={16} />
-                                    </div>
-                                    <h3 className={`text-xs sm:text-sm font-black truncate tracking-tight ${isScrolled ? 'text-white' : 'text-slate-800'}`}>অবস্থান নির্বাচন</h3>
-                                </button>
+                                    <p className={`text-base font-black tabular-nums tracking-tighter ${isScrolled ? 'text-white' : 'text-slate-800'}`}>{timeStr}</p>
+                                </div>
                             )}
 
-                            <button
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    dispatch(openModal());
-                                }}
-                                className={`px-2.5 sm:px-4 h-full border-l flex items-center justify-center transition-all group/arrow ${
-                                    isScrolled 
-                                    ? 'bg-white/5 border-white/10 hover:bg-teal-500 text-white' 
-                                    : 'bg-slate-100/30 border-slate-100 hover:bg-teal-600 hover:text-white text-slate-400'
-                                }`}
-                                aria-label="এলাকা পরিবর্তন"
-                            >
-                                <ChevronDown size={14} className="transition-transform group-hover/arrow:rotate-180" />
+                            {/* Search Button */}
+                            <button className={`w-11 h-11 sm:w-12 sm:h-12 rounded-2xl transition-all flex items-center justify-center active:scale-90 group ${
+                                isScrolled 
+                                ? 'bg-white/10 border border-white/10 text-white hover:bg-teal-500' 
+                                : 'bg-white border border-slate-200 text-slate-400 shadow-sm hover:border-teal-400 hover:text-teal-600'
+                            }`}>
+                                <Search size={20} strokeWidth={2.5} className="group-hover:scale-110 transition-transform" />
                             </button>
-                        </div>
-                    </div>
 
-                    {/* Middle: Desktop Nav Quick Links */}
-                    <div className={`hidden xl:flex items-center gap-0.5 p-0.5 rounded-xl transition-all duration-500 ${
-                        isScrolled ? 'bg-white/5 border border-white/10' : 'bg-slate-100/40 border border-slate-100'
-                    }`}>
-                        {HEADER_QUICK_LINKS.map((item) => (
-                            <Link
-                                key={item.id}
-                                href={item.href}
-                                className={`flex items-center gap-2 px-4 py-1.5 rounded-lg transition-all duration-300 group ${
-                                    isScrolled 
-                                    ? 'text-white/60 hover:text-white hover:bg-white/10' 
-                                    : 'text-slate-500 hover:text-teal-700 hover:bg-white hover:shadow-sm'
-                                }`}
-                            >
-                                <item.icon size={14} className={`transition-transform duration-500 group-hover:scale-110 ${isScrolled ? 'text-teal-400' : 'text-teal-600/70'}`} />
-                                <span className="text-[12px] font-black tracking-tight">{item.title}</span>
-                            </Link>
-                        ))}
-                    </div>
-
-                    {/* Right: Info & Profile */}
-                    <div className="flex items-center gap-2 sm:gap-4">
-                        
-                        {/* Time & Greeting (Desktop) */}
-                        <div className="hidden lg:flex flex-col text-right leading-none">
-                            <div className={`flex items-center justify-end gap-1 mb-0.5 ${isScrolled ? 'text-teal-400' : 'text-teal-600'}`}>
-                                <Sparkles size={10} className="fill-current" />
-                                <span className="text-[9px] font-black uppercase tracking-[0.2em]">{getGreeting()}</span>
+                            {/* Profile Wrapper */}
+                            <div className="relative" ref={profileWrapRef}>
+                                {mounted && (
+                                    <button
+                                        onClick={() => {
+                                            setIsProfileOpen((o) => !o);
+                                            requestAnimationFrame(() => updateMenuPosition());
+                                        }}
+                                        className={`flex items-center gap-3 p-1.5 pl-1.5 pr-4 rounded-2xl transition-all active:scale-95 group/prof ${
+                                            isScrolled 
+                                            ? 'bg-teal-500 shadow-[0_10px_25px_-5px_rgba(20,184,166,0.5)]' 
+                                            : 'bg-slate-900 shadow-xl'
+                                        }`}
+                                    >
+                                        <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-all overflow-hidden border-2 ${
+                                            isScrolled 
+                                            ? 'bg-white/20 border-white/20 group-hover/prof:border-white' 
+                                            : 'bg-white/10 border-white/5 group-hover/prof:border-teal-400'
+                                        }`}>
+                                            {isAuthenticated && user?.avatar_url ? (
+                                                <img src={user.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                                            ) : (
+                                                <UserCircle size={24} className="text-white" />
+                                            )}
+                                        </div>
+                                        <div className="hidden sm:flex flex-col items-start leading-none">
+                                            {isAuthenticated && user && (
+                                                <p className="text-[9px] font-black text-white/60 uppercase tracking-tighter mb-1">
+                                                    {user.role === 'chairman' ? 'চেয়ারম্যান' : 
+                                                     user.role === 'ward_member' ? 'মেম্বার' : 
+                                                     user.role === 'super_admin' ? 'এডমিন' : 
+                                                     user.role === 'volunteer' ? 'ভলান্টিয়ার' : 'ইউজার'}
+                                                </p>
+                                            )}
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-sm font-black text-white tracking-tight">
+                                                    {isAuthenticated && user ? user.first_name : 'লগইন'}
+                                                </span>
+                                                <ChevronDown size={12} className={`text-white transition-transform duration-500 ${isProfileOpen ? 'rotate-180' : ''}`} />
+                                            </div>
+                                        </div>
+                                    </button>
+                                )}
                             </div>
-                            <p className={`text-sm font-black tabular-nums tracking-tight ${isScrolled ? 'text-white' : 'text-slate-800'}`}>{timeStr}</p>
                         </div>
-
-                        {/* Search Quick Button */}
-                        <button className={`w-10 h-10 rounded-xl transition-all flex items-center justify-center active:scale-95 ${
-                            isScrolled 
-                            ? 'bg-white/10 border border-white/10 text-white hover:bg-teal-500' 
-                            : 'bg-white border border-slate-100 text-slate-400 shadow-sm hover:border-teal-200 hover:text-teal-600'
-                        }`}>
-                            <Search size={18} strokeWidth={2.5} />
-                        </button>
-
-                        {/* Profile Wrapper */}
-                        <div className="relative" ref={profileWrapRef}>
-                            <button
-                                onClick={() => {
-                                    setIsProfileOpen((o) => !o);
-                                    requestAnimationFrame(() => updateMenuPosition());
-                                }}
-                                className={`flex items-center gap-2 p-0.5 pl-0.5 pr-2 rounded-xl transition-all active:scale-[0.98] ${
-                                    isScrolled 
-                                    ? 'bg-teal-500 shadow-lg shadow-teal-500/20' 
-                                    : 'bg-slate-900 shadow-lg shadow-slate-900/10'
-                                }`}
-                            >
-                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
-                                    isScrolled ? 'bg-white/20 text-white' : 'bg-white/10 text-teal-400'
-                                }`}>
-                                    <UserCircle size={22} />
-                                </div>
-                                <div className="hidden sm:block text-left">
-                                    <ChevronDown size={12} className={`text-white transition-transform duration-300 ${isProfileOpen ? 'rotate-180' : ''}`} />
-                                </div>
-                            </button>
-                        </div>
-                    </div>
-                </nav>
+                    </nav>
+                </div>
             </div>
-            {showTicker && <NewsTicker />}
+            <AnimatePresence>
+                {showTicker && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                    >
+                        <NewsTicker />
+                    </motion.div>
+                )}
+            </AnimatePresence>
             {profileMenu}
         </header>
-
     );
 }

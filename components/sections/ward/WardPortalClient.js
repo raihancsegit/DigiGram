@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useDispatch, useSelector } from 'react-redux';
 import { motion } from 'framer-motion';
 import { 
-    MapPin, Home, Sparkles, ArrowUpRight,
+    MapPin, Home, Sparkles, ArrowUpRight, ArrowRight,
     Users, UserCircle, ShieldCheck, Heart, MoveRight,
     Phone, CheckCircle2, LogIn, Newspaper, ArrowLeft,
     School, Building2, BookOpen, UserCheck, Droplets
@@ -15,6 +15,8 @@ import { paths } from '@/lib/constants/paths';
 import { layout } from '@/lib/theme';
 import PowerWatchSection from '../community/PowerWatchSection';
 import { parseBnInt, toBnDigits } from '@/lib/utils/format';
+import PortalLoginModal from '@/components/modals/PortalLoginModal';
+import { useState } from 'react';
 
 export default function WardPortalClient({ ctx, ward: initialWard }) {
     const dispatch = useDispatch();
@@ -22,6 +24,8 @@ export default function WardPortalClient({ ctx, ward: initialWard }) {
     const { dynamicNews } = useSelector((s) => s.news);
     const { user, isAuthenticated } = useSelector((s) => s.auth);
     const { dynamicWardData } = useSelector((state) => state.wardData);
+
+    const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
     // Merge static and dynamic ward data
     const ward = useMemo(() => {
@@ -43,10 +47,9 @@ export default function WardPortalClient({ ctx, ward: initialWard }) {
         };
     }, [initialWard, union.slug, dynamicWardData]);
 
-    const isMyWard = isAuthenticated &&
-        user?.role === 'WARD_MEMBER' &&
-        user?.wardId === ward.id &&
-        user?.unionId === union.slug;
+    const isMyWard = isAuthenticated && 
+        user?.role === 'ward_member' && 
+        user?.access_scope_id === ward.id;
 
     // Aggregate institutional stats for this ward
     const wardStats = useMemo(() => {
@@ -159,25 +162,28 @@ export default function WardPortalClient({ ctx, ward: initialWard }) {
                             {isMyWard ? (
                                 <Link
                                     href="/ward-member/dashboard"
-                                    className="flex flex-col gap-3 p-6 rounded-[28px] bg-teal-500/20 border border-teal-400/30 hover:bg-teal-500/30 transition-all"
+                                    className="flex flex-col gap-3 p-6 rounded-[28px] bg-teal-500/20 border border-teal-400/30 hover:bg-teal-500/30 transition-all shadow-lg shadow-teal-500/10"
                                 >
-                                    <p className="text-[10px] font-black uppercase text-teal-300 tracking-widest">আপনার ড্যাশবোর্ড</p>
-                                    <p className="font-black text-white">খবর ও তথ্য আপডেট করুন</p>
-                                    <span className="flex items-center gap-2 text-teal-300 text-sm font-bold">
-                                        ড্যাশবোর্ডে যান <ArrowUpRight size={16} />
+                                    <p className="text-[10px] font-black uppercase text-teal-300 tracking-widest flex items-center gap-2">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse" />
+                                        আপনার ড্যাশবোর্ড
+                                    </p>
+                                    <p className="font-black text-white text-base">তথ্য ও সেবা নিয়ন্ত্রণ করুন</p>
+                                    <span className="flex items-center gap-2 text-teal-400 text-sm font-black mt-2">
+                                        পোর্টালে প্রবেশ <ArrowRight size={18} />
                                     </span>
                                 </Link>
                             ) : (
-                                <div className="p-6 rounded-[28px] bg-white/5 border border-white/10">
-                                    <p className="text-[10px] font-black uppercase text-teal-300 tracking-widest mb-3">মেম্বার পোর্টাল</p>
-                                    <p className="text-sm font-bold text-slate-300 mb-4">আপনি কি এই ওয়াডের নির্বাচিত মেম্বার?</p>
-                                    <Link
-                                        href="/login"
-                                        className="flex items-center gap-2 justify-center bg-teal-500 text-white font-black text-sm px-4 py-3 rounded-2xl hover:bg-teal-400 transition-all"
+                                <div className="p-6 rounded-[28px] bg-white/5 border border-white/10 hover:bg-white/10 transition-all">
+                                    <p className="text-[10px] font-black uppercase text-teal-400 tracking-widest mb-3">অফিসিয়াল পোর্টাল</p>
+                                    <p className="text-sm font-bold text-slate-300 mb-5">আপনি কি এই ওয়াডের নির্বাচিত মেম্বার?</p>
+                                    <button
+                                        onClick={() => setIsLoginModalOpen(true)}
+                                        className="w-full flex items-center gap-2 justify-center bg-teal-500 text-white font-black text-sm px-4 py-4 rounded-2xl hover:bg-teal-400 transition-all active:scale-95 shadow-lg shadow-teal-500/20"
                                     >
-                                        <LogIn size={16} />
+                                        <LogIn size={18} />
                                         মেম্বার লগইন
-                                    </Link>
+                                    </button>
                                 </div>
                             )}
                         </div>
@@ -217,7 +223,7 @@ export default function WardPortalClient({ ctx, ward: initialWard }) {
                                             return (
                                                 <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
                                                     <td className="p-4 pl-6">
-                                                        <Link href={`/u/${union.slug}/w/${ward.id}/v/${idx}`} className="font-black text-teal-600 hover:text-teal-700 underline-offset-4 hover:underline text-sm flex items-center gap-1.5 w-fit">
+                                                        <Link href={`/g/${isObj ? (v.id || idx) : idx}`} className="font-black text-teal-600 hover:text-teal-700 underline-offset-4 hover:underline text-sm flex items-center gap-1.5 w-fit">
                                                             {isObj ? v.name : v} <ArrowUpRight size={14} />
                                                         </Link>
                                                     </td>
@@ -327,10 +333,13 @@ export default function WardPortalClient({ ctx, ward: initialWard }) {
                                     <Newspaper className="mx-auto text-slate-300 mb-3" size={40} />
                                     <p className="font-bold text-slate-400 text-sm">এখনো কোনো খবর পোস্ট হয়নি</p>
                                     {!isMyWard && (
-                                        <Link href="/login" className="inline-flex items-center gap-1.5 mt-3 text-teal-600 font-bold text-sm hover:underline">
+                                        <button 
+                                            onClick={() => setIsLoginModalOpen(true)}
+                                            className="inline-flex items-center gap-1.5 mt-3 text-teal-600 font-bold text-sm hover:underline"
+                                        >
                                             <LogIn size={14} />
                                             মেম্বার লগইন করুন
-                                        </Link>
+                                        </button>
                                     )}
                                 </div>
                             ) : (
@@ -468,6 +477,13 @@ export default function WardPortalClient({ ctx, ward: initialWard }) {
                     </div>
                 </div>
             </div>
+
+            <PortalLoginModal 
+                isOpen={isLoginModalOpen}
+                onClose={() => setIsLoginModalOpen(false)}
+                defaultRole="ward_member"
+                locationName={`${ward.name}, ${union.name}`}
+            />
         </div>
     );
 }

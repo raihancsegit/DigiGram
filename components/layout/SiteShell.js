@@ -7,14 +7,17 @@ import LocationModal from '@/components/modals/LocationModal';
 import BottomNav from '@/components/layout/BottomNav';
 
 export default function SiteShell({ children }) {
+    const pathname = usePathname();
+    const isDashboard = pathname?.startsWith('/admin') || pathname?.startsWith('/chairman');
+
     return (
         <PageShell>
-            <Header />
-            <div className="dg-content-stack">
+            {!isDashboard && <Header />}
+            <div className={isDashboard ? "min-h-screen bg-slate-50" : "dg-content-stack"}>
                 {children}
             </div>
-            <LocationModal />
-            <BottomNav />
+            {!isDashboard && <LocationModal />}
+            {!isDashboard && <BottomNav />}
         </PageShell>
     );
 }

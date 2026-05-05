@@ -5,22 +5,48 @@ import Link from 'next/link';
 import { useDispatch, useSelector } from 'react-redux';
 import { motion } from 'framer-motion';
 import { 
-    MapPin, Home, Sparkles, ArrowUpRight, ArrowRight,
+    MapPin, Home, Sparkles, ArrowUpRight, ArrowRight as LucideArrowRight,
     Users, UserCheck, ShieldCheck, School, GraduationCap, 
-    BookOpen, Phone, UserCircle, CheckCircle2, LogIn, ChevronLeft, ChevronRight, Building2, Droplets
+    BookOpen, Phone, UserCircle, CheckCircle2, LogIn, ChevronLeft, ChevronRight, Building2, Droplets,
+    Activity, BellRing, Navigation
 } from 'lucide-react';
 import { applyLocationSnapshot, openModal } from '@/lib/store/features/locationSlice';
 import { SERVICE_CATEGORIES } from '@/lib/constants/serviceCategories';
 import { paths } from '@/lib/constants/paths';
 import { layout } from '@/lib/theme';
 import UnionNewsSection from './UnionNewsSection';
-import { Activity, BellRing, Navigation } from 'lucide-react';
 import { parseBnInt, toBnDigits } from '@/lib/utils/format';
+import PortalLoginModal from '@/components/modals/PortalLoginModal';
 
-export default function UnionPortalClient({ ctx }) {
+const DB_SLUG_MAP = {
+    'emergency': 'emergency-hotline',
+    'blood': 'blood-bank',
+    'lost': 'lost-found',
+    'school': 'school',
+    'fuel': 'fuel',
+    'agri-pool': 'agriculture',
+    'e-clinic': 'health',
+    'islamic': 'mosque',
+    'labor': 'labor-directory',
+    'news': 'news-updates',
+    'donation': 'donation',
+    'market': 'village-market',
+    'power-watch': 'power-watch',
+    'e-up': 'ledger'
+};
+
+export default function UnionPortalClient({ ctx, activeServices = [], chairman = null }) {
     const dispatch = useDispatch();
     const { district, upazila, union } = ctx;
     const { dynamicWardData } = useSelector((state) => state.wardData);
+    const { user, isAuthenticated } = useSelector((state) => state.auth);
+
+    const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+
+    // Auth check for this specific union
+    const isChairmanOfThisUnion = isAuthenticated && 
+        user?.role === 'chairman' && 
+        user?.access_scope_id === union.id;
 
     // Merge static and dynamic ward data
     const mergedWards = useMemo(() => {
@@ -208,7 +234,10 @@ export default function UnionPortalClient({ ctx }) {
                                 <BellRing size={12} />
                                 জরুরি যোগাযোগ
                             </p>
-                            <div className="flex items-center gap-4 p-4 rounded-2xl bg-white/10 border border-white/5 mb-2 relative z-10 hover:bg-white/15 transition-colors cursor-pointer active:scale-95">
+                            <div 
+                                onClick={() => document.getElementById('emergency-section')?.scrollIntoView({ behavior: 'smooth' })}
+                                className="flex items-center gap-4 p-4 rounded-2xl bg-white/10 border border-white/5 mb-2 relative z-10 hover:bg-white/15 transition-colors cursor-pointer active:scale-95"
+                            >
                                 <div className="p-3 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 shadow-lg shadow-teal-500/30">
                                     <Phone size={20} className="text-white" />
                                 </div>
@@ -272,7 +301,7 @@ export default function UnionPortalClient({ ctx }) {
                                         transition={{ delay: idx * 0.08 + 0.4 }}
                                     >
                                         <Link
-                                            href={`/u/${union.slug}/w/${ward.id}`}
+                                            href={`/w/${ward.id}`}
                                             className="block border border-slate-100 rounded-[24px] overflow-hidden group hover:border-teal-300 hover:shadow-xl transition-all duration-300 bg-white"
                                         >
                                             {/* Ward Header */}
@@ -292,8 +321,12 @@ export default function UnionPortalClient({ ctx }) {
                                                     {/* Member Badge */}
                                                     {ward.member && (
                                                         <div className="hidden sm:flex items-center gap-3 bg-white border border-slate-100 rounded-2xl px-4 py-2 shadow-sm group-hover:border-teal-100 transition-colors">
-                                                            <div className="w-8 h-8 rounded-full bg-teal-50 flex items-center justify-center border border-teal-100">
-                                                                <UserCircle size={20} className="text-teal-600" />
+                                                            <div className="w-8 h-8 rounded-full bg-teal-50 flex items-center justify-center border border-teal-100 overflow-hidden shrink-0">
+                                                                {ward.member.avatar_url ? (
+                                                                    <img src={ward.member.avatar_url} alt={ward.member.name} className="w-full h-full object-cover" />
+                                                                ) : (
+                                                                    <UserCircle size={20} className="text-teal-600" />
+                                                                )}
                                                             </div>
                                                             <div>
                                                                 <p className="text-[9px] font-black text-teal-600 uppercase tracking-wider leading-none mb-0.5">নির্বাচিত মেম্বার</p>
@@ -302,7 +335,7 @@ export default function UnionPortalClient({ ctx }) {
                                                         </div>
                                                     )}
                                                     <div className="w-10 h-10 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0 group-hover:bg-teal-500 group-hover:border-teal-500 transition-all shadow-sm">
-                                                        <ArrowRight size={16} className="text-slate-400 group-hover:text-white transition-colors" />
+                                                        <LucideArrowRight size={16} className="text-slate-400 group-hover:text-white transition-colors" />
                                                     </div>
                                                 </div>
                                             </div>
@@ -437,17 +470,27 @@ export default function UnionPortalClient({ ctx }) {
                             {/* Member Login CTA */}
                             <div className="mt-6 p-5 rounded-2xl bg-gradient-to-br from-slate-900 to-teal-900 text-white flex flex-col sm:flex-row items-center justify-between gap-4">
                                 <div>
-                                    <p className="text-xs font-black uppercase tracking-widest text-teal-400 mb-1">মেম্বার পোর্টাল</p>
-                                    <p className="font-black text-base">আপনি কি নির্বাচিত মেম্বার?</p>
-                                    <p className="text-slate-400 text-xs font-bold mt-1">লগইন করুন এবং আপনার ওয়াডের তথ্য আপডেট করুন।</p>
+                                    <p className="text-xs font-black uppercase tracking-widest text-teal-400 mb-1">অফিসিয়াল পোর্টাল</p>
+                                    <p className="font-black text-base">জনপ্রতিনিধি লগইন</p>
+                                    <p className="text-slate-400 text-xs font-bold mt-1">চেয়ারম্যান বা মেম্বার হিসেবে লগইন করে তথ্য আপডেট করুন।</p>
                                 </div>
-                                <Link
-                                    href="/login"
-                                    className="shrink-0 flex items-center gap-2 bg-teal-500 hover:bg-teal-400 text-white font-black text-sm px-6 py-3 rounded-2xl shadow-lg shadow-teal-900/40 transition-all active:scale-95 whitespace-nowrap"
-                                >
-                                    <LogIn size={18} />
-                                    মেম্বার লগইন
-                                </Link>
+                                {isChairmanOfThisUnion ? (
+                                    <Link
+                                        href="/chairman/dashboard"
+                                        className="shrink-0 flex items-center gap-2 bg-teal-500 hover:bg-teal-400 text-white font-black text-sm px-6 py-3 rounded-2xl shadow-lg shadow-teal-900/40 transition-all active:scale-95 whitespace-nowrap"
+                                    >
+                                        <LucideArrowRight size={18} />
+                                        ড্যাশবোর্ডে যান
+                                    </Link>
+                                ) : (
+                                    <button
+                                        onClick={() => setIsLoginModalOpen(true)}
+                                        className="shrink-0 flex items-center gap-2 bg-teal-500 hover:bg-teal-400 text-white font-black text-sm px-6 py-3 rounded-2xl shadow-lg shadow-teal-900/40 transition-all active:scale-95 whitespace-nowrap"
+                                    >
+                                        <LogIn size={18} />
+                                        পোর্টালে প্রবেশ
+                                    </button>
+                                )}
                             </div>
                         </div>
 
@@ -467,16 +510,22 @@ export default function UnionPortalClient({ ctx }) {
                                 <div className="absolute top-0 right-0 w-32 h-32 bg-teal-500 rounded-full blur-[40px] opacity-30 pointer-events-none" />
                             </div>
                             
-                            <div className="relative mt-8 mb-6 mx-auto w-28 h-28 rounded-full p-1 border-4 border-white shadow-xl bg-white">
+                             <div className="relative mt-8 mb-6 mx-auto w-28 h-28 rounded-full p-1 border-4 border-white shadow-xl bg-white">
                                 <div className="w-full h-full rounded-full bg-slate-100 flex items-center justify-center overflow-hidden">
-                                    <UserCircle size={80} className="text-slate-300" />
+                                    {chairman?.avatar_url ? (
+                                        <img src={chairman.avatar_url} alt={chairman.first_name} className="w-full h-full object-cover" />
+                                    ) : (
+                                        <UserCircle size={80} className="text-slate-300" />
+                                    )}
                                 </div>
                             </div>
                             
-                            <h3 className="text-2xl font-black text-slate-800 mb-1 leading-tight">মোঃ আব্দুর রহমান</h3>
+                            <h3 className="text-2xl font-black text-slate-800 mb-1 leading-tight">
+                                {chairman ? `${chairman.first_name} ${chairman.last_name || ''}` : ctx.union.chairman?.name || 'মোঃ আব্দুর রহমান'}
+                            </h3>
                             <p className="text-xs font-bold text-teal-600 bg-teal-50 px-4 py-1.5 rounded-full w-fit mx-auto mb-6 border border-teal-100">সম্মানিত চেয়ারম্যান</p>
                             
-                            <div className="space-y-4 mb-8 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                            <div className="space-y-4 mb-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
                                 <div className="flex items-center justify-between text-left">
                                     <p className="text-[10px] font-bold text-slate-400 uppercase">দায়িত্বকাল</p>
                                     <p className="text-sm font-black text-slate-700">বর্তমান মেয়াদে আছেন</p>
@@ -487,11 +536,28 @@ export default function UnionPortalClient({ ctx }) {
                                     <p className="text-sm font-black text-slate-700 text-right">রবি-বৃহঃ<br/>সকাল ১০টা - ৩টা</p>
                                 </div>
                             </div>
-
-                            <button className="w-full py-4 rounded-2xl bg-slate-900 hover:bg-teal-600 text-white font-black text-sm shadow-xl shadow-slate-200 hover:shadow-teal-200 active:scale-95 transition-all flex items-center justify-center gap-2 group">
-                                <Phone size={18} className="group-hover:animate-bounce" />
-                                সরাসরি যোগাযোগ করুন
-                            </button>
+                            
+                            <div className="space-y-3">
+                                <a href={`tel:${chairman?.phone || ctx.union.chairman?.phone || ''}`} className="w-full py-4 rounded-2xl bg-slate-900 hover:bg-teal-600 text-white font-black text-sm shadow-xl shadow-slate-200 hover:shadow-teal-200 active:scale-95 transition-all flex items-center justify-center gap-2 group">
+                                    <Phone size={18} className="group-hover:animate-bounce" />
+                                    {chairman?.phone || ctx.union.chairman?.phone || '০১৭০০-০০০০০০'} সরাসরি যোগাযোগ
+                                </a>
+                                
+                                {isChairmanOfThisUnion ? (
+                                    <Link href="/chairman/dashboard" className="w-full py-3 rounded-2xl bg-emerald-50 text-emerald-700 border-2 border-emerald-100 hover:bg-emerald-100 hover:border-emerald-200 font-black text-sm transition-all flex items-center justify-center gap-2">
+                                        <LucideArrowRight size={16} />
+                                        ড্যাশবোর্ডে যান
+                                    </Link>
+                                ) : (
+                                    <button 
+                                        onClick={() => setIsLoginModalOpen(true)}
+                                        className="w-full py-3 rounded-2xl bg-white border-2 border-slate-100 text-slate-500 hover:border-teal-500 hover:text-teal-600 font-black text-sm transition-all flex items-center justify-center gap-2"
+                                    >
+                                        <LogIn size={16} />
+                                        চেয়ারম্যান ড্যাশবোর্ড লগইন
+                                    </button>
+                                )}
+                            </div>
                         </motion.div>
 
                         {/* Compact Ward Members List */}
@@ -504,8 +570,12 @@ export default function UnionPortalClient({ ctx }) {
                                 {mergedWards.map((ward) => (
                                     ward.member && (
                                         <div key={ward.id} className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 border border-slate-100 hover:border-teal-100 transition-all">
-                                            <div className="w-9 h-9 rounded-full bg-teal-50 flex items-center justify-center text-teal-600 border border-teal-100 shrink-0">
-                                                <UserCircle size={20} />
+                                            <div className="w-9 h-9 rounded-full bg-teal-50 flex items-center justify-center text-teal-600 border border-teal-100 shrink-0 overflow-hidden">
+                                                {ward.member.avatar_url ? (
+                                                    <img src={ward.member.avatar_url} alt={ward.member.name} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <UserCircle size={20} />
+                                                )}
                                             </div>
                                             <div className="min-w-0 flex-1">
                                                 <p className="text-xs font-black text-slate-800 truncate">{ward.member.name}</p>
@@ -529,6 +599,9 @@ export default function UnionPortalClient({ ctx }) {
                 {/* Union News Section */}
                 <UnionNewsSection 
                     unionName={union.name} 
+                    unionId={union.id}
+                    unionSlug={union.slug}
+                    wardIds={mergedWards.map(w => w.id)}
                     villages={allVillages} 
                 />
 
@@ -557,51 +630,84 @@ export default function UnionPortalClient({ ctx }) {
                         }}
                         className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 list-none p-0 m-0"
                     >
-                        {SERVICE_CATEGORIES.map((cat) => (
-                            <motion.li
-                                key={cat.id}
-                                variants={{
-                                    hidden: { opacity: 0, y: 14 },
-                                    show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 400, damping: 28 } },
-                                }}
-                            >
-                                <Link
-                                    href={`${paths.service(cat.id)}?u=${encodeURIComponent(union.slug)}`}
-                                    className="group relative flex h-full flex-col overflow-hidden rounded-[28px] bg-white border border-slate-200/60 p-5 sm:p-6 hover:shadow-xl hover:border-teal-200 hover:-translate-y-1.5 transition-all duration-300"
+                        {SERVICE_CATEGORIES.map((cat) => {
+                            // Check if this service is active in the Database
+                            const dbSlug = DB_SLUG_MAP[cat.id] || cat.id;
+                            let isActiveFromDB = activeServices.some(s => s.services?.slug === dbSlug);
+                            
+                            // No longer forcing active
+                            // if (cat.id === 'donation') isActiveFromDB = true;
+                            
+                            return (
+                                <motion.li
+                                    key={cat.id}
+                                    variants={{
+                                        hidden: { opacity: 0, y: 14 },
+                                        show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 400, damping: 28 } },
+                                    }}
                                 >
-                                    <div
-                                        className={`pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-gradient-to-br ${cat.gradient} opacity-[0.08] blur-2xl transition-opacity group-hover:opacity-[0.15]`}
-                                    />
-                                    <div className="relative flex items-start justify-between gap-2 mb-4">
+                                    <Link
+                                        href={`${paths.service(cat.id)}?u=${encodeURIComponent(union.slug)}`}
+                                        className={`group relative flex h-full flex-col overflow-hidden rounded-[28px] bg-white border ${isActiveFromDB ? 'border-teal-400 shadow-teal-100 shadow-lg' : 'border-slate-200/60'} p-5 sm:p-6 hover:shadow-xl hover:border-teal-200 hover:-translate-y-1.5 transition-all duration-300`}
+                                    >
                                         <div
-                                            className={`flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-[20px] bg-gradient-to-br ${cat.gradient} text-white shadow-lg ring-4 ring-white group-hover:scale-110 transition-transform duration-500`}
-                                        >
-                                            <cat.icon size={24} strokeWidth={2.2} />
+                                            className={`pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-gradient-to-br ${cat.gradient} opacity-[0.08] blur-2xl transition-opacity group-hover:opacity-[0.15]`}
+                                        />
+                                        <div className="relative flex items-start justify-between gap-2 mb-4">
+                                            <div
+                                                className={`flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-[20px] bg-gradient-to-br ${cat.gradient} text-white shadow-lg ring-4 ring-white group-hover:scale-110 transition-transform duration-500`}
+                                            >
+                                                <cat.icon size={24} strokeWidth={2.2} />
+                                            </div>
+                                            <div className="flex flex-wrap justify-end gap-1.5 items-center max-w-[65%]">
+                                                {isActiveFromDB ? (
+                                                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-teal-500 shadow-sm border border-teal-400">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_4px_rgba(255,255,255,0.8)] animate-pulse" />
+                                                        <span className="text-[9px] font-black uppercase tracking-widest text-white">
+                                                            চালু আছে
+                                                        </span>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 shadow-sm border border-slate-200">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                                                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                            চালু নাই
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                <span
+                                                    className={`shrink-0 rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-wide border ${
+                                                        cat.free ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-amber-50 text-amber-700 border-amber-200'
+                                                    }`}
+                                                >
+                                                    {cat.free ? 'ফ্রি' : 'প্রিমিয়াম'}
+                                                </span>
+                                            </div>
                                         </div>
-                                        <span
-                                            className={`shrink-0 rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-wide ${
-                                                cat.free ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-900 border border-amber-200'
-                                            }`}
-                                        >
-                                            {cat.free ? 'ফ্রি' : 'প্রিমিয়াম'}
-                                        </span>
-                                    </div>
-                                    <h3 className="relative mt-auto text-base sm:text-lg font-black text-slate-800 leading-tight">
-                                        {cat.title}
-                                    </h3>
-                                    <p className="relative mt-1 text-xs font-bold text-slate-400 group-hover:text-slate-500 transition-colors leading-relaxed">
-                                        {cat.subtitle}
-                                    </p>
-                                    <div className="relative mt-4 flex items-center gap-1.5 text-[11px] font-black text-teal-600 group-hover:translate-x-1 transition-transform">
-                                        বিস্তারিত দেখুন
-                                        <ArrowUpRight size={14} />
-                                    </div>
-                                </Link>
-                            </motion.li>
-                        ))}
+                                        <h3 className="relative mt-auto text-base sm:text-lg font-black text-slate-800 leading-tight">
+                                            {cat.title}
+                                        </h3>
+                                        <p className="relative mt-1 text-xs font-bold text-slate-400 group-hover:text-slate-500 transition-colors leading-relaxed">
+                                            {cat.subtitle}
+                                        </p>
+                                        <div className="relative mt-4 flex items-center gap-1.5 text-[11px] font-black text-teal-600 group-hover:translate-x-1 transition-transform">
+                                            বিস্তারিত দেখুন
+                                            <ArrowUpRight size={14} />
+                                        </div>
+                                    </Link>
+                                </motion.li>
+                            )
+                        })}
                     </motion.ul>
                 </section>
             </div>
+
+            <PortalLoginModal 
+                isOpen={isLoginModalOpen}
+                onClose={() => setIsLoginModalOpen(false)}
+                defaultRole="chairman"
+                locationName={union.name}
+            />
         </div>
     );
 }

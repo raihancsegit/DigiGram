@@ -1,5 +1,7 @@
 import ReduxProvider from "@/components/Provider";
 import PWARegistration from "@/components/PWARegistration";
+import RouteChangeListener from "@/components/common/RouteChangeListener";
+import { Suspense } from "react";
 import "./globals.css";
 
 export const metadata = {
@@ -29,6 +31,9 @@ export default function RootLayout({ children }) {
       <body>
         <PWARegistration />
         <ReduxProvider>
+          <Suspense fallback={null}>
+            <RouteChangeListener />
+          </Suspense>
           {children}
         </ReduxProvider>
       </body>

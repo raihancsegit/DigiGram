@@ -1,36 +1,209 @@
+
 "use client";
 
 import { useSelector, useDispatch } from 'react-redux';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-    LayoutDashboard, PlusCircle, Newspaper, 
-    LogOut, UserCircle, MapPin, Sparkles, 
-    TrendingUp, ShieldCheck, ArrowLeft, Settings, 
-    MessageSquare
+    PlusCircle, Newspaper, LogOut, ShieldCheck, ArrowLeft, Settings, 
+    MessageSquare, TrendingUp, ArrowUpRight, ArrowRight, Users, MapPin, School, Building2, BookOpen
 } from 'lucide-react';
-import { logout } from '@/lib/store/features/authSlice';
+import { performLogout, login } from '@/lib/store/features/authSlice';
 import WardNewsForm from '@/components/sections/ward/WardNewsForm';
 import WardManagementSection from '@/components/sections/ward/WardManagementSection';
+import { wardService } from '@/lib/services/wardService';
+import { getActiveServices } from '@/lib/services/hierarchyService';
+import { authService } from '@/lib/services/authService';
+import { supabase } from '@/lib/utils/supabase';
+import { toBnDigits, parseBnInt } from '@/lib/utils/format';
+import { paths } from '@/lib/constants/paths';
 
 export default function WardMemberDashboard() {
     const { user, isAuthenticated } = useSelector((state) => state.auth);
-    const { dynamicNews } = useSelector((state) => state.news);
     const dispatch = useDispatch();
     const router = useRouter();
     const [activeTab, setActiveTab] = useState('news'); // 'news' or 'management'
+    const [wardInfo, setWardInfo] = useState(null);
+    const [newsList, setNewsList] = useState([]);
+    const [villages, setVillages] = useState([]);
+    const [volunteers, setVolunteers] = useState([]);
+    const [activeServices, setActiveServices] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [authChecked, setAuthChecked] = useState(false);
+
+    const loadWardData = useCallback(async (currentUser = user) => {
+        if (!currentUser || currentUser.role !== 'ward_member') return;
+        setLoading(true);
+        try {
+            // Sync Profile with DB
+            const profile = await authService.getProfile(currentUser.id);
+            if (profile) {
+                const updatedUser = {
+                    ...currentUser,
+                    first_name: profile.first_name,
+                    last_name: profile.last_name,
+                    avatar_url: profile.avatar_url
+                };
+                dispatch(login(updatedUser));
+                currentUser = updatedUser;
+            }
+
+            const ward = await wardService.getWardStats(currentUser.access_scope_id);
+            setWardInfo(ward);
+
+            const vData = await wardService.getVillagesByWard(currentUser.access_scope_id);
+            setVillages(vData);
+
+            const volunteerData = await wardService.getVolunteersByWard(vData.map(v => v.id));
+            setVolunteers(volunteerData);
+            
+            const news = await wardService.getNewsByLocation(currentUser.access_scope_id);
+            setNewsList(news);
+
+            // Fetch Union's active services using ward's parent_id
+            if (ward && ward.parent_id) {
+                const services = await getActiveServices(ward.parent_id);
+                setActiveServices(services);
+            }
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    }, [user, dispatch]);
 
     useEffect(() => {
-        if (!isAuthenticated || user?.role !== 'WARD_MEMBER') {
-            router.push('/login');
+        let active = true;
+
+        const initializeWardPortal = async () => {
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+
+                if (!session) {
+                    if (active) setAuthChecked(true);
+                    router.push('/login');
+                    return;
+                }
+
+                let currentUser = user;
+                if (!isAuthenticated || !currentUser) {
+                    const profile = await authService.getProfile(session.user.id);
+                    if (!profile || profile.role !== 'ward_member') {
+                        if (active) setAuthChecked(true);
+                        router.push('/login');
+                        return;
+                    }
+
+                    currentUser = {
+                        id: session.user.id,
+                        email: session.user.email,
+                        role: profile.role,
+                        access_scope_id: profile.access_scope_id,
+                        first_name: profile.first_name,
+                        last_name: profile.last_name,
+                        avatar_url: profile.avatar_url
+                    };
+                    if (active) dispatch(login(currentUser));
+                }
+
+                if (currentUser.role !== 'ward_member') {
+                    if (active) setAuthChecked(true);
+                    router.push('/login');
+                    return;
+                }
+
+                // Auth is valid, now load data
+                if (active) {
+                    setAuthChecked(true);
+                    await loadWardData(currentUser);
+                }
+            } catch (err) {
+                console.error('Ward portal auth check failed:', err);
+                if (active) setAuthChecked(true);
+                router.push('/login');
+            }
+        };
+
+        initializeWardPortal();
+
+        return () => {
+            active = false;
+        };
+    }, [dispatch, isAuthenticated, loadWardData, router, user]);
+
+    const aggregatedTotals = useMemo(() => {
+        return (villages || []).reduce((acc, v) => ({
+            population: acc.population + parseBnInt(v.population || '0'),
+            voters: acc.voters + parseBnInt(v.voters || '0'),
+            schools: acc.schools + parseBnInt(v.schools || '0'),
+            mosques: acc.mosques + parseBnInt(v.mosques || '0'),
+            madrassas: acc.madrassas + parseBnInt(v.madrassas || '0')
+        }), { population: 0, voters: 0, schools: 0, mosques: 0, madrassas: 0 });
+    }, [villages]);
+
+    const volunteerCount = volunteers.length;
+
+    const handleDeleteNews = async (newsId) => {
+        if(!confirm('আপনি কি সত্যিই এই খবরটি মুছতে চান?')) return;
+        try {
+            await wardService.deleteNews(newsId);
+            setNewsList(newsList.filter(n => n.id !== newsId));
+        } catch(err) {
+            alert('মুছতে সমস্যা হয়েছে');
         }
-    }, [isAuthenticated, user, router]);
+    }
 
-    if (!isAuthenticated) return null;
+    if (!authChecked) {
+        return (
+            <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
+                <motion.div 
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="flex flex-col items-center"
+                >
+                    <div className="w-16 h-16 rounded-[24px] bg-white border border-slate-200 shadow-xl flex items-center justify-center mb-6">
+                        <ShieldCheck className="text-teal-600 animate-pulse" size={32} />
+                    </div>
+                    <h2 className="text-xl font-black text-slate-800 tracking-tight mb-2">মেম্বার পোর্টাল</h2>
+                    <p className="text-sm font-bold text-slate-400">আপনার তথ্যগুলো প্রস্তুত করা হচ্ছে...</p>
+                    
+                    <div className="mt-8 flex gap-1.5">
+                        <motion.div animate={{ scale: [1, 1.5, 1] }} transition={{ repeat: Infinity, duration: 1, delay: 0 }} className="w-2 h-2 rounded-full bg-teal-500" />
+                        <motion.div animate={{ scale: [1, 1.5, 1] }} transition={{ repeat: Infinity, duration: 1, delay: 0.2 }} className="w-2 h-2 rounded-full bg-teal-500/60" />
+                        <motion.div animate={{ scale: [1, 1.5, 1] }} transition={{ repeat: Infinity, duration: 1, delay: 0.4 }} className="w-2 h-2 rounded-full bg-teal-500/30" />
+                    </div>
+                </motion.div>
+            </div>
+        );
+    }
 
-    const myNews = dynamicNews.filter(n => n.wardId === user.wardId && n.unionId === user.unionId);
+    if (!isAuthenticated || !user || user?.role !== 'ward_member') {
+        return (
+            <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
+                <motion.div 
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="flex flex-col items-center"
+                >
+                    <div className="w-16 h-16 rounded-[24px] bg-white border border-slate-200 shadow-xl flex items-center justify-center mb-6">
+                        <ShieldCheck className="text-red-600 animate-pulse" size={32} />
+                    </div>
+                    <h2 className="text-xl font-black text-slate-800 tracking-tight mb-2">প্রবেশাধিকার প্রয়োজন</h2>
+                    <p className="text-sm font-bold text-slate-400">আপনার পাসওয়ার্ড রিসেট করতে লগইন করুন।</p>
+                    
+                    <button
+                        onClick={() => router.push('/login')}
+                        className="mt-8 px-6 py-3 bg-teal-600 text-white rounded-xl font-black text-sm hover:bg-teal-700 transition-all"
+                    >
+                        লগইন পৃষ্ঠায় যান
+                    </button>
+                </motion.div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-slate-50 font-sans pb-20">
@@ -43,24 +216,54 @@ export default function WardMemberDashboard() {
                         </Link>
                         <h1 className="text-lg font-black text-slate-800 flex items-center gap-2">
                             <ShieldCheck className="text-teal-600" />
-                            মেম্বার পোর্টাল 
+                            অফিসিয়াল পোর্টাল 
+                            <span className="hidden sm:inline-block ml-2 px-2 py-0.5 rounded-md bg-teal-50 text-teal-600 text-[10px] font-black uppercase tracking-wider border border-teal-100">
+                                মেম্বার এক্সেস
+                            </span>
                         </h1>
                     </div>
                     
-                    <button 
-                        onClick={() => {
-                            dispatch(logout());
-                            router.push('/login');
-                        }}
-                        className="flex items-center gap-2 text-red-500 font-bold text-sm hover:bg-red-50 px-4 py-2 rounded-xl transition-all"
-                    >
-                        <LogOut size={18} />
-                        লগআউট
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <Link 
+                            href="/ward-member/settings"
+                            className="flex items-center gap-2 text-slate-600 font-bold text-sm hover:bg-slate-100 px-4 py-2 rounded-xl transition-all"
+                        >
+                            <Settings size={18} />
+                            সেটিংস
+                        </Link>
+                        <button 
+                            onClick={async () => {
+                                await dispatch(performLogout());
+                                router.push('/login');
+                            }}
+                            className="flex items-center gap-2 text-red-500 font-bold text-sm hover:bg-red-50 px-4 py-2 rounded-xl transition-all"
+                        >
+                            <LogOut size={18} />
+                            লগআউট
+                        </button>
+                    </div>
                 </div>
             </header>
 
-            <main className="max-w-7xl mx-auto px-4 py-8 md:py-12">
+            <main className="max-w-7xl mx-auto px-4 py-6 md:py-8">
+                {/* Portal Connection Status Bar */}
+                <div className="flex items-center justify-between mb-8 px-6 py-3 rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden relative">
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-teal-500" />
+                    <div className="flex items-center gap-6">
+                        <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">সার্ভার স্ট্যাটাস:</span>
+                            <span className="text-xs font-black text-emerald-600">সংযুক্ত</span>
+                        </div>
+                        <div className="hidden md:flex items-center gap-2 border-l border-slate-100 pl-6">
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">লাস্ট সিঙ্ক:</span>
+                            <span className="text-xs font-black text-slate-600">{toBnDigits(new Date().toLocaleTimeString('bn-BD', { hour: '2-digit', minute: '2-digit' }))}</span>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <span className="text-[10px] font-black text-teal-600 bg-teal-50 px-2 py-0.5 rounded border border-teal-100">ওয়ার্ড {toBnDigits((wardInfo?.name_bn || '').match(/\d+/)?.[0] || '')} এডমিন</span>
+                    </div>
+                </div>
                 
                 {/* Hero Greeting */}
                 <motion.div 
@@ -74,32 +277,116 @@ export default function WardMemberDashboard() {
                     
                     <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
                         <div>
-                            <div className="flex items-center gap-2 text-teal-400 text-xs font-black uppercase tracking-widest mb-4">
-                                <Sparkles size={14} />
-                                অফিসিয়াল ড্যাশবোর্ড
+                            <div className="flex items-center gap-2 text-teal-400 text-[10px] font-black uppercase tracking-[0.2em] mb-4">
+                                <SparklesIcon />
+                                ADMINISTRATIVE DASHBOARD
                             </div>
-                            <h2 className="text-3xl md:text-5xl font-black mb-4">
-                                স্বাগতম, <span className="text-teal-400">{user.name}</span>
-                            </h2>
-                            <p className="text-slate-300 font-bold max-w-lg">
-                                আপনি <span className="text-white">{user.unionName}</span> ইউনিয়নের 
-                                <span className="text-white px-2 py-0.5 bg-white/10 rounded-lg mx-1">{user.wardName}</span> 
-                                এর মেম্বার হিসেবে যুক্ত আছেন।
-                            </p>
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-6 mb-4">
+                                {user.avatar_url && (
+                                    <div className="w-20 h-20 rounded-[28px] border-4 border-white/20 overflow-hidden shadow-2xl shrink-0 relative">
+                                        <Image src={user.avatar_url} alt="Avatar" fill className="object-cover" />
+                                    </div>
+                                )}
+                                <h2 className="text-3xl md:text-5xl font-black leading-tight">
+                                    স্বাগতম, <br className="hidden sm:block" />
+                                    <span className="text-teal-400">{user.first_name} {user.last_name || ''}</span>
+                                </h2>
+                            </div>
+                            <div className="inline-flex items-center gap-3 bg-white/10 backdrop-blur-md rounded-2xl px-5 py-3 border border-white/10 mb-8">
+                                <div className="w-8 h-8 rounded-xl bg-teal-500/20 flex items-center justify-center border border-teal-500/30">
+                                    <MapPin size={16} className="text-teal-400" />
+                                </div>
+                                <p className="text-slate-100 font-bold text-sm">
+                                    ওয়ার্ড পোর্টাল এডিটর: <span className="text-white font-black">{wardInfo?.name_bn || 'ওয়ার্ড'}</span>
+                                </p>
+                            </div>
+
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                                <div className="bg-white/10 backdrop-blur-md rounded-2xl px-4 py-4 border border-white/10 text-left hover:bg-white/20 transition-all">
+                                    <p className="flex items-center gap-2 text-[10px] font-black uppercase text-indigo-300 mb-2">
+                                        <Users size={12} /> জনসংখ্যা
+                                    </p>
+                                    <p className="text-2xl font-black">{toBnDigits((aggregatedTotals.population||0).toString())}</p>
+                                </div>
+                                <div className="bg-white/10 backdrop-blur-md rounded-2xl px-4 py-4 border border-white/10 text-left hover:bg-white/20 transition-all">
+                                    <p className="flex items-center gap-2 text-[10px] font-black uppercase text-teal-300 mb-2">
+                                        <Users size={12} /> ভোটার
+                                    </p>
+                                    <p className="text-2xl font-black">{toBnDigits((aggregatedTotals.voters||0).toString())}</p>
+                                </div>
+                                <div className="bg-white/10 backdrop-blur-md rounded-2xl px-4 py-4 border border-white/10 text-left hover:bg-white/20 transition-all">
+                                    <p className="flex items-center gap-2 text-[10px] font-black uppercase text-orange-300 mb-2">
+                                        <School size={12} /> স্কুল
+                                    </p>
+                                    <p className="text-2xl font-black">{toBnDigits((aggregatedTotals.schools||0).toString())}</p>
+                                </div>
+                                <div className="bg-white/10 backdrop-blur-md rounded-2xl px-4 py-4 border border-white/10 text-left hover:bg-white/20 transition-all">
+                                    <p className="flex items-center gap-2 text-[10px] font-black uppercase text-emerald-300 mb-2">
+                                        <Building2 size={12} /> মসজিদ
+                                    </p>
+                                    <p className="text-2xl font-black">{toBnDigits((aggregatedTotals.mosques||0).toString())}</p>
+                                </div>
+                                <div className="bg-white/10 backdrop-blur-md rounded-2xl px-4 py-4 border border-white/10 text-left hover:bg-white/20 transition-all">
+                                    <p className="flex items-center gap-2 text-[10px] font-black uppercase text-sky-300 mb-2">
+                                        <BookOpen size={12} /> ভলান্টিয়ার
+                                    </p>
+                                    <p className="text-2xl font-black">{toBnDigits(volunteerCount.toString())}</p>
+                                </div>
+                            </div>
                         </div>
                         
-                        <div className="flex gap-4">
-                            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/10 flex-1 md:flex-none md:w-32 text-center">
-                                <p className="text-[10px] font-black uppercase text-teal-400 mb-1">মোট নিউজ</p>
-                                <p className="text-2xl font-black tracking-tighter">{myNews.length}</p>
+                             <div className="flex flex-col gap-2">
+                                <div className="bg-white/10 backdrop-blur-md rounded-[22px] p-4 border border-white/10 flex items-center gap-4">
+                                    <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
+                                        <MapPin className="text-teal-300" size={20} />
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-black uppercase text-teal-400 leading-none mb-1">মোট গ্রাম</p>
+                                        <p className="text-2xl font-black tracking-tighter leading-none">{toBnDigits(villages.length.toString())}</p>
+                                    </div>
+                                </div>
+                                {wardInfo?.parent?.slug && (
+                                    <Link
+                                        href={`/u/${wardInfo.parent.slug}/w/${user.access_scope_id}`}
+                                        target="_blank"
+                                        className="bg-white text-slate-900 px-6 py-4 rounded-[22px] font-black hover:bg-teal-400 hover:text-white transition-all shadow-xl flex items-center gap-3 group whitespace-nowrap"
+                                    >
+                                        ভিউ মোড
+                                        <div className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center group-hover:bg-white/20 transition-colors">
+                                            <ArrowUpRight size={18} className="text-slate-600 group-hover:text-white" />
+                                        </div>
+                                    </Link>
+                                )}
                             </div>
-                            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/10 flex-1 md:flex-none md:w-32 text-center">
-                                <p className="text-[10px] font-black uppercase text-teal-400 mb-1">ভিজিটর</p>
-                                <p className="text-2xl font-black tracking-tighter">৪৫০+</p>
-                            </div>
-                        </div>
                     </div>
                 </motion.div>
+
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-8">
+                    <div className="xl:col-span-2 bg-white rounded-[32px] border border-slate-200 shadow-sm p-8">
+                        <h3 className="text-xl font-black text-slate-800 mb-4">ওয়ার্ডের গ্রামভিত্তিক ভলান্টিয়ার</h3>
+                        {volunteers.length === 0 ? (
+                            <div className="rounded-[24px] border border-dashed border-slate-200 p-10 text-center text-slate-500">
+                                <p className="font-black">এই ওয়ার্ডে এখনও কোন ভলান্টিয়ার অ্যাসাইন করা হয়নি</p>
+                                <p className="text-sm mt-2">গ্রামের ভলান্টিয়ার অ্যাসাইনমেন্ট চেক করুন অ্যাডমিন পোর্টালে।</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {volunteers.map((vol) => (
+                                    <div key={vol.id} className="rounded-3xl border border-slate-100 p-5 bg-slate-50">
+                                        <p className="text-sm font-black text-slate-800">{vol.first_name} {vol.last_name}</p>
+                                        <p className="text-[11px] text-slate-500 mt-2">ফোন: {vol.phone || 'N/A'}</p>
+                                        <p className="text-[11px] text-slate-500 mt-1">গ্রাম আইডি: {vol.access_scope_id}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                    <div className="xl:col-span-1 bg-white rounded-[32px] border border-slate-200 shadow-sm p-8">
+                        <h3 className="text-xl font-black text-slate-800 mb-4">গ্রামের সংখ্যা</h3>
+                        <p className="text-5xl font-black text-teal-600">{toBnDigits(villages.length.toString())}</p>
+                        <p className="text-sm text-slate-500 mt-2">আপনার ওয়ার্ডের মোট গ্রামে ভলান্টিয়ার উপস্থিতি চেক করুন</p>
+                    </div>
+                </div>
 
                 {/* Tab Switcher */}
                 <div className="flex p-1 bg-slate-200/50 rounded-2xl w-fit mb-8 gap-1">
@@ -109,6 +396,13 @@ export default function WardMemberDashboard() {
                     >
                         <MessageSquare size={18} />
                         নিউজ ও আপডেট
+                    </button>
+                    <button 
+                        onClick={() => setActiveTab('services')}
+                        className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-black transition-all ${activeTab === 'services' ? 'bg-white text-teal-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                        <ShieldCheck size={18} />
+                        ডিজিটাল সেবাসমূহ
                     </button>
                     <button 
                         onClick={() => setActiveTab('management')}
@@ -140,7 +434,7 @@ export default function WardMemberDashboard() {
                                             <p className="text-sm font-bold text-slate-400 leading-none mt-1">আপনার ওয়াডের বাসিন্দাদের আপডেট রাখুন</p>
                                         </div>
                                     </div>
-                                    <WardNewsForm user={user} />
+                                    <WardNewsForm user={user} onSuccess={loadWardData} wardId={user.access_scope_id} />
                                 </section>
                             </div>
 
@@ -152,11 +446,11 @@ export default function WardMemberDashboard() {
                                             <Newspaper className="text-teal-600" />
                                             আমার শেয়ার করা খবর
                                         </h3>
-                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{myNews.length} টি</span>
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{newsList.length} টি</span>
                                     </div>
 
-                                    <div className="space-y-4">
-                                        {myNews.length === 0 ? (
+                                    <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
+                                        {newsList.length === 0 ? (
                                             <div className="text-center py-12 px-6 rounded-2xl bg-slate-50 border-2 border-dashed border-slate-200">
                                                 <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-100">
                                                     <TrendingUp className="text-slate-300" />
@@ -164,7 +458,7 @@ export default function WardMemberDashboard() {
                                                 <p className="font-bold text-slate-400">এখনো কোনো খবর শেয়ার করেননি!</p>
                                             </div>
                                         ) : (
-                                            myNews.map((news, idx) => (
+                                            newsList.map((news, idx) => (
                                                 <motion.div 
                                                     initial={{ opacity: 0, x: 20 }}
                                                     animate={{ opacity: 1, x: 0 }}
@@ -176,15 +470,67 @@ export default function WardMemberDashboard() {
                                                     <h4 className="font-black text-slate-800 text-base leading-tight mb-2 group-hover:text-teal-700 transition-colors">
                                                         {news.title}
                                                     </h4>
+                                                    <p className="text-xs text-slate-500 mb-3">{news.excerpt}</p>
                                                     <div className="flex items-center justify-between">
-                                                        <span className="text-xs font-bold text-slate-400 tracking-tighter">{news.date}</span>
-                                                        <button className="text-[10px] font-black text-slate-400 hover:text-red-500 transition-colors uppercase">মুছুন</button>
+                                                        <span className="text-xs font-bold text-slate-400 tracking-tighter">
+                                                            {new Date(news.created_at).toLocaleDateString('bn-BD')}
+                                                        </span>
+                                                        <button 
+                                                            onClick={() => handleDeleteNews(news.id)}
+                                                            className="text-[10px] font-black text-slate-400 hover:text-red-500 transition-colors uppercase"
+                                                        >মুছুন</button>
                                                     </div>
                                                 </motion.div>
                                             ))
                                         )}
                                     </div>
                                 </section>
+                            </div>
+                        </motion.div>
+                    ) : activeTab === 'services' ? (
+                        <motion.div 
+                            key="services"
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: 20 }}
+                        >
+                            <div className="bg-white rounded-[40px] p-6 md:p-10 border border-slate-200 shadow-sm">
+                                <div className="flex items-center gap-4 mb-8">
+                                    <div className="w-12 h-12 rounded-2xl bg-teal-50 flex items-center justify-center text-teal-600">
+                                        <ShieldCheck size={28} />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-2xl font-black text-slate-800">ডিজিটাল সেবাসমূহ</h3>
+                                        <p className="text-sm font-bold text-slate-400 mt-1">আপনার ইউনিয়নের জন্য অনুমোদিত সেবাসমূহ</p>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {activeServices.length === 0 ? (
+                                        <div className="col-span-12 text-center py-10 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
+                                            <p className="text-slate-400 font-bold">বর্তমানে কোনো সেবা চালু নেই।</p>
+                                        </div>
+                                    ) : (
+                                        activeServices.map((item, idx) => {
+                                            const service = item.services;
+                                            return (
+                                                <Link 
+                                                    href={`${paths.service(service.slug)}?u=${wardInfo?.parent?.slug || ''}`} 
+                                                    key={idx} 
+                                                    className="block group"
+                                                >
+                                                    <div className="p-6 rounded-[32px] bg-white border border-slate-200 hover:border-teal-500/30 hover:shadow-xl hover:shadow-teal-500/5 transition-all relative overflow-hidden h-full">
+                                                        <div className="w-12 h-12 rounded-2xl bg-slate-50 text-slate-600 flex items-center justify-center mb-4 group-hover:bg-teal-600 group-hover:text-white transition-colors">
+                                                            <ShieldCheck size={24} />
+                                                        </div>
+                                                        <h4 className="font-black text-xl text-slate-800 mb-2">{service.name}</h4>
+                                                        <p className="text-xs font-bold text-slate-500">পরিচালনা করতে ক্লিক করুন</p>
+                                                    </div>
+                                                </Link>
+                                            );
+                                        })
+                                    )}
+                                </div>
                             </div>
                         </motion.div>
                     ) : (
@@ -204,11 +550,17 @@ export default function WardMemberDashboard() {
                                     <p className="text-sm font-bold text-slate-400 mt-1">আপনার ওয়াডের প্রোফাইল এবং পরিসংখ্যান এখান থেকে নিয়ন্ত্রন করুন</p>
                                 </div>
                             </div>
-                            <WardManagementSection user={user} />
+                            <WardManagementSection user={user} wardInfo={wardInfo} />
                         </motion.div>
                     )}
                 </AnimatePresence>
             </main>
         </div>
     );
+}
+
+function SparklesIcon() {
+    return (
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+    )
 }

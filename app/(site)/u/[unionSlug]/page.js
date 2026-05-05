@@ -1,15 +1,45 @@
 import { notFound } from 'next/navigation';
-import { findUnionBySlug, getAllUnionSlugs } from '@/lib/constants/locations';
+import { findUnionBySlug } from '@/lib/constants/locations';
 import UnionPortalClient from '@/components/sections/union/UnionPortalClient';
+import { getLocationBySlug, getActiveServices, getChairmanByLocation, getWardsWithDetailsByUnion, getFullContextBySlug } from '@/lib/services/hierarchyService';
 
-export async function generateStaticParams() {
-    return getAllUnionSlugs().map((unionSlug) => ({ unionSlug }));
-}
+export const dynamic = 'force-dynamic';
 
 export default async function UnionPortalPage({ params }) {
-    const { unionSlug } = await params;
-    const ctx = findUnionBySlug(unionSlug);
-    if (!ctx) notFound();
+    const resolvedParams = await params;
+    const { unionSlug } = resolvedParams;
 
-    return <UnionPortalClient ctx={ctx} />;
+    // 1. Fetch dynamic Location and Services from Supabase
+    const locationData = await getLocationBySlug(unionSlug);
+    
+    let ctx = null;
+    let activeServices = [];
+    let chairman = null;
+    let wards = [];
+
+    if (locationData) {
+        wards = await getWardsWithDetailsByUnion(locationData.id);
+        
+        // Construct dynamic context from DB using recursive parent fetching
+        const fullContext = await getFullContextBySlug(unionSlug);
+        
+        ctx = {
+            district: fullContext.district,
+            upazila: fullContext.upazila,
+            union: {
+                id: locationData.id,
+                slug: locationData.slug,
+                name: locationData.name_bn,
+                wards: wards
+            }
+        };
+        activeServices = await getActiveServices(locationData.id);
+        chairman = await getChairmanByLocation(locationData.id);
+    } else {
+        // Fallback to static constants for backward compatibility
+        ctx = findUnionBySlug(unionSlug);
+        if (!ctx) notFound();
+    }
+
+    return <UnionPortalClient ctx={ctx} activeServices={activeServices} chairman={chairman} />;
 }

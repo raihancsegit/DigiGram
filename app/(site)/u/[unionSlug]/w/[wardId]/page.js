@@ -1,27 +1,44 @@
 import { notFound } from 'next/navigation';
-import { findUnionBySlug, getAllUnionSlugs } from '@/lib/constants/locations';
+import { findUnionBySlug } from '@/lib/constants/locations';
 import WardPortalClient from '@/components/sections/ward/WardPortalClient';
+import { getLocationBySlug, getWardsWithDetailsByUnion, getFullContextBySlug } from '@/lib/services/hierarchyService';
 
-export async function generateStaticParams() {
-    const params = [];
-    for (const unionSlug of getAllUnionSlugs()) {
-        const ctx = findUnionBySlug(unionSlug);
-        if (ctx?.union?.wards) {
-            for (const ward of ctx.union.wards) {
-                params.push({ unionSlug, wardId: ward.id });
-            }
-        }
-    }
-    return params;
-}
+export const dynamic = 'force-dynamic';
 
 export default async function WardPortalPage({ params }) {
-    const { unionSlug, wardId } = await params;
-    const ctx = findUnionBySlug(unionSlug);
-    if (!ctx) notFound();
+    const resolvedParams = await params;
+    const { unionSlug, wardId } = resolvedParams;
 
-    const ward = ctx.union.wards?.find((w) => w.id === wardId);
-    if (!ward) notFound();
+    const locationData = await getLocationBySlug(unionSlug);
+    let ctx = null;
+    let ward = null;
+
+    if (locationData) {
+        const wards = await getWardsWithDetailsByUnion(locationData.id);
+        const matchedWard = wards.find(w => w.id === wardId);
+        if (!matchedWard) notFound();
+
+        // Construct dynamic context from DB using recursive parent fetching
+        const fullContext = await getFullContextBySlug(unionSlug);
+        
+        ctx = {
+            district: fullContext.district,
+            upazila: fullContext.upazila,
+            union: {
+                id: locationData.id,
+                slug: locationData.slug,
+                name: locationData.name_bn,
+                wards: wards
+            }
+        };
+        ward = matchedWard;
+    } else {
+        ctx = findUnionBySlug(unionSlug);
+        if (!ctx) notFound();
+
+        ward = ctx.union.wards?.find((w) => w.id === wardId);
+        if (!ward) notFound();
+    }
 
     return <WardPortalClient ctx={ctx} ward={ward} />;
 }

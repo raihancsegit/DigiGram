@@ -3,6 +3,8 @@ import { useRouter } from 'next/navigation';
 import { X, ChevronRight } from 'lucide-react';
 import { RAJSHAHI_GEO } from '@/lib/constants/locations';
 import { setStepData, applyLocationSnapshot } from '@/lib/store/features/locationSlice';
+import { useState } from 'react';
+import ModalPortal from '@/components/common/ModalPortal';
 
 export default function AreaSelector({ isOpen, onClose }) {
     const router = useRouter();
@@ -55,7 +57,8 @@ export default function AreaSelector({ isOpen, onClose }) {
     };
 
     return (
-        <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <ModalPortal>
+            <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
             <div className="bg-white w-full max-w-lg rounded-t-[32px] sm:rounded-3xl p-6 shadow-2xl animate-in slide-in-from-bottom duration-300">
                 <div className="flex justify-between items-center mb-6 border-b pb-4">
                     <h2 className="text-xl font-black text-gray-800">এલાকা নির্বাচন করুন</h2>
@@ -100,6 +103,7 @@ export default function AreaSelector({ isOpen, onClose }) {
                     )}
                 </div>
             </div>
-        </div>
+            </div>
+        </ModalPortal>
     );
 }

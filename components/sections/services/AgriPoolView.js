@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Tractor, MapPin, Phone, CheckCircle2, XCircle, Search, DollarSign, PenTool, Sprout, Settings, Truck, CalendarClock, Zap, ArrowRight, Wheat } from 'lucide-react';
 import { getAgriEquipment } from '@/lib/content/agriEquipmentData';
+import Pagination from '@/components/common/Pagination';
 
 const AnimatedCounter = ({ end, duration = 2, suffix = '' }) => {
     const [count, setCount] = useState(0);
@@ -239,6 +240,15 @@ export default function AgriPoolView() {
                             </motion.div>
                         ))}
                     </AnimatePresence>
+                </div>
+
+                <div className="mt-12">
+                    <Pagination 
+                        currentPage={1}
+                        totalCount={filteredList.length}
+                        pageSize={12}
+                        onPageChange={() => {}}
+                    />
                 </div>
             </div>
 

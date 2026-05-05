@@ -22,14 +22,107 @@ import UpSebaView from '@/components/sections/services/UpSebaView';
 import SchoolDirectoryView from '@/components/sections/services/SchoolDirectoryView';
 import LearningHubView from '@/components/sections/services/LearningHubView';
 import NewsLandingView from '@/components/sections/services/NewsLandingView';
+import { adminService } from '@/lib/services/adminService';
+import { getLocationBySlug } from '@/lib/services/hierarchyService';
+import { useSearchParams } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { ShieldAlert, Loader2 } from 'lucide-react';
 
 const ICON_MAP = {
     Heart, FileText, School, BookOpen, PhoneCall, 
-    Search, Newspaper, HandTabs: HandMetal, Moon, 
+    Search, Newspaper, HandTabs: Heart, Moon, 
     ShoppingBag, Trophy, Grid: LayoutGrid
 };
 
+const DB_SLUG_MAP = {
+    'emergency': 'emergency-hotline',
+    'blood': 'blood-bank',
+    'lost': 'lost-found',
+    'school': 'school',
+    'fuel': 'fuel',
+    'agri-pool': 'agriculture',
+    'e-clinic': 'health',
+    'islamic': 'mosque',
+    'labor': 'labor-directory',
+    'news': 'news-updates',
+    'donation': 'donation',
+    'market': 'village-market',
+    'power-watch': 'power-watch',
+    'e-up': 'ledger'
+};
+
 export default function ServicePageView({ slug, data }) {
+    const searchParams = useSearchParams();
+    const unionQuery = searchParams.get('u');
+    const [isServiceActive, setIsServiceActive] = useState(true);
+    const [loading, setLoading] = useState(!!unionQuery);
+    const [unionName, setUnionName] = useState('');
+
+    useEffect(() => {
+        if (unionQuery) {
+            checkServiceStatus();
+        }
+    }, [unionQuery, slug, data.variant]);
+
+    const checkServiceStatus = async () => {
+        setLoading(true);
+        try {
+            const union = await getLocationBySlug(unionQuery);
+            if (union) {
+                setUnionName(union.name_bn || union.name);
+                const services = await adminService.getUnionServices(union.id);
+                const dbSlug = DB_SLUG_MAP[slug] || DB_SLUG_MAP[data.variant] || slug;
+                
+                const currentService = services.find(s => s.services?.slug === dbSlug);
+                // If service is found in junction table, check its status. 
+                // If not found, assume it's disabled by default for safety in multi-tenant mode
+                if (currentService) {
+                    setIsServiceActive(currentService.is_active);
+                } else {
+                    // Default to false if not configured for this union
+                    setIsServiceActive(false);
+                }
+            }
+        } catch (err) {
+            console.error("Error checking service status:", err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center">
+                <Loader2 className="w-12 h-12 text-teal-500 animate-spin mb-4" />
+                <p className="text-slate-400 font-black uppercase tracking-widest text-xs">সার্ভিস চেক করা হচ্ছে...</p>
+            </div>
+        );
+    }
+
+    if (!isServiceActive) {
+        const serviceTitle = data.title || "এই";
+        return (
+            <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4">
+                <div className="max-w-md w-full bg-white rounded-[40px] p-10 border border-slate-100 shadow-xl text-center">
+                    <div className="w-20 h-20 bg-rose-50 rounded-3xl flex items-center justify-center mx-auto mb-6 text-rose-500">
+                        <ShieldAlert size={40} />
+                    </div>
+                    <h2 className="text-2xl font-black text-slate-800 mb-4">দুঃখিত!</h2>
+                    <p className="text-slate-500 font-bold leading-relaxed mb-8">
+                        এই ইউনিয়নে বর্তমানে "{serviceTitle}" সার্ভিসটি বন্ধ রাখা হয়েছে। বিস্তারিত তথ্যের জন্য ইউনিয়ন পরিষদের সাথে যোগাযোগ করুন।
+                    </p>
+                    <Link 
+                        href={unionQuery ? `/u/${unionQuery}` : "/"}
+                        className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl bg-slate-900 text-white font-black text-sm hover:bg-slate-800 transition-all shadow-lg active:scale-95"
+                    >
+                        <ArrowLeft size={18} />
+                        হোমপেজে ফিরুন
+                    </Link>
+                </div>
+            </div>
+        );
+    }
+
     if (data.variant === 'emergency') {
         return <EmergencyDirectoryView slug={slug} />;
     }

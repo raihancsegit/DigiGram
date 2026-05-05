@@ -73,7 +73,6 @@
 /* হেডার থেকে কনটেন্টে নরম হ্যান্ডঅফ */
 .dg-content-stack {
   position: relative;
-  z-index: 0;
 }
 
 .dg-content-stack::before {

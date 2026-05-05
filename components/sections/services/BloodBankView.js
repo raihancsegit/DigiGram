@@ -9,7 +9,11 @@ import {
     CheckCircle2, Clock, Info,
     UserCircle, ArrowRight, Heart, HeartPulse, Activity
 } from 'lucide-react';
-import { ALL_DONORS } from '@/lib/content/donorData';
+import { ALL_DONORS as MOCK_DONORS } from '@/lib/content/donorData';
+import { bloodService } from '@/lib/services/bloodService';
+import { adminService } from '@/lib/services/adminService';
+import { getLocationBySlug } from '@/lib/services/hierarchyService';
+import Pagination from '@/components/common/Pagination';
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
 
@@ -40,7 +44,10 @@ const AnimatedCounter = ({ end, duration = 2, suffix = '' }) => {
 
 export default function BloodBankView() {
     return (
-        <Suspense fallback={<div className="py-20 text-center font-bold text-slate-400">রক্তদাতা খোঁজা হচ্ছে...</div>}>
+        <Suspense fallback={<div className="py-20 text-center font-bold text-slate-400 font-black flex items-center justify-center gap-3">
+            <Droplet className="animate-bounce text-rose-500" />
+            রক্তদাতা খোঁজা হচ্ছে...
+        </div>}>
             <BloodBankContent />
         </Suspense>
     );
@@ -50,27 +57,70 @@ function BloodBankContent() {
     const searchParams = useSearchParams();
     const unionQuery = searchParams.get('u');
 
+    const [donors, setDonors] = useState([]);
+    const [totalCount, setTotalCount] = useState(0);
+    const [currentPage, setCurrentPage] = useState(1);
+    const pageSize = 12;
+
+    const [unions, setUnions] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedGroup, setSelectedGroup] = useState('All');
     const [selectedUnion, setSelectedUnion] = useState(unionQuery || 'All');
+    const [loading, setLoading] = useState(true);
+    const [stats, setStats] = useState({ total: 0, available: 0 });
 
-    const unions = useMemo(() => {
-        const u = new Set(ALL_DONORS.map(d => d.unionId));
-        return ['All', ...Array.from(u)];
+    useEffect(() => {
+        loadFilters();
     }, []);
 
-    const filteredDonors = useMemo(() => {
-        return ALL_DONORS.filter(donor => {
-            const matchesSearch = donor.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                                  donor.village.toLowerCase().includes(searchTerm.toLowerCase());
-            const matchesGroup = selectedGroup === 'All' || donor.bloodGroup === selectedGroup;
-            const matchesUnion = selectedUnion === 'All' || donor.unionId === selectedUnion;
-
-            return matchesSearch && matchesGroup && matchesUnion;
-        });
+    useEffect(() => {
+        loadDonors(1);
     }, [searchTerm, selectedGroup, selectedUnion]);
 
-    const activeDonors = ALL_DONORS.filter(d => d.isAvailable).length;
+    const loadFilters = async () => {
+        try {
+            const { data } = await adminService.getLocations('union', 1, 100);
+            setUnions(data || []);
+        } catch (err) {
+            console.error("Failed to load unions:", err);
+        }
+    };
+
+    const loadDonors = async (page = 1) => {
+        setLoading(true);
+        try {
+            let locationId = 'All';
+            if (selectedUnion !== 'All') {
+                const union = await getLocationBySlug(selectedUnion);
+                if (union) locationId = union.id;
+            }
+
+            const { data, count } = await bloodService.getDonors({
+                bloodGroup: selectedGroup,
+                locationId: locationId,
+                searchTerm,
+                page,
+                pageSize
+            });
+            setDonors(data || []);
+            setTotalCount(count);
+            setCurrentPage(page);
+            
+            // Calculate stats if it's the first load or global search
+            if (selectedGroup === 'All' && selectedUnion === 'All' && !searchTerm) {
+                setStats({
+                    total: count,
+                    available: (data || []).filter(d => d.is_available).length 
+                });
+            }
+        } catch (err) {
+            console.error("Failed to load donors:", err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const activeDonors = donors.filter(d => d.is_available).length;
 
     return (
         <div className="pb-16 pt-4">
@@ -93,7 +143,7 @@ function BloodBankContent() {
                         
                         <div className="flex flex-col sm:flex-row items-center gap-4">
                             <button onClick={() => document.getElementById('directory').scrollIntoView({ behavior: 'smooth' })} className="w-full sm:w-auto px-8 py-5 rounded-[20px] bg-gradient-to-r from-rose-500 to-red-600 text-white font-black text-lg hover:from-rose-400 hover:to-red-500 transition-all shadow-lg shadow-rose-500/25 active:scale-95 flex items-center justify-center gap-2">
-                                <Droplet size={20} className="fill-current" />
+                                <Search size={20} className="" />
                                 রক্তদাতা খুঁজুন
                             </button>
                         </div>
@@ -102,13 +152,17 @@ function BloodBankContent() {
                     <div className="grid grid-cols-2 gap-4 shrink-0 w-full md:w-auto">
                         <div className="bg-white/5 border border-white/10 rounded-[32px] p-6 text-center backdrop-blur-md">
                             <Users size={32} className="text-orange-400 mx-auto mb-3" />
-                            <div className="text-3xl font-black text-white mb-1"><AnimatedCounter end={ALL_DONORS.length} suffix="+" /></div>
+                            <div className="text-3xl font-black text-white mb-1">
+                                <AnimatedCounter end={stats.total || donors.length} suffix="+" />
+                            </div>
                             <p className="text-[10px] font-black text-rose-200/50 uppercase tracking-widest">নিবন্ধিত দাতা</p>
                         </div>
                         <div className="bg-rose-500/20 border border-rose-500/30 rounded-[32px] p-6 text-center backdrop-blur-md mt-6 relative overflow-hidden group">
                            <div className="absolute inset-0 bg-gradient-to-t from-rose-500/20 to-transparent"></div>
                             <Activity size={32} className="text-rose-400 mx-auto mb-3 relative z-10" />
-                            <div className="text-3xl font-black text-white mb-1 relative z-10"><AnimatedCounter end={activeDonors} /></div>
+                            <div className="text-3xl font-black text-white mb-1 relative z-10">
+                                <AnimatedCounter end={stats.available || activeDonors} />
+                            </div>
                             <p className="text-[10px] font-black text-rose-200/80 uppercase tracking-widest relative z-10">বর্তমানে প্রস্তুত</p>
                         </div>
                     </div>
@@ -188,106 +242,124 @@ function BloodBankContent() {
                             onChange={(e) => setSelectedUnion(e.target.value)}
                             className="flex-1 py-3.5 px-4 bg-white border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-rose-500 appearance-none shadow-sm cursor-pointer"
                         >
-                            <option value="All">সব ইউনিয়ন (উপজেলা)</option>
-                            {unions.filter(u => u !== 'All').map(union => (
-                                <option key={union} value={union}>{union}</option>
+                            <option value="All">সব ইউনিয়ন</option>
+                            {unions.map(union => (
+                                <option key={union.id} value={union.slug}>{union.name_bn}</option>
                             ))}
                         </select>
                     </div>
                 </div>
 
                 {/* Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <AnimatePresence mode="popLayout">
-                        {filteredDonors.map((donor, idx) => (
-                            <motion.div
-                                key={donor.id}
-                                layout
-                                initial={{ opacity: 0, scale: 0.95 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.95 }}
-                                transition={{ duration: 0.2 }}
-                                className="bg-white rounded-[32px] p-6 border border-slate-200 hover:border-rose-300 shadow-sm hover:shadow-xl transition-all duration-300 group flex flex-col relative overflow-hidden"
-                            >
-                                <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-rose-50 to-transparent rounded-bl-full pointer-events-none" />
-                                
-                                <div className="flex items-center justify-between mb-6 relative z-10">
-                                    <div className="relative">
-                                        <div className="w-16 h-16 rounded-[20px] bg-gradient-to-br from-rose-100 to-rose-50 border border-rose-100 text-rose-600 flex items-center justify-center font-black text-2xl shadow-inner shadow-rose-200/50 group-hover:scale-110 transition-transform">
-                                            {donor.bloodGroup}
-                                        </div>
-                                    </div>
-                                    <div className="text-right">
-                                        <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[10px] text-[10px] font-black tracking-widest uppercase shadow-sm border ${
-                                            donor.isAvailable 
-                                            ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
-                                            : 'bg-slate-50 text-slate-500 border-slate-100'
-                                        }`}>
-                                            <div className={`w-1.5 h-1.5 rounded-full ${donor.isAvailable ? 'bg-emerald-400 animate-pulse' : 'bg-slate-400'}`} />
-                                            {donor.isAvailable ? 'প্রস্তুত আছেন' : 'সম্প্রতি দিয়েছেন'}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-4 mb-8 flex-1 relative z-10">
-                                    <div>
-                                        <div className="flex items-center gap-1.5 mb-1">
-                                            <h3 className="text-xl font-black text-slate-800 leading-none group-hover:text-rose-600 transition-colors">{donor.name}</h3>
-                                            <CheckCircle2 size={16} className="text-emerald-500" />
-                                        </div>
-                                        <p className="flex items-center gap-1.5 text-xs font-bold text-slate-500 mt-2">
-                                            <MapPin size={14} className="text-slate-400" />
-                                            {donor.village}, {donor.unionId}
-                                        </p>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-3 p-4 rounded-[20px] bg-slate-50 border border-slate-100">
-                                        <div>
-                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">মোট দান</p>
-                                            <p className="text-sm font-black text-slate-700 flex items-center gap-1.5">
-                                                <Heart size={14} className="text-rose-500 fill-current" /> 
-                                                {donor.totalDonations} বার
-                                            </p>
-                                        </div>
-                                        <div>
-                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">শেষ দান</p>
-                                            <p className="text-sm font-black text-slate-700 flex items-center gap-1.5">
-                                                <Calendar size={14} className="text-slate-400" />
-                                                {donor.lastDonation}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <button
-                                    onClick={() => window.location.href = `tel:${donor.phone}`}
-                                    className="w-full flex items-center justify-center gap-2 py-4 rounded-[20px] bg-slate-900 hover:bg-rose-600 text-white font-black text-sm shadow-xl shadow-slate-900/10 transition-all active:scale-95 relative z-10"
+                <div id="donor-grid" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 min-h-[400px]">
+                    {loading ? (
+                        <>
+                            {[1,2,3,4,5,6].map(i => (
+                                <div key={i} className="bg-slate-50 animate-pulse h-[300px] rounded-[32px] border border-slate-100" />
+                            ))}
+                        </>
+                    ) : (
+                        <AnimatePresence mode="popLayout">
+                            {donors.map((donor, idx) => (
+                                <motion.div
+                                    key={donor.id}
+                                    layout
+                                    initial={{ opacity: 0, scale: 0.95 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.95 }}
+                                    transition={{ duration: 0.2 }}
+                                    className="bg-white rounded-[32px] p-6 border border-slate-200 hover:border-rose-300 shadow-sm hover:shadow-xl transition-all duration-300 group flex flex-col relative overflow-hidden"
                                 >
-                                    <Phone size={18} />
-                                    সরাসরি কল দিন
-                                </button>
-                            </motion.div>
-                        ))}
-                    </AnimatePresence>
+                                    <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-rose-50 to-transparent rounded-bl-full pointer-events-none" />
+                                    
+                                    <div className="flex items-center justify-between mb-6 relative z-10">
+                                        <div className="relative">
+                                            <div className="w-16 h-16 rounded-[20px] bg-gradient-to-br from-rose-100 to-rose-50 border border-rose-100 text-rose-600 flex items-center justify-center font-black text-2xl shadow-inner shadow-rose-200/50 group-hover:scale-110 transition-transform">
+                                                {donor.blood_group}
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[10px] text-[10px] font-black tracking-widest uppercase shadow-sm border ${
+                                                donor.is_available 
+                                                ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
+                                                : 'bg-slate-50 text-slate-500 border-slate-100'
+                                            }`}>
+                                                <div className={`w-1.5 h-1.5 rounded-full ${donor.is_available ? 'bg-emerald-400 animate-pulse' : 'bg-slate-400'}`} />
+                                                {donor.is_available ? 'প্রস্তুত আছেন' : 'সম্প্রতি দিয়েছেন'}
+                                            </div>
+                                        </div>
+                                    </div>
 
-                    {filteredDonors.length === 0 && (
-                        <div className="col-span-full py-20 text-center space-y-4 bg-slate-50 rounded-[40px] border-2 border-dashed border-slate-200">
-                            <div className="w-24 h-24 bg-rose-50 rounded-full flex items-center justify-center mx-auto text-rose-300">
-                                <HeartPulse size={48} />
-                            </div>
-                            <div>
-                                <h3 className="text-2xl font-black text-slate-800">কোনো রক্তদাতা পাওয়া যায়নি</h3>
-                                <p className="text-slate-500 font-bold text-sm mt-2">অন্য গ্রুপের বা অন্য ইউনিয়নের সার্চ করে দেখতে পারেন।</p>
-                            </div>
-                            <button 
-                                onClick={() => { setSearchTerm(''); setSelectedGroup('All'); setSelectedUnion('All'); }}
-                                className="mt-4 px-8 py-3 bg-white text-rose-600 border border-rose-200 rounded-full font-black text-sm hover:bg-rose-50 transition-all active:scale-95 shadow-sm"
-                            >
-                                ফিল্টার ক্লিয়ার করুন
-                            </button>
-                        </div>
+                                    <div className="space-y-4 mb-8 flex-1 relative z-10">
+                                        <div>
+                                            <div className="flex items-center gap-1.5 mb-1">
+                                                <h3 className="text-xl font-black text-slate-800 leading-none group-hover:text-rose-600 transition-colors uppercase">{donor.name}</h3>
+                                                <CheckCircle2 size={16} className="text-emerald-500" />
+                                            </div>
+                                            <p className="flex items-center gap-1.5 text-xs font-bold text-slate-500 mt-2">
+                                                <MapPin size={14} className="text-slate-400" />
+                                                {donor.village}, {donor.union_slug}
+                                            </p>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-3 p-4 rounded-[20px] bg-slate-50 border border-slate-100">
+                                            <div>
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">মোট দান</p>
+                                                <p className="text-sm font-black text-slate-700 flex items-center gap-1.5">
+                                                    <Heart size={14} className="text-rose-500 fill-current" /> 
+                                                    {donor.total_donations || 0} বার
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">শেষ দান</p>
+                                                <p className="text-sm font-black text-slate-700 flex items-center gap-1.5">
+                                                    <Calendar size={14} className="text-slate-400" />
+                                                    {donor.last_donation_date ? new Date(donor.last_donation_date).toLocaleDateString('bn-BD', { day: 'numeric', month: 'short' }) : 'কখনো না'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        onClick={() => window.location.href = `tel:${donor.phone}`}
+                                        className="w-full flex items-center justify-center gap-2 py-4 rounded-[20px] bg-slate-900 hover:bg-rose-600 text-white font-black text-sm shadow-xl shadow-slate-900/10 transition-all active:scale-95 relative z-10"
+                                    >
+                                        <Phone size={18} />
+                                        সরাসরি কল দিন
+                                    </button>
+                                </motion.div>
+                            ))}
+                        </AnimatePresence>
                     )}
                 </div>
+
+                <Pagination 
+                    currentPage={currentPage}
+                    totalCount={totalCount}
+                    pageSize={pageSize}
+                    onPageChange={(page) => {
+                        loadDonors(page);
+                        document.getElementById('directory').scrollIntoView({ behavior: 'smooth' });
+                    }}
+                />
+
+                {!loading && donors.length === 0 && (
+                    <div className="col-span-full py-20 text-center space-y-4 bg-slate-50 rounded-[40px] border-2 border-dashed border-slate-200">
+                        <div className="w-24 h-24 bg-rose-50 rounded-full flex items-center justify-center mx-auto text-rose-300">
+                            <HeartPulse size={48} />
+                        </div>
+                        <div>
+                            <h3 className="text-2xl font-black text-slate-800">কোনো রক্তদাতা পাওয়া যায়নি</h3>
+                            <p className="text-slate-500 font-bold text-sm mt-2">অন্য গ্রুপের বা অন্য ইউনিয়নের সার্চ করে দেখতে পারেন।</p>
+                        </div>
+                        <button 
+                            onClick={() => { setSearchTerm(''); setSelectedGroup('All'); setSelectedUnion('All'); }}
+                            className="mt-4 px-8 py-3 bg-white text-rose-600 border border-rose-200 rounded-full font-black text-sm hover:bg-rose-50 transition-all active:scale-95 shadow-sm"
+                        >
+                            ফিল্টার ক্লিয়ার করুন
+                        </button>
+                    </div>
+                )}
             </div>
 
             {/* 4. Footer CTA */}

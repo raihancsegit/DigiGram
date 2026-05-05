@@ -5,10 +5,10 @@ import { motion, useScroll, useSpring } from 'framer-motion';
 import { 
     Calendar, User, Clock, Share2, 
     ArrowLeft, MapPin, Tag, MessageCircle, 
-    ChevronRight, Users, Phone, Printer,
-    Facebook, Twitter, Linkedin
+    ChevronRight, Users, Phone, Printer, Newspaper,
+    Copy
 } from 'lucide-react';
-import { ALL_NEWS } from '@/lib/content/newsData';
+import { newsService } from '@/lib/services/newsService';
 
 export default function NewsDetailsView({ news }) {
     const [relatedNews, setRelatedNews] = useState([]);
@@ -21,12 +21,26 @@ export default function NewsDetailsView({ news }) {
     });
 
     useEffect(() => {
-        if (news) {
-            // Get 2-3 related news items excluding the current one
-            const filtered = ALL_NEWS.filter(item => item.id !== news.id).slice(0, 3);
-            setRelatedNews(filtered);
+        const fetchRelated = async () => {
+            try {
+                // Fetch latest global news as related items
+                const data = await newsService.getGlobalNews(4);
+                const filtered = data.filter(item => item.id !== news.id).slice(0, 3);
+                setRelatedNews(filtered.map(n => ({
+                    id: n.id,
+                    slug: n.id,
+                    title: n.title,
+                    image: n.image_url,
+                    date: new Date(n.created_at).toLocaleDateString('bn-BD')
+                })));
+            } catch (err) {
+                console.error("Error fetching related news:", err);
+            }
+        };
+        if (news?.id) {
+            fetchRelated();
         }
-    }, [news]);
+    }, [news?.id]);
 
     if (!news) return null;
 
@@ -77,7 +91,7 @@ export default function NewsDetailsView({ news }) {
                         </span>
                         <div className="flex items-center gap-1.5 text-slate-400 text-xs font-bold bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100">
                             <MapPin size={14} className="text-teal-500" />
-                            {news.village}, {news.union}
+                            {news.location?.name_bn || 'ইউনিয়ন নিউজ'}
                         </div>
                     </motion.div>
 
@@ -102,17 +116,21 @@ export default function NewsDetailsView({ news }) {
                             </div>
                             <div>
                                 <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">প্রতিবেদক</p>
-                                <p className="text-sm font-bold text-slate-800">{news.author}</p>
+                                <p className="text-sm font-bold text-slate-800">
+                                    {news.author?.first_name} {news.author?.last_name}
+                                </p>
                             </div>
                         </div>
                         <div className="flex flex-wrap items-center gap-6 text-slate-400 ml-auto sm:ml-0">
                             <div className="flex items-center gap-2">
                                 <Calendar size={18} className="text-teal-500" />
-                                <span className="text-sm font-bold text-slate-600">{news.date}</span>
+                                <span className="text-sm font-bold text-slate-600">
+                                    {new Date(news.created_at).toLocaleDateString('bn-BD')}
+                                </span>
                             </div>
                             <div className="flex items-center gap-2">
                                 <Clock size={18} className="text-teal-500" />
-                                <span className="text-sm font-bold text-slate-600">{news.readTime} পাঠ</span>
+                                <span className="text-sm font-bold text-slate-600">৩ মিনিট পাঠ</span>
                             </div>
                         </div>
                     </motion.div>
@@ -123,13 +141,19 @@ export default function NewsDetailsView({ news }) {
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.3 }}
-                    className="relative aspect-[16/9] rounded-[48px] overflow-hidden bg-slate-100 mb-16 shadow-3xl shadow-slate-200/60"
+                    className="relative aspect-[16/9] rounded-[48px] overflow-hidden bg-slate-950 mb-16 shadow-3xl shadow-slate-200/60"
                 >
-                    <img 
-                        src={news.image} 
-                        alt={news.title}
-                        className="absolute inset-0 w-full h-full object-cover"
-                    />
+                    {news.image_url ? (
+                        <img 
+                            src={news.image_url} 
+                            alt={news.title}
+                            className="absolute inset-0 w-full h-full object-cover"
+                        />
+                    ) : (
+                        <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
+                            <Newspaper size={80} className="text-slate-800 opacity-20" />
+                        </div>
+                    )}
                 </motion.div>
 
                 {/* Article Content */}
@@ -158,14 +182,30 @@ export default function NewsDetailsView({ news }) {
                     <div className="lg:col-span-4 lg:sticky lg:top-24 h-fit">
                         <div className="bg-slate-50 rounded-[32px] p-8 border border-slate-100">
                             <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-6">শেয়ার করুন</h4>
-                            <div className="flex flex-col gap-3">
-                                <button className="w-full py-4 rounded-2xl bg-white border border-slate-200 flex items-center justify-center gap-3 text-slate-600 hover:bg-white hover:border-teal-300 hover:text-teal-600 transition-all font-bold group">
-                                    <Users size={18} className="group-hover:scale-110 transition-transform" />
-                                    Facebook
+                            <div className="grid grid-cols-2 gap-3">
+                                <button 
+                                    onClick={() => window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`, '_blank')}
+                                    className="w-full py-4 rounded-[28px] bg-[#1877F2] text-white flex items-center justify-center gap-2 hover:shadow-lg transition-all font-black"
+                                >
+                                    <Share2 size={18} /> Facebook
                                 </button>
-                                <button className="w-full py-4 rounded-2xl bg-white border border-slate-200 flex items-center justify-center gap-3 text-slate-600 hover:bg-white hover:border-teal-300 hover:text-teal-600 transition-all font-bold group">
-                                    <Share2 size={18} className="group-hover:scale-110 transition-transform" />
-                                    WhatsApp
+                                <button 
+                                    onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(news.title + ' ' + window.location.href)}`, '_blank')}
+                                    className="w-full py-4 rounded-[28px] bg-[#25D366] text-white flex items-center justify-center gap-2 hover:shadow-lg transition-all font-black"
+                                >
+                                    <MessageCircle size={18} /> WhatsApp
+                                </button>
+                                <button 
+                                    onClick={() => window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(news.title)}&url=${encodeURIComponent(window.location.href)}`, '_blank')}
+                                    className="w-full py-4 rounded-[28px] bg-[#1DA1F2] text-white flex items-center justify-center gap-2 hover:shadow-lg transition-all font-black"
+                                >
+                                    <Share2 size={18} /> Twitter
+                                </button>
+                                <button 
+                                    onClick={() => navigator.clipboard.writeText(window.location.href).then(() => alert('লিঙ্ক কপি করা হয়েছে!'))}
+                                    className="w-full py-4 rounded-[28px] bg-slate-700 text-white flex items-center justify-center gap-2 hover:shadow-lg transition-all font-black"
+                                >
+                                    <Copy size={18} /> লিঙ্ক কপি
                                 </button>
                             </div>
                         </div>

@@ -1,27 +1,65 @@
 "use client";
 
-import { useState } from 'react';
-import { DOCTORS_LIST, AMBULANCE_LIST, PHARMACY_LIST } from '@/lib/constants/eClinicData';
-import { RAJSHAHI_GEO } from '@/lib/constants/locations';
+import { useState, useEffect } from 'react';
+import { clinicService } from '@/lib/services/clinicService';
+import { getLocationBySlug } from '@/lib/services/hierarchyService';
 import { 
     Activity, Stethoscope, Phone, Clock, 
     Calendar, MapPin, ChevronRight, AlertCircle, 
-    ShieldCheck, Heart, Pill, Ambulance, Search
+    ShieldCheck, Heart, Pill, Ambulance, Search, Loader2
 } from 'lucide-react';
 import { toBnDigits } from '@/lib/utils/format';
 
 export function UnionClinicView({ unionSlug }) {
-    // Helper to find union
-    const unionInfo = RAJSHAHI_GEO.upazilas.flatMap(u => u.unions).find(u => u.slug === unionSlug);
-    
-    const unionDoctors = DOCTORS_LIST.filter(d => d.unionSlug === unionSlug);
-    const unionAmbulances = AMBULANCE_LIST.filter(a => a.unionSlug === unionSlug);
-    const unionPharmacies = PHARMACY_LIST.filter(p => p.unionSlug === unionSlug);
-    
-    const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+    const [doctors, setDoctors] = useState([]);
+    const [ambulances, setAmbulances] = useState([]);
+    const [pharmacies, setPharmacies] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [unionName, setUnionName] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
 
-    if (!unionInfo) {
+    useEffect(() => {
+        const loadData = async () => {
+            setLoading(true);
+            try {
+                // 1. Get Union Details to get locationId
+                const union = await getLocationBySlug(unionSlug);
+                if (union) {
+                    setUnionName(union.name_bn);
+                    
+                    // 2. Fetch Dynamic Data in Parallel
+                    const [docData, ambData, phData] = await Promise.all([
+                        clinicService.getDoctors(union.id),
+                        clinicService.getAmbulances(union.id),
+                        clinicService.getPharmacies(union.id)
+                    ]);
+                    
+                    setDoctors(docData);
+                    setAmbulances(ambData);
+                    setPharmacies(phData);
+                }
+            } catch (err) {
+                console.error("Clinic Data Load Error:", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadData();
+    }, [unionSlug]);
+
+    const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+
+    if (loading) {
+        return (
+            <div className="flex flex-col items-center justify-center py-40">
+                <Loader2 className="text-rose-500 animate-spin mb-4" size={48} />
+                <p className="text-slate-400 font-black uppercase tracking-widest text-sm">ক্লিনিক ডাটা লোড হচ্ছে...</p>
+            </div>
+        );
+    }
+
+    if (!unionName) {
         return (
             <div className="text-center py-20 bg-white rounded-[40px] shadow-sm border border-slate-100">
                 <AlertCircle className="mx-auto text-rose-400 mb-4" size={48} />
@@ -39,7 +77,7 @@ export function UnionClinicView({ unionSlug }) {
                     <div className="space-y-4">
                         <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-1.5 rounded-full w-fit border border-white/20">
                             <Activity size={16} className="text-rose-200" />
-                            <span className="text-xs font-black uppercase tracking-widest">{unionInfo.name} ডিজিটাল হেলথ পোর্টাল</span>
+                            <span className="text-xs font-black uppercase tracking-widest">{unionName} ডিজিটাল হেলথ পোর্টাল</span>
                         </div>
                         <h1 className="text-4xl md:text-5xl font-black tracking-tight leading-tight">
                             স্মার্ট <span className="text-rose-200">ই-ক্লিনিক</span>
@@ -78,13 +116,18 @@ export function UnionClinicView({ unionSlug }) {
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                            {unionDoctors.length > 0 ? unionDoctors.map(doc => {
-                                const isAvailableToday = doc.availableDays.includes(today) || doc.availableDays.includes('Everyday');
+                            {doctors.length > 0 ? doctors.map(doc => {
+                                const availableDays = doc.available_days || [];
+                                const isAvailableToday = availableDays.includes(today) || availableDays.includes('Everyday');
                                 return (
                                     <div key={doc.id} className={`group p-6 rounded-[32px] border transition-all duration-300 ${isAvailableToday ? 'bg-white border-rose-100 shadow-xl shadow-rose-900/5 hover:-translate-y-1' : 'bg-slate-50 border-slate-100 opacity-70'}`}>
                                         <div className="flex items-start justify-between mb-4">
                                             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center overflow-hidden border border-white">
-                                                <Stethoscope size={32} className="text-slate-400" />
+                                                {doc.image_url ? (
+                                                    <img src={doc.image_url} alt={doc.name} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <Stethoscope size={32} className="text-slate-400" />
+                                                )}
                                             </div>
                                             {isAvailableToday && (
                                                 <div className="px-3 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-black rounded-full flex items-center gap-1 border border-emerald-100 shadow-sm uppercase tracking-wider">
@@ -94,15 +137,15 @@ export function UnionClinicView({ unionSlug }) {
                                         </div>
                                         <h3 className="text-lg font-black text-slate-800 group-hover:text-rose-600 transition-colors">{doc.name}</h3>
                                         <p className="text-xs font-black text-rose-500 mb-1">{doc.specialty}</p>
-                                        <p className="text-[10px] font-bold text-slate-400 leading-tight mb-4">{doc.qual}</p>
+                                        <p className="text-[10px] font-bold text-slate-400 leading-tight mb-4">{doc.qualifications || doc.qual}</p>
                                         
                                         <div className="space-y-2 pt-4 border-t border-slate-50">
                                             <div className="flex items-center gap-2 text-xs font-bold text-slate-600">
-                                                <Clock size={14} className="text-slate-400" /> {doc.time}
+                                                <Clock size={14} className="text-slate-400" /> {doc.visiting_time || doc.time}
                                             </div>
                                             <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
                                                 <Calendar size={14} className="text-slate-400" /> 
-                                                {doc.availableDays.includes('Everyday') ? 'প্রতিদিন' : doc.availableDays.join(', ')}
+                                                {availableDays.includes('Everyday') ? 'প্রতিদিন' : availableDays.join(', ')}
                                             </div>
                                         </div>
                                     </div>
@@ -129,7 +172,7 @@ export function UnionClinicView({ unionSlug }) {
                             </div>
 
                             <div className="space-y-4">
-                                {unionPharmacies.map(ph => (
+                                {pharmacies.map(ph => (
                                     <div key={ph.id} className="p-6 rounded-3xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-6">
                                         <div className="flex items-center gap-4">
                                             <div className="w-12 h-12 rounded-2xl bg-rose-500/20 flex items-center justify-center text-rose-400">
@@ -142,7 +185,7 @@ export function UnionClinicView({ unionSlug }) {
                                         </div>
                                         
                                         <div className="flex flex-wrap gap-2">
-                                            {ph.emergencyStock.map(item => (
+                                            {(ph.emergency_stock || ph.emergencyStock || []).map(item => (
                                                 <span key={item} className="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-[10px] font-bold text-rose-200">
                                                     {item}
                                                 </span>
@@ -172,15 +215,15 @@ export function UnionClinicView({ unionSlug }) {
                         </div>
 
                         <div className="space-y-4">
-                            {unionAmbulances.map(amb => (
+                            {ambulances.map(amb => (
                                 <div key={amb.id} className="p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:border-rose-200 transition-all group">
                                     <div className="flex items-start justify-between mb-3">
                                         <div>
                                             <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest mb-0.5">{amb.type}</p>
                                             <h4 className="font-black text-slate-800 leading-tight">{amb.provider}</h4>
                                         </div>
-                                        <div className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase ${amb.status === 'Available' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600 animate-pulse'}`}>
-                                            {amb.status === 'Available' ? 'উপলব্ধ' : 'ব্যস্ত'}
+                                        <div className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase ${amb.is_available ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600 animate-pulse'}`}>
+                                            {amb.is_available ? 'উপলব্ধ' : 'ব্যস্ত'}
                                         </div>
                                     </div>
                                     

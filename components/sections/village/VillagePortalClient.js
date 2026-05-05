@@ -14,15 +14,16 @@ import { paths } from '@/lib/constants/paths';
 import { toBnDigits } from '@/lib/utils/format';
 
 export default function VillagePortalClient({ ctx, ward, village }) {
-    const { district, upazila, union } = ctx;
+    const { district, upazila, union, volunteers = [] } = ctx || {};
     const { dynamicNews } = useSelector((s) => s.news);
     const { dynamicWardData } = useSelector((state) => state.wardData);
+    const dVillage = useSelector((state) => state.location?.selected?.village);
     
-    // Normalize village data
+    // Normalize village data from DB
     const isObj = typeof village === 'object';
-    const vName = isObj ? village.name : village;
-    const vPop = isObj ? toBnDigits(village.population || '0') : '---';
-    const vVoters = isObj ? toBnDigits(village.voters || '0') : '---';
+    const vName = isObj ? (village.name_bn || village.name) : village;
+    const vPop = isObj && village.stats ? toBnDigits(village.stats.population || '0') : '---';
+    const vVoters = isObj && village.stats ? toBnDigits(village.stats.voters || '0') : '---';
     
     // Get Ward dynamic data for member & blood donors
     const wardKey = `${union.slug}-${ward.id}`;
@@ -95,7 +96,7 @@ export default function VillagePortalClient({ ctx, ward, village }) {
                         {union.name}
                     </Link>
                     <span className="text-slate-300">/</span>
-                    <Link href={`/u/${union.slug}/w/${ward.id}`} className="text-sm font-bold text-slate-500 hover:text-teal-600 transition-colors">
+                    <Link href={`/w/${ward.id}`} className="text-sm font-bold text-slate-500 hover:text-teal-600 transition-colors">
                         {ward.name}
                     </Link>
                     <span className="text-slate-300">/</span>
@@ -129,11 +130,11 @@ export default function VillagePortalClient({ ctx, ward, village }) {
                                 </div>
                                 <div className="p-4 rounded-2xl bg-slate-800/40 backdrop-blur-md border border-slate-700/50 w-fit min-w-[120px] pr-8">
                                     <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1 flex items-center gap-1.5"><UserCircle size={12}/> পুরুষ ভোটার</p>
-                                    <p className="text-2xl font-black text-white">{isObj && village.maleVoters ? toBnDigits(village.maleVoters) : '---'}</p>
+                                    <p className="text-2xl font-black text-white">{isObj && village.stats?.maleVoters ? toBnDigits(village.stats.maleVoters) : '---'}</p>
                                 </div>
                                 <div className="p-4 rounded-2xl bg-slate-800/40 backdrop-blur-md border border-slate-700/50 w-fit min-w-[120px] pr-8">
                                     <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1 flex items-center gap-1.5"><UserCircle size={12}/> মহিলা ভোটার</p>
-                                    <p className="text-2xl font-black text-white">{isObj && village.femaleVoters ? toBnDigits(village.femaleVoters) : '---'}</p>
+                                    <p className="text-2xl font-black text-white">{isObj && village.stats?.femaleVoters ? toBnDigits(village.stats.femaleVoters) : '---'}</p>
                                 </div>
                                 <div className="p-4 rounded-2xl bg-rose-500/20 backdrop-blur-md border border-rose-400/20 w-fit min-w-[120px] pr-8">
                                     <p className="text-[10px] font-black uppercase text-rose-200 tracking-wider mb-1 flex items-center gap-1.5"><Droplets size={12}/> রক্তদাতা</p>
@@ -366,30 +367,37 @@ export default function VillagePortalClient({ ctx, ward, village }) {
                                 <Shield className="text-rose-400" size={18} /> ইমার্জেন্সি ভলান্টিয়ার টিম
                             </h3>
                             <div className="space-y-3">
-                                <div className="flex items-center justify-between p-4 rounded-[20px] bg-slate-800 border border-slate-700 hover:border-slate-600 transition-colors">
-                                    <div>
-                                        <p className="text-sm font-black text-slate-200">আরিফ হোসেন</p>
-                                        <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest mt-1">মেডিকেল ইমার্জেন্সি</p>
+                                {volunteers.length === 0 ? (
+                                    <p className="text-xs font-bold text-slate-500 text-center py-4 italic">কোনো ভলান্টিয়ার লিস্টেড নেই</p>
+                                ) : volunteers.map(v => (
+                                    <div key={v.id} className="flex items-center justify-between p-4 rounded-[20px] bg-slate-800 border border-slate-700 hover:border-slate-600 transition-colors group">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-full bg-slate-700 border border-slate-600 overflow-hidden shrink-0 flex items-center justify-center">
+                                                {v.avatar_url ? (
+                                                    <img src={v.avatar_url} alt="" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <User size={20} className="text-slate-400" />
+                                                )}
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-black text-slate-200">{v.first_name} {v.last_name}</p>
+                                                <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest mt-1">স্বেচ্ছাসেবক</p>
+                                            </div>
+                                        </div>
+                                        <a 
+                                            href={`tel:${v.phone}`}
+                                            className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center hover:bg-emerald-500 transition-all group-hover:scale-110"
+                                        >
+                                            <Phone size={16} className="text-white" />
+                                        </a>
                                     </div>
-                                    <button className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center hover:bg-emerald-500 transition-colors">
-                                        <PhoneCall size={16} className="text-white" />
-                                    </button>
-                                </div>
-                                <div className="flex items-center justify-between p-4 rounded-[20px] bg-slate-800 border border-slate-700 hover:border-slate-600 transition-colors">
-                                    <div>
-                                        <p className="text-sm font-black text-slate-200">শফিকুল ইসলাম</p>
-                                        <p className="text-[10px] text-blue-400 font-bold uppercase tracking-widest mt-1">বন্যা ও দুর্যোগ রেসকিউ</p>
-                                    </div>
-                                    <button className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center hover:bg-blue-500 transition-colors">
-                                        <PhoneCall size={16} className="text-white" />
-                                    </button>
-                                </div>
+                                ))}
                             </div>
                         </div>
 
                         {/* Back Links to Ward and Union */}
                         <div className="space-y-4">
-                            <Link href={`/u/${union.slug}/w/${ward.id}`} className="flex items-center gap-4 p-5 rounded-[24px] bg-teal-50 border border-teal-100 hover:bg-teal-100 hover:border-teal-200 transition-all group">
+                            <Link href={`/w/${ward.id}`} className="flex items-center gap-4 p-5 rounded-[24px] bg-teal-50 border border-teal-100 hover:bg-teal-100 hover:border-teal-200 transition-all group">
                                 <div className="w-12 h-12 rounded-2xl bg-white border border-teal-100 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
                                     <ArrowLeft size={20} className="text-teal-600" />
                                 </div>

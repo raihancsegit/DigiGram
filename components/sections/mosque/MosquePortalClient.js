@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -10,10 +10,13 @@ import {
     CreditCard, CheckCircle2, Moon, Sun, Download, Image as ImageIcon,
     Target, Music, Play, Calculator, CircleDollarSign, Fingerprint,
     Library, PlayCircle, PauseCircle, SkipForward, SkipBack, BookMarked,
-    ArrowLeft
+    ArrowLeft, Loader2
 } from 'lucide-react';
 import { layout } from '@/lib/theme';
 import { paths } from '@/lib/constants/paths';
+import ModalPortal from '@/components/common/ModalPortal';
+import { institutionService } from '@/lib/services/institutionService';
+import { toBnDigits } from '@/lib/utils/format';
 
 // Mock Data
 const MOCK_MOSQUE = {
@@ -53,28 +56,68 @@ const TAB_EDUCATION = 'education';
 export default function MosquePortalClient({ mosqueId }) {
     const router = useRouter();
     const [activeTab, setActiveTab] = useState(TAB_DASHBOARD);
-    const [ledgerFilter, setLedgerFilter] = useState('all'); // 'all', 'income', 'expense'
+    const [ledgerFilter, setLedgerFilter] = useState('all'); 
     const [viewReceipt, setViewReceipt] = useState(null);
     const [activeEduCategory, setActiveEduCategory] = useState(1);
     const [isPlaying, setIsPlaying] = useState(false);
 
-    // Mock Content mapping for Education Center
-    const EDU_CONTENT = {
-        1: { title: "নূরানী কায়দা - মাখরাজ শিক্ষা (পর্ব ১)", author: "ক্বারী মোঃ শহিদুল্লাহ", category: "নূরানী কুরআন শিক্ষা", duration: "18:45 / 35:20", progress: "52%" },
-        2: { title: "দাঁড়িয়ে পানি পান করার হুকুম ও সুন্নাহ", author: "মুফতি আব্দুর রহমান", category: "দৈনন্দিন ফিকহ ও মাসায়েল", duration: "05:10 / 12:30", progress: "40%" },
-        3: { title: "নিয়তের গুরুত্ব - রিয়াদুস সালেহীন", author: "মাওলানা আব্দুল্লাহিল বাকী", category: "হাদিস পরিচিতি (অডিও)", duration: "12:45 / 45:20", progress: "35%" }
-    };
+    const [mosque, setMosque] = useState(null);
+    const [transactions, setTransactions] = useState([]);
+    const [loading, setLoading] = useState(true);
 
-    // Merge transactions for ledger and sort (mock sorting)
-    const transactions = [...MOCK_MOSQUE.lastIncomes, ...MOCK_MOSQUE.lastExpenses]
-        .sort((a, b) => b.id - a.id);
+    useEffect(() => {
+        const loadMosqueData = async () => {
+            setLoading(true);
+            try {
+                const [info, txs] = await Promise.all([
+                    institutionService.getInstitutionById(mosqueId),
+                    institutionService.getTransactions(mosqueId)
+                ]);
+                setMosque(info);
+                setTransactions(txs);
+            } catch (err) {
+                console.error("Mosque Data Load Error:", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadMosqueData();
+    }, [mosqueId]);
+
+    const namazTimes = mosque?.config?.namaz || [
+        { name: "ফজর", time: "--:--", icon: Moon },
+        { name: "যোহর", time: "--:--", icon: Sun },
+        { name: "আসর", time: "--:--", icon: Sun },
+        { name: "মাগরিব", time: "--:--", icon: Sun },
+        { name: "এশা", time: "--:--", icon: Moon },
+        { name: "জুম্মা", time: "--:--", icon: Sun },
+    ];
+
+    const fundGoal = mosque?.config?.fundGoal || { target: 0, raised: 0, title: "কোনো ফান্ড নেই" };
+    
+    const balance = transactions.reduce((acc, tx) => {
+        return tx.type === 'income' ? acc + tx.amount : acc - tx.amount;
+    }, 0);
+
+    const lastIncomes = transactions.filter(tx => tx.type === 'income').slice(0, 5);
+    const lastExpenses = transactions.filter(tx => tx.type === 'expense').slice(0, 5);
 
     const filteredTransactions = ledgerFilter === 'all'
         ? transactions
         : transactions.filter(t => t.type === ledgerFilter);
 
+    if (loading) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50">
+                <Loader2 className="text-emerald-600 animate-spin mb-4" size={48} />
+                <p className="text-slate-400 font-black uppercase tracking-widest text-sm">মসজিদ পোর্টাল প্রস্তুত করা হচ্ছে...</p>
+            </div>
+        );
+    }
+
     return (
-        <div className="dg-section-x px-2 mx-auto md:px-6 pb-32 pt-4 md:pt-8 bg-slate-50 min-h-screen">
+        <>
             <div className="max-w-[1000px] mx-auto" style={{ maxWidth: layout.servicesMaxPx }}>
 
                 {/* Header Action */}
@@ -103,17 +146,17 @@ export default function MosquePortalClient({ mosqueId }) {
                             <div className="md:col-span-8 space-y-6">
                                 <div>
                                     <h1 className="text-3xl md:text-5xl font-black text-emerald-50 tracking-tight leading-tight mb-2">
-                                        {MOCK_MOSQUE.name}
+                                        {mosque?.name}
                                     </h1>
                                     <p className="text-emerald-400 font-bold flex items-center gap-2">
-                                        <MapPin size={16} /> মোকাঃ {MOCK_MOSQUE.village}
+                                        <MapPin size={16} /> মোকাঃ {mosque?.village}
                                     </p>
                                 </div>
 
                                 <div className="p-6 rounded-[24px] bg-white/10 border border-white/10 backdrop-blur-md inline-block">
                                     <p className="text-[10px] font-black uppercase tracking-widest text-emerald-300 mb-1">বর্তমান ব্যালেন্স (লাইভ)</p>
                                     <div className="flex items-baseline gap-2">
-                                        <span className="text-4xl md:text-5xl font-black text-white">৳ {MOCK_MOSQUE.balance}</span>
+                                        <span className="text-4xl md:text-5xl font-black text-white">৳ {toBnDigits(balance.toLocaleString())}</span>
                                         <span className="text-emerald-400 font-bold">টাকা</span>
                                     </div>
                                 </div>
@@ -121,17 +164,17 @@ export default function MosquePortalClient({ mosqueId }) {
                                 {/* Fund Goal Tracker */}
                                 <div className="p-5 rounded-[24px] bg-slate-900/40 border border-emerald-500/20 max-w-[400px]">
                                     <div className="flex justify-between items-center mb-2">
-                                        <p className="text-xs font-black text-emerald-300 flex items-center gap-1.5"><Target size={14}/> {MOCK_MOSQUE.fundGoal.title}</p>
+                                        <p className="text-xs font-black text-emerald-300 flex items-center gap-1.5"><Target size={14}/> {fundGoal.title}</p>
                                         <p className="text-[10px] font-black uppercase text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-md">
-                                            {Math.round((MOCK_MOSQUE.fundGoal.raised / MOCK_MOSQUE.fundGoal.target) * 100)}%
+                                            {fundGoal.target > 0 ? Math.round((fundGoal.raised / fundGoal.target) * 100) : 0}%
                                         </p>
                                     </div>
                                     <div className="w-full h-3 bg-slate-800 rounded-full overflow-hidden mb-2">
-                                        <div className="h-full bg-gradient-to-r from-emerald-500 to-teal-300 rounded-full" style={{ width: `${(MOCK_MOSQUE.fundGoal.raised / MOCK_MOSQUE.fundGoal.target) * 100}%` }} />
+                                        <div className="h-full bg-gradient-to-r from-emerald-500 to-teal-300 rounded-full" style={{ width: `${fundGoal.target > 0 ? (fundGoal.raised / fundGoal.target) * 100 : 0}%` }} />
                                     </div>
                                     <div className="flex justify-between text-[10px] font-bold text-slate-400">
-                                        <span>উত্তোলিত: ৳{(MOCK_MOSQUE.fundGoal.raised).toLocaleString()}</span>
-                                        <span>টার্গেট: ৳{(MOCK_MOSQUE.fundGoal.target).toLocaleString()}</span>
+                                        <span>উত্তোলিত: ৳{toBnDigits(fundGoal.raised.toLocaleString())}</span>
+                                        <span>টার্গেট: ৳{toBnDigits(fundGoal.target.toLocaleString())}</span>
                                     </div>
                                 </div>
                             </div>
@@ -166,7 +209,7 @@ export default function MosquePortalClient({ mosqueId }) {
                                 <Play size={12} /> গত জুম্মার খুতবা শুনুন
                             </button>
                         </div>
-                        <p className="text-emerald-900 font-black text-lg">{MOCK_MOSQUE.khutba}</p>
+                        <p className="text-emerald-900 font-black text-lg">{mosque?.config?.khutba || "রমজানের পবিত্রতা রক্ষা ও যাকাতের গুরুত্ব"}</p>
                     </div>
                 </div>
 
@@ -202,13 +245,16 @@ export default function MosquePortalClient({ mosqueId }) {
                                     <Clock className="text-emerald-500" /> জামাতের সময়সূচী
                                 </h2>
                                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-                                    {MOCK_MOSQUE.namaz.map((n, i) => (
-                                        <div key={i} className="p-4 rounded-[20px] bg-slate-50 border border-slate-100 text-center hover:border-emerald-200 hover:bg-emerald-50 transition-colors">
-                                            <n.icon size={20} className="mx-auto mb-2 text-slate-400" />
-                                            <p className="text-xs font-black text-slate-500 mb-1">{n.name}</p>
-                                            <p className="text-sm font-black text-emerald-700">{n.time}</p>
-                                        </div>
-                                    ))}
+                                    {namazTimes.map((n, i) => {
+                                        const Icon = n.icon || (n.name === 'ফজর' || n.name === 'এশা' ? Moon : Sun);
+                                        return (
+                                            <div key={i} className="p-4 rounded-[20px] bg-slate-50 border border-slate-100 text-center hover:border-emerald-200 hover:bg-emerald-50 transition-colors">
+                                                <Icon size={20} className="mx-auto mb-2 text-slate-400" />
+                                                <p className="text-xs font-black text-slate-500 mb-1">{n.name}</p>
+                                                <p className="text-sm font-black text-emerald-700">{toBnDigits(n.time)}</p>
+                                            </div>
+                                        )
+                                    })}
                                 </div>
                             </div>
 
@@ -254,15 +300,19 @@ export default function MosquePortalClient({ mosqueId }) {
                                         সর্বশেষ আয়
                                     </h3>
                                     <div className="space-y-4">
-                                        {MOCK_MOSQUE.lastIncomes.slice(0, 3).map((item, i) => (
+                                        {lastIncomes.length > 0 ? lastIncomes.map((item, i) => (
                                             <div key={i} className="flex justify-between items-center border-b border-slate-50 pb-4 last:border-0 last:pb-0">
                                                 <div>
-                                                    <p className="font-bold text-slate-700">{item.source}</p>
-                                                    <p className="text-[10px] font-black text-slate-400">{item.date}</p>
+                                                    <p className="font-bold text-slate-700">{item.description || item.source}</p>
+                                                    <p className="text-[10px] font-black text-slate-400">
+                                                        {new Date(item.created_at).toLocaleDateString('bn-BD')}
+                                                    </p>
                                                 </div>
-                                                <p className="font-black text-emerald-600">+ ৳{item.amount}</p>
+                                                <p className="font-black text-emerald-600">+ ৳{toBnDigits(item.amount.toLocaleString())}</p>
                                             </div>
-                                        ))}
+                                        )) : (
+                                            <p className="text-center text-slate-400 py-4 font-bold">কোনো আয় নেই</p>
+                                        )}
                                     </div>
                                     <button onClick={() => setActiveTab(TAB_LEDGER)} className="w-full mt-6 py-3 rounded-xl bg-slate-50 text-slate-500 font-bold text-sm hover:bg-slate-100 transition-colors">
                                         সব আয় দেখুন
@@ -275,15 +325,19 @@ export default function MosquePortalClient({ mosqueId }) {
                                         সর্বশেষ ব্যয়
                                     </h3>
                                     <div className="space-y-4">
-                                        {MOCK_MOSQUE.lastExpenses.slice(0, 3).map((item, i) => (
+                                        {lastExpenses.length > 0 ? lastExpenses.map((item, i) => (
                                             <div key={i} className="flex justify-between items-center border-b border-slate-50 pb-4 last:border-0 last:pb-0">
                                                 <div>
-                                                    <p className="font-bold text-slate-700">{item.source}</p>
-                                                    <p className="text-[10px] font-black text-slate-400">{item.date}</p>
+                                                    <p className="font-bold text-slate-700">{item.description || item.source}</p>
+                                                    <p className="text-[10px] font-black text-slate-400">
+                                                        {new Date(item.created_at).toLocaleDateString('bn-BD')}
+                                                    </p>
                                                 </div>
-                                                <p className="font-black text-rose-600">- ৳{item.amount}</p>
+                                                <p className="font-black text-rose-600">- ৳{toBnDigits(item.amount.toLocaleString())}</p>
                                             </div>
-                                        ))}
+                                        )) : (
+                                            <p className="text-center text-slate-400 py-4 font-bold">কোনো ব্যয় নেই</p>
+                                        )}
                                     </div>
                                     <button onClick={() => setActiveTab(TAB_LEDGER)} className="w-full mt-6 py-3 rounded-xl bg-slate-50 text-slate-500 font-bold text-sm hover:bg-slate-100 transition-colors">
                                         সব ব্যয় দেখুন
@@ -451,16 +505,18 @@ export default function MosquePortalClient({ mosqueId }) {
                                     <tbody className="divide-y divide-slate-50">
                                         {filteredTransactions.map((t, idx) => (
                                             <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                                                <td className="p-4 pl-6 text-xs font-bold text-slate-500">{t.date}</td>
+                                                <td className="p-4 pl-6 text-xs font-bold text-slate-500">
+                                                    {new Date(t.created_at).toLocaleDateString('bn-BD')}
+                                                </td>
                                                 <td className="p-4">
                                                     <div className="flex items-center gap-2">
                                                         <span className={`w-2 h-2 rounded-full ${t.type === 'income' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                                                        <span className="font-black text-slate-700 text-sm">{t.source}</span>
+                                                        <span className="font-black text-slate-700 text-sm">{t.description || t.source}</span>
                                                     </div>
                                                 </td>
                                                 <td className="p-4 text-right">
                                                     <span className={`font-black text-sm ${t.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                                        {t.type === 'income' ? '+' : '-'} {t.amount}
+                                                        {t.type === 'income' ? '+' : '-'} {toBnDigits(t.amount.toLocaleString())}
                                                     </span>
                                                 </td>
                                                 <td className="p-4 pr-6 text-center">
@@ -593,7 +649,8 @@ export default function MosquePortalClient({ mosqueId }) {
 
             {/* Receipt Modal Mock */}
             {viewReceipt && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+                <ModalPortal>
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
                     <div className="bg-white rounded-[32px] p-8 max-w-[400px] w-full shadow-2xl relative">
                         <button
                             onClick={() => setViewReceipt(null)}
@@ -615,7 +672,8 @@ export default function MosquePortalClient({ mosqueId }) {
                         </div>
                     </div>
                 </div>
+                </ModalPortal>
             )}
-        </div>
+        </>
     );
 }
