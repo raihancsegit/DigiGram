@@ -1,5 +1,7 @@
 import MosquePortalClient from '@/components/sections/mosque/MosquePortalClient';
 
+export const dynamic = 'force-dynamic';
+
 export default async function MosquePortalPage({ params }) {
     const { mosqueId } = await params;
     

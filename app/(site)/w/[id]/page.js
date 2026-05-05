@@ -2,6 +2,8 @@ import { notFound } from 'next/navigation';
 import { getWardFullContext } from '@/lib/services/hierarchyService';
 import WardPortalClient from '@/components/sections/ward/WardPortalClient';
 
+export const dynamic = 'force-dynamic';
+
 export default async function FlatWardPortalPage({ params }) {
     const { id } = await params;
     

@@ -4,6 +4,8 @@ import VillagePortalClient from '@/components/sections/village/VillagePortalClie
 import { wardService } from '@/lib/services/wardService';
 import { getFullContextBySlug, getWardsWithDetailsByUnion, getLocationBySlug } from '@/lib/services/hierarchyService';
 
+export const dynamic = 'force-dynamic';
+
 export default async function VillagePortalPage({ params }) {
     const { unionSlug, wardId, villageId } = await params;
     

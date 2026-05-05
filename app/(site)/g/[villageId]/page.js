@@ -2,6 +2,8 @@ import { notFound } from 'next/navigation';
 import { getVillageFullContext } from '@/lib/services/hierarchyService';
 import VillagePortalClient from '@/components/sections/village/VillagePortalClient';
 
+export const dynamic = 'force-dynamic';
+
 export default async function FlatVillagePortalPage({ params }) {
     const { villageId } = await params;
     
