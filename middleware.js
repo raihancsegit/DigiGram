@@ -28,7 +28,10 @@ export default async function middleware(req) {
   if (
     hostname === 'localhost:3000' ||
     hostname === process.env.NEXT_PUBLIC_ROOT_DOMAIN ||
-    hostname === `www.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`
+    hostname === `www.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}` ||
+    hostname?.endsWith('.vercel.app') || // Support Vercel previews as root
+    url.pathname === '/login' ||
+    url.pathname.startsWith('/api/')
   ) {
     // Normal routing
     return NextResponse.next();
