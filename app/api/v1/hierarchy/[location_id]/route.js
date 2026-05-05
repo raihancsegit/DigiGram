@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getLocationPath } from '@/lib/services/hierarchyService';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request, { params }) {
     const resolvedParams = await params;
     const { location_id } = resolvedParams;
