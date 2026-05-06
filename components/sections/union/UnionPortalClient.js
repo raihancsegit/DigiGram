@@ -158,7 +158,7 @@ export default function UnionPortalClient({ ctx, activeServices = [], chairman =
         <div className="bg-[#F8FAFC] pb-32">
             
             {/* Edge-to-Edge Hero Background Area */}
-            <div className="relative pt-6 md:pt-10 pb-32 md:pb-40 px-4 md:px-6 bg-slate-900 overflow-hidden border-b border-slate-800 rounded-b-[48px] md:rounded-b-[80px]">
+            <div className="relative pt-4 md:pt-10 pb-20 md:pb-40 px-3 md:px-6 bg-slate-900 overflow-hidden border-b border-slate-800 rounded-b-[32px] md:rounded-b-[80px]">
                 <div className="absolute inset-0 opacity-40">
                     <div className="absolute top-0 right-0 w-96 h-96 bg-teal-500 rounded-full blur-[120px] translate-x-1/3 -translate-y-1/4" />
                     <div className="absolute bottom-0 left-0 w-96 h-96 bg-sky-500 rounded-full blur-[120px] -translate-x-1/3 translate-y-1/4" />
@@ -250,20 +250,20 @@ export default function UnionPortalClient({ ctx, activeServices = [], chairman =
                     </div>
 
                     {/* Integrated Scaled Vertical Mini-Stats Grid */}
-                    <div className="mt-12 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 lg:gap-6">
+                    <div className="mt-8 md:mt-12 grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4 lg:gap-6">
                         {allStats.map((s, i) => (
                             <motion.div 
                                 initial={{ opacity: 0, scale: 0.9 }}
                                 animate={{ opacity: 1, scale: 1 }}
                                 transition={{ delay: i * 0.03 + 0.4 }}
                                 key={s.label} 
-                                className={`flex flex-col items-center text-center p-5 sm:p-6 rounded-[32px] bg-white/[0.12] backdrop-blur-xl border border-white/10 hover:bg-white/[0.18] hover:border-white/20 hover:-translate-y-1.5 transition-all duration-300 group`}
+                                className={`flex flex-col items-center text-center p-3 sm:p-6 rounded-[24px] sm:rounded-[32px] bg-white/[0.08] backdrop-blur-xl border border-white/5 hover:bg-white/[0.15] hover:border-white/15 hover:-translate-y-1 transition-all duration-300 group`}
                             >
-                                <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl ${s.bg} flex items-center justify-center mb-4 shadow-lg shadow-black/30 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-500`}>
-                                    <s.icon className={`${s.color}`} size={22} />
+                                <div className={`w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl ${s.bg} flex items-center justify-center mb-3 sm:mb-4 shadow-lg shadow-black/20 group-hover:scale-110 transition-transform duration-500`}>
+                                    <s.icon className={`${s.color}`} size={18} sm:size={22} />
                                 </div>
-                                <p className="text-[10px] sm:text-xs font-black text-white/50 uppercase tracking-[0.15em] mb-1.5 leading-tight group-hover:text-teal-400 transition-colors uppercase">{s.label}</p>
-                                <p className="text-base sm:text-xl font-black text-white tracking-tight leading-none">{s.value}</p>
+                                <p className="text-[8px] sm:text-[10px] font-black text-white/40 uppercase tracking-[0.1em] sm:tracking-[0.15em] mb-1 leading-tight group-hover:text-teal-400 transition-colors">{s.label}</p>
+                                <p className="text-xs sm:text-lg font-black text-white tracking-tight leading-none">{s.value}</p>
                             </motion.div>
                         ))}
                     </div>

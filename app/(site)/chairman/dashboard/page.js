@@ -164,23 +164,23 @@ export default function ChairmanDashboard() {
                         </h1>
                     </div>
                     
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1 sm:gap-2">
                         <Link 
                             href="/chairman/settings"
-                            className="flex items-center gap-2 text-slate-600 font-bold text-sm hover:bg-slate-100 px-4 py-2 rounded-xl transition-all"
+                            className="flex items-center gap-2 text-slate-600 font-bold text-xs sm:text-sm hover:bg-slate-100 px-3 sm:px-4 py-2 rounded-xl transition-all"
                         >
                             <Settings size={18} />
-                            সেটিংস
+                            <span className="hidden xs:inline">সেটিংস</span>
                         </Link>
                         <button 
                             onClick={async () => {
                                 await dispatch(performLogout());
                                 router.push('/login');
                             }}
-                            className="flex items-center gap-2 text-red-500 font-bold text-sm hover:bg-red-50 px-4 py-2 rounded-xl transition-all"
+                            className="flex items-center gap-2 text-red-500 font-bold text-xs sm:text-sm hover:bg-red-50 px-3 sm:px-4 py-2 rounded-xl transition-all"
                         >
                             <LogOut size={18} />
-                            লগআউট
+                            <span className="hidden xs:inline">লগআউট</span>
                         </button>
                     </div>
                 </div>
@@ -229,7 +229,7 @@ export default function ChairmanDashboard() {
                                     </div>
                                 )}
                                 <h2 className="text-3xl md:text-5xl font-black leading-tight">
-                                    স্বাগতম, <br className="hidden sm:block" />
+                                    স্বাগতম, <br className="block sm:hidden" />
                                     <span className="text-indigo-400">{user.first_name} {user.last_name || ''}</span>
                                 </h2>
                             </div>
@@ -308,57 +308,59 @@ export default function ChairmanDashboard() {
                     </div>
                 </motion.div>
 
-                {/* Tab Switcher */}
-                <div className="flex p-1 bg-slate-200/50 rounded-2xl w-fit mb-8 gap-1">
-                    <button 
-                        onClick={() => { setActiveTab('overview'); setServicePage(1); }}
-                        className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-black transition-all ${activeTab === 'overview' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                    >
-                        <Settings size={18} />
-                        ওয়াড ওভারভিউ
-                    </button>
-                    <button 
-                        onClick={() => { setActiveTab('services'); setServicePage(1); }}
-                        className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-black transition-all ${activeTab === 'services' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                    >
-                        <Sparkles size={18} />
-                        ডিজিটাল সেবাসমূহ
-                    </button>
-                    <button 
-                        onClick={() => { setActiveTab('news'); setServicePage(1); }}
-                        className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-black transition-all ${activeTab === 'news' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                    >
-                        <MessageSquare size={18} />
-                        ইউনিয়ন নিউজ ও নোটিশ
-                    </button>
-                    
-                    {activeServices.find(s => s.services.slug === 'emergency-hotline') && (
+                {/* Tab Switcher - Scrollable on Mobile */}
+                <div className="overflow-x-auto pb-4 -mb-4 scrollbar-hide">
+                    <div className="flex p-1 bg-slate-200/50 rounded-2xl w-fit mb-8 gap-1 whitespace-nowrap">
                         <button 
-                            onClick={() => { setActiveTab('emergency'); setServicePage(1); }}
-                            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-black transition-all ${activeTab === 'emergency' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            onClick={() => { setActiveTab('overview'); setServicePage(1); }}
+                            className={`flex items-center gap-2 px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${activeTab === 'overview' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                         >
-                            <Phone size={18} />
-                            জরুরি হটলাইন
+                            <Settings size={16} className="sm:w-[18px] sm:h-[18px]" />
+                            ওয়াড ওভারভিউ
                         </button>
-                    )}
-
-                    {activeServices.find(s => s.services.slug === 'lost-found') && (
                         <button 
-                            onClick={() => { setActiveTab('lost-found'); setServicePage(1); }}
-                            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-black transition-all ${activeTab === 'lost-found' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            onClick={() => { setActiveTab('services'); setServicePage(1); }}
+                            className={`flex items-center gap-2 px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${activeTab === 'services' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                         >
-                            <Search size={18} />
-                            হারানো ও প্রাপ্তি
+                            <Sparkles size={16} className="sm:w-[18px] sm:h-[18px]" />
+                            ডিজিটাল সেবাসমূহ
                         </button>
-                    )}
+                        <button 
+                            onClick={() => { setActiveTab('news'); setServicePage(1); }}
+                            className={`flex items-center gap-2 px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${activeTab === 'news' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        >
+                            <MessageSquare size={16} className="sm:w-[18px] sm:h-[18px]" />
+                            ইউনিয়ন নিউজ ও নোটিশ
+                        </button>
+                        
+                        {activeServices.find(s => s.services.slug === 'emergency-hotline') && (
+                            <button 
+                                onClick={() => { setActiveTab('emergency'); setServicePage(1); }}
+                                className={`flex items-center gap-2 px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${activeTab === 'emergency' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            >
+                                <Phone size={16} className="sm:w-[18px] sm:h-[18px]" />
+                                জরুরি হটলাইন
+                            </button>
+                        )}
 
-                    <button 
-                        onClick={() => { setActiveTab('donation'); setServicePage(1); }}
-                        className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-black transition-all ${activeTab === 'donation' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                    >
-                        <HandHeart size={18} />
-                        স্বচ্ছ দান
-                    </button>
+                        {activeServices.find(s => s.services.slug === 'lost-found') && (
+                            <button 
+                                onClick={() => { setActiveTab('lost-found'); setServicePage(1); }}
+                                className={`flex items-center gap-2 px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${activeTab === 'lost-found' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            >
+                                <Search size={16} className="sm:w-[18px] sm:h-[18px]" />
+                                হারানো ও প্রাপ্তি
+                            </button>
+                        )}
+
+                        <button 
+                            onClick={() => { setActiveTab('donation'); setServicePage(1); }}
+                            className={`flex items-center gap-2 px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${activeTab === 'donation' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        >
+                            <HandHeart size={16} className="sm:w-[18px] sm:h-[18px]" />
+                            স্বচ্ছ দান
+                        </button>
+                    </div>
                 </div>
 
                 <AnimatePresence mode="wait">

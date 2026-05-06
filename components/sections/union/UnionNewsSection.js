@@ -119,16 +119,16 @@ export default function UnionNewsSection({ unionName = 'ইউনিয়ন', uni
                 };
             case 'জরুরি নোটিশ':
                 return {
-                    container: 'bg-rose-50 border-rose-200 text-slate-800 shadow-md',
-                    accent: 'bg-rose-500',
-                    title: 'text-slate-900',
-                    excerpt: 'text-slate-600',
-                    meta: 'text-slate-400',
-                    tag: 'bg-rose-100 text-rose-700 border-rose-200'
+                    container: 'bg-rose-600 border-rose-500 text-white shadow-xl shadow-rose-200/20',
+                    accent: 'bg-white',
+                    title: 'text-white',
+                    excerpt: 'text-rose-100',
+                    meta: 'text-rose-200',
+                    tag: 'bg-white/20 text-white border-white/30'
                 };
             case 'উন্নয়ন':
                 return {
-                    container: 'bg-indigo-50 border-indigo-200 text-slate-800 shadow-md',
+                    container: 'bg-indigo-50 border-indigo-200 text-slate-800 shadow-sm',
                     accent: 'bg-indigo-500',
                     title: 'text-slate-900',
                     excerpt: 'text-slate-600',
@@ -137,17 +137,17 @@ export default function UnionNewsSection({ unionName = 'ইউনিয়ন', uni
                 };
             case 'দান-প্রকল্প':
                 return {
-                    container: 'bg-rose-50 border-rose-200 text-slate-800 shadow-md',
+                    container: 'bg-white border-rose-100 text-slate-800 shadow-sm',
                     accent: 'bg-rose-500',
                     title: 'text-slate-900',
                     excerpt: 'text-slate-600',
                     meta: 'text-slate-400',
-                    tag: 'bg-rose-100 text-rose-700 border-rose-200'
+                    tag: 'bg-rose-50 text-rose-700 border-rose-100'
                 };
             case 'হারানো':
             case 'প্রাপ্তি':
                 return {
-                    container: 'bg-amber-50 border-amber-200 text-slate-800 shadow-md',
+                    container: 'bg-amber-50 border-amber-200 text-slate-800 shadow-sm',
                     accent: 'bg-amber-500',
                     title: 'text-slate-900',
                     excerpt: 'text-slate-600',
@@ -156,12 +156,12 @@ export default function UnionNewsSection({ unionName = 'ইউনিয়ন', uni
                 };
             default:
                 return {
-                    container: 'bg-white/80 border-slate-200/60 text-slate-800 shadow-sm',
-                    accent: 'bg-teal-600/10 group-hover:bg-teal-600',
+                    container: 'bg-white border-slate-200/60 text-slate-800 shadow-sm',
+                    accent: 'bg-teal-600',
                     title: 'text-slate-800 group-hover:text-teal-700',
                     excerpt: 'text-slate-500',
                     meta: 'text-slate-400',
-                    tag: 'bg-slate-100 text-teal-700 border-slate-200/50'
+                    tag: 'bg-slate-50 text-teal-700 border-slate-200/50'
                 };
         }
     };
@@ -176,28 +176,28 @@ export default function UnionNewsSection({ unionName = 'ইউনিয়ন', uni
         <section className="py-16 bg-transparent overflow-hidden">
             
             {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 mb-12">
-                <div className="flex items-start gap-4">
-                    <div className="w-14 h-14 rounded-2xl bg-teal-600 flex items-center justify-center text-white shrink-0 shadow-lg shadow-teal-200">
-                        <Bookmark size={28} />
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-12">
+                <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-teal-600 flex items-center justify-center text-white shrink-0 shadow-lg shadow-teal-200">
+                        <Bookmark size={24} className="md:w-7 md:h-7" />
                     </div>
                     <div>
                         <div className="text-[10px] font-black uppercase text-teal-600 tracking-widest mb-1 flex items-center gap-2">
-                            <span className="w-6 h-[2px] bg-teal-600" />
+                            <span className="w-4 h-[2px] bg-teal-600" />
                             {unionName} ইউনিয়ন তথ্যকেন্দ্র
                         </div>
-                        <h2 className="text-3xl font-black text-slate-900 leading-tight">
+                        <h2 className="text-2xl md:text-3xl font-black text-slate-900 leading-tight">
                             ইউনিয়ন <span className="text-teal-600">অ্যাক্টিভিটি ও নোটিশ</span>
                         </h2>
                     </div>
                 </div>
                 
-                <div className="flex flex-col sm:flex-row items-center gap-4">
-                    {/* Local/Global Tabs */}
-                    <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                    {/* Local/Global Tabs - Scrollable */}
+                    <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200 w-full sm:w-auto overflow-x-auto scrollbar-hide">
                         <button 
                             onClick={() => setActiveTab('local')}
-                            className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex-1 sm:flex-none ${
                                 activeTab === 'local' ? 'bg-white text-teal-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'
                             }`}
                         >
@@ -205,7 +205,7 @@ export default function UnionNewsSection({ unionName = 'ইউনিয়ন', uni
                         </button>
                         <button 
                             onClick={() => setActiveTab('global')}
-                            className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex-1 sm:flex-none ${
                                 activeTab === 'global' ? 'bg-white text-teal-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'
                             }`}
                         >
@@ -213,15 +213,15 @@ export default function UnionNewsSection({ unionName = 'ইউনিয়ন', uni
                         </button>
                     </div>
 
-                    {/* Timeframe Filter */}
-                    <div className="flex items-center bg-slate-100 p-1 rounded-2xl border border-slate-200 overflow-x-auto max-w-full sm:max-w-none">
+                    {/* Timeframe Filter - Scrollable */}
+                    <div className="flex items-center bg-slate-100 p-1 rounded-2xl border border-slate-200 overflow-x-auto w-full sm:w-auto scrollbar-hide">
                         {TIMEFRAMES.map((tf) => (
                             <button
                                 key={tf.id}
                                 onClick={() => setTimeframe(tf.id)}
                                 className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
                                     timeframe === tf.id 
-                                        ? 'bg-white text-teal-600 shadow-sm scale-[1.02]' 
+                                        ? 'bg-white text-teal-600 shadow-sm' 
                                         : 'text-slate-500 hover:text-slate-800'
                                 }`}
                             >

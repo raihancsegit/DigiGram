@@ -223,23 +223,23 @@ export default function WardMemberDashboard() {
                         </h1>
                     </div>
                     
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1 sm:gap-2">
                         <Link 
                             href="/ward-member/settings"
-                            className="flex items-center gap-2 text-slate-600 font-bold text-sm hover:bg-slate-100 px-4 py-2 rounded-xl transition-all"
+                            className="flex items-center gap-2 text-slate-600 font-bold text-xs sm:text-sm hover:bg-slate-100 px-3 sm:px-4 py-2 rounded-xl transition-all"
                         >
                             <Settings size={18} />
-                            সেটিংস
+                            <span className="hidden xs:inline">সেটিংস</span>
                         </Link>
                         <button 
                             onClick={async () => {
                                 await dispatch(performLogout());
                                 router.push('/login');
                             }}
-                            className="flex items-center gap-2 text-red-500 font-bold text-sm hover:bg-red-50 px-4 py-2 rounded-xl transition-all"
+                            className="flex items-center gap-2 text-red-500 font-bold text-xs sm:text-sm hover:bg-red-50 px-3 sm:px-4 py-2 rounded-xl transition-all"
                         >
                             <LogOut size={18} />
-                            লগআউট
+                            <span className="hidden xs:inline">লগআউট</span>
                         </button>
                     </div>
                 </div>
@@ -288,7 +288,7 @@ export default function WardMemberDashboard() {
                                     </div>
                                 )}
                                 <h2 className="text-3xl md:text-5xl font-black leading-tight">
-                                    স্বাগতম, <br className="hidden sm:block" />
+                                    স্বাগতম, <br className="block sm:hidden" />
                                     <span className="text-teal-400">{user.first_name} {user.last_name || ''}</span>
                                 </h2>
                             </div>
@@ -388,29 +388,31 @@ export default function WardMemberDashboard() {
                     </div>
                 </div>
 
-                {/* Tab Switcher */}
-                <div className="flex p-1 bg-slate-200/50 rounded-2xl w-fit mb-8 gap-1">
-                    <button 
-                        onClick={() => setActiveTab('news')}
-                        className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-black transition-all ${activeTab === 'news' ? 'bg-white text-teal-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                    >
-                        <MessageSquare size={18} />
-                        নিউজ ও আপডেট
-                    </button>
-                    <button 
-                        onClick={() => setActiveTab('services')}
-                        className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-black transition-all ${activeTab === 'services' ? 'bg-white text-teal-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                    >
-                        <ShieldCheck size={18} />
-                        ডিজিটাল সেবাসমূহ
-                    </button>
-                    <button 
-                        onClick={() => setActiveTab('management')}
-                        className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-black transition-all ${activeTab === 'management' ? 'bg-white text-teal-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                    >
-                        <Settings size={18} />
-                        ওয়াড ম্যানেজমেন্ট
-                    </button>
+                {/* Tab Switcher - Scrollable on Mobile */}
+                <div className="overflow-x-auto pb-4 -mb-4 scrollbar-hide">
+                    <div className="flex p-1 bg-slate-200/50 rounded-2xl w-fit mb-8 gap-1 whitespace-nowrap">
+                        <button 
+                            onClick={() => setActiveTab('news')}
+                            className={`flex items-center gap-2 px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${activeTab === 'news' ? 'bg-white text-teal-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        >
+                            <MessageSquare size={16} className="sm:w-[18px] sm:h-[18px]" />
+                            নিউজ ও আপডেট
+                        </button>
+                        <button 
+                            onClick={() => setActiveTab('services')}
+                            className={`flex items-center gap-2 px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${activeTab === 'services' ? 'bg-white text-teal-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        >
+                            <ShieldCheck size={16} className="sm:w-[18px] sm:h-[18px]" />
+                            ডিজিটাল সেবাসমূহ
+                        </button>
+                        <button 
+                            onClick={() => setActiveTab('management')}
+                            className={`flex items-center gap-2 px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${activeTab === 'management' ? 'bg-white text-teal-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        >
+                            <Settings size={16} className="sm:w-[18px] sm:h-[18px]" />
+                            ওয়াড ম্যানেজমেন্ট
+                        </button>
+                    </div>
                 </div>
 
                 <AnimatePresence mode="wait">
