@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { 
-    Calendar, ArrowRight as LucideArrowRight, MapPin, Bookmark 
+    Calendar, ArrowRight as LucideArrowRight, MapPin, Bookmark, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import Link from 'next/link';
 import { wardService } from '@/lib/services/wardService';
@@ -16,12 +16,11 @@ export default function UnionNewsSection({ unionName = 'ইউনিয়ন', uni
     const ITEMS_PER_PAGE = 12; // 4 rows × 3 columns
 
     const TIMEFRAMES = [
-        { id: 'all', label: 'সব' },
-        { id: 'today', label: 'আজ' },
+        { id: 'all', label: 'সবগুলো' },
+        { id: 'today', label: 'আজকের' },
         { id: '7days', label: '৭ দিন' },
         { id: '15days', label: '১৫ দিন' },
         { id: '30days', label: '৩০ দিন' },
-        { id: 'year', label: '১ বছর' },
     ];
 
     const [activeTab, setActiveTab] = useState('local'); // 'local' or 'global'
@@ -176,7 +175,7 @@ export default function UnionNewsSection({ unionName = 'ইউনিয়ন', uni
         <section className="py-16 bg-transparent overflow-hidden">
             
             {/* Header */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-12">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-12 px-4">
                 <div className="flex items-center gap-4">
                     <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-teal-600 flex items-center justify-center text-white shrink-0 shadow-lg shadow-teal-200">
                         <Bookmark size={24} className="md:w-7 md:h-7" />
@@ -193,36 +192,40 @@ export default function UnionNewsSection({ unionName = 'ইউনিয়ন', uni
                 </div>
                 
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                    {/* Local/Global Tabs - Scrollable */}
-                    <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200 w-full sm:w-auto overflow-x-auto scrollbar-hide">
+                    {/* Local/Global Tabs - Pill Design */}
+                    <div className="flex gap-2 w-full sm:w-auto overflow-x-auto scrollbar-hide py-1">
                         <button 
                             onClick={() => setActiveTab('local')}
-                            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex-1 sm:flex-none ${
-                                activeTab === 'local' ? 'bg-white text-teal-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                            className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex-1 sm:flex-none ${
+                                activeTab === 'local' 
+                                    ? 'bg-slate-900 text-white shadow-lg shadow-slate-200' 
+                                    : 'bg-white border border-slate-200 text-slate-500 hover:border-slate-300'
                             }`}
                         >
                             নিজের ইউনিয়ন
                         </button>
                         <button 
                             onClick={() => setActiveTab('global')}
-                            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex-1 sm:flex-none ${
-                                activeTab === 'global' ? 'bg-white text-teal-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                            className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex-1 sm:flex-none ${
+                                activeTab === 'global' 
+                                    ? 'bg-slate-900 text-white shadow-xl shadow-slate-200' 
+                                    : 'bg-white border border-slate-200 text-slate-500 hover:border-slate-300'
                             }`}
                         >
                             গ্লোবাল ইউনিয়ন
                         </button>
                     </div>
 
-                    {/* Timeframe Filter - Scrollable */}
-                    <div className="flex items-center bg-slate-100 p-1 rounded-2xl border border-slate-200 overflow-x-auto w-full sm:w-auto scrollbar-hide">
+                    {/* Timeframe Filter - Pill Design */}
+                    <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto scrollbar-hide py-1">
                         {TIMEFRAMES.map((tf) => (
                             <button
                                 key={tf.id}
                                 onClick={() => setTimeframe(tf.id)}
-                                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
+                                className={`px-3.5 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
                                     timeframe === tf.id 
-                                        ? 'bg-white text-teal-600 shadow-sm' 
-                                        : 'text-slate-500 hover:text-slate-800'
+                                        ? 'bg-slate-900 text-white shadow-lg shadow-slate-200' 
+                                        : 'bg-white border border-slate-200 text-slate-500 hover:border-slate-300'
                                 }`}
                             >
                                 {tf.label}
@@ -232,161 +235,169 @@ export default function UnionNewsSection({ unionName = 'ইউনিয়ন', uni
                 </div>
             </div>
 
-            {/* Notice Grid */}
-            {paginatedNews.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-20 bg-slate-50 rounded-3xl border border-slate-200">
-                    <Bookmark size={48} className="text-slate-300 mb-4" />
-                    <p className="text-lg font-black text-slate-600 mb-2">কোন ফলাফল পাওয়া যায়নি</p>
-                    <p className="text-sm text-slate-500">এই ফিল্টারে কোন নিউজ, দান বা প্রাপ্তি নেই</p>
+            {/* Notice Grid Container */}
+            <div className="rounded-[40px] border border-slate-200 bg-white shadow-sm overflow-hidden mx-2 sm:mx-4">
+                <div className="px-6 md:px-10 py-6 md:py-8 border-b border-slate-200 bg-slate-50/50">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+                        <div>
+                            <h3 className="text-xl md:text-2xl font-black text-slate-900">
+                                {activeTab === 'local' ? 'ইউনিয়ন' : 'গ্লোবাল'} আপডেট ও নোটিশ
+                            </h3>
+                            <p className="mt-1 text-xs text-slate-500 font-bold">
+                                {activeTab === 'local' ? 'আপনার ইউনিয়নের' : 'অন্যান্য ইউনিয়নের'} সর্বশেষ আপডেটগুলো এখানে দেখুন।
+                            </p>
+                        </div>
+                        <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-900 text-white text-[10px] font-black uppercase tracking-[0.2em] w-fit shadow-lg shadow-slate-200">
+                            <Calendar size={12} className="text-teal-400" /> পেজ: {currentPage}
+                        </span>
+                    </div>
                 </div>
-            ) : (
-                <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {paginatedNews.map((news) => {
-                        const styles = getCardStyles(news.type === 'news' ? news.category : news.displayCategory);
-                        const detailLink = news.type === 'news' ? `/news/${news.id}` : 
-                                         (news.type === 'donation' ? `/donation/${news.id}` : `/lost-found/${news.id}`);
-                        
-                        return (
-                            <div 
-                                key={news.id}
-                            >
-                                <Link href={detailLink} className="group block h-full">
-                                    <div className={`backdrop-blur-sm h-full rounded-[24px] border shadow-sm hover:shadow-2xl hover:shadow-slate-200/50 hover:border-teal-200 transition-all duration-500 relative flex flex-col overflow-hidden ${styles.container}`}>
-                                        
-                                        {/* Image Header with Black Body Fallback */}
-                                        <div className={`relative h-40 w-full overflow-hidden ${news.image_url ? 'bg-slate-200' : 'bg-slate-900'}`}>
-                                            {news.image_url ? (
-                                                <img 
-                                                    src={news.image_url} 
-                                                    alt={news.title} 
-                                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                                                />
-                                            ) : (
-                                                <div className="w-full h-full flex items-center justify-center opacity-30">
-                                                    <Bookmark size={32} className="text-white" />
-                                                </div>
-                                            )}
-                                            {/* Category Badge - Very prominent */}
-                                            <div className="absolute top-3 right-3">
-                                                <span className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest border backdrop-blur-md shadow-lg ${styles.tag}`}>
-                                                    {news.displayCategory}
-                                                </span>
-                                            </div>
-                                            
-                                            {/* Source Attribution Badge if Global */}
-                                            {news.is_global && (
-                                                <div className="absolute bottom-3 left-3">
-                                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-black/60 backdrop-blur-md text-[10px] font-black text-white border border-white/20 shadow-sm">
-                                                        <MapPin size={10} className="text-teal-400" />
-                                                        {news.village}
-                                                    </span>
-                                                </div>
-                                            )}
-                                        </div>
 
-                                        {/* Sidebar Accent */}
-                                        <div className={`absolute left-0 top-40 bottom-6 w-1.5 transition-colors rounded-r-full ${styles.accent}`} />
-
-                                        <div className="p-6 flex-1 flex flex-col">
-                                            <div className="flex items-center justify-between mb-3">
-                                                <div className={`flex items-center gap-2 text-[10px] font-black uppercase tracking-widest ${styles.meta}`}>
-                                                    <Calendar size={14} className="text-teal-500" />
-                                                    {news.date}
-                                                </div>
-                                            </div>
-
-                                            <h3 className={`text-lg font-black leading-snug mb-3 transition-colors line-clamp-2 ${styles.title}`}>
-                                                {news.title}
-                                            </h3>
-                                            
-                                            <p className={`text-xs font-medium leading-relaxed mb-6 line-clamp-3 ${styles.excerpt}`}>
-                                                {news.excerpt || news.description || news.content}
-                                            </p>
-
-                                            {/* Donation-Specific Fields */}
-                                            {news.type === 'donation' && (
-                                                <div className="mb-4 space-y-2 pb-4 border-b border-slate-100/10">
-                                                    <div className="flex items-center justify-between text-xs font-bold">
-                                                        <span className={styles.meta}>লক্ষ্য: ৳{(news.target_amount || 0).toLocaleString()}</span>
-                                                        <span className="text-teal-600">{Math.round(news.progress)}%</span>
-                                                    </div>
-                                                    <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
-                                                        <div 
-                                                            className="h-full bg-gradient-to-r from-rose-500 to-pink-400 rounded-full transition-all"
-                                                            style={{ width: `${news.progress}%` }}
+                <div className="p-4 md:p-12">
+                    {paginatedNews.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-24 bg-slate-50/50 rounded-[32px] border-2 border-dashed border-slate-200">
+                            <Bookmark size={48} className="text-slate-300 mb-4" />
+                            <p className="text-lg font-black text-slate-600 mb-2">কোন ফলাফল পাওয়া যায়নি</p>
+                            <p className="text-sm text-slate-500 font-bold">এই ফিল্টারে কোন নিউজ, দান বা প্রাপ্তি নেই</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                            {paginatedNews.map((news) => {
+                                const styles = getCardStyles(news.type === 'news' ? news.category : news.displayCategory);
+                                const detailLink = news.type === 'news' ? `/news/${news.id}` : 
+                                                 (news.type === 'donation' ? `/donation/${news.id}` : `/lost-found/${news.id}`);
+                                
+                                return (
+                                    <div key={news.id}>
+                                        <Link href={detailLink} className="group block h-full">
+                                            <div className={`backdrop-blur-sm h-full rounded-[32px] border shadow-sm hover:shadow-2xl hover:shadow-slate-200/60 hover:border-teal-200 transition-all duration-500 relative flex flex-col overflow-hidden ${styles.container}`}>
+                                                
+                                                {/* Image Header with Black Body Fallback */}
+                                                <div className={`relative h-44 w-full overflow-hidden ${news.image_url ? 'bg-slate-200' : 'bg-slate-900'}`}>
+                                                    {news.image_url ? (
+                                                        <img 
+                                                            src={news.image_url} 
+                                                            alt={news.title} 
+                                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                                                         />
+                                                    ) : (
+                                                        <div className="w-full h-full flex items-center justify-center opacity-30">
+                                                            <Bookmark size={32} className="text-white" />
+                                                        </div>
+                                                    )}
+                                                    {/* Category Badge - Very prominent */}
+                                                    <div className="absolute top-4 right-4">
+                                                        <span className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border backdrop-blur-md shadow-lg ${styles.tag}`}>
+                                                            {news.displayCategory}
+                                                        </span>
                                                     </div>
-                                                    <div className={`text-xs font-bold ${styles.meta}`}>
-                                                        সংগৃহীত: ৳{(news.raised_amount || 0).toLocaleString()}
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            <div className="mt-auto flex items-center justify-between pt-4 border-t border-slate-100/10">
-                                                <div className={`flex items-center gap-1.5 text-[10px] font-bold ${styles.meta} truncate max-w-[70%]`}>
-                                                    {!news.is_global && (
-                                                        <>
-                                                            <MapPin size={12} className="text-teal-500 shrink-0" />
-                                                            {news.village}
-                                                        </>
+                                                    
+                                                    {/* Source Attribution Badge if Global */}
+                                                    {news.is_global && (
+                                                        <div className="absolute bottom-4 left-4">
+                                                            <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-black/60 backdrop-blur-md text-[10px] font-black text-white border border-white/20 shadow-sm">
+                                                                <MapPin size={10} className="text-teal-400" />
+                                                              Source: {news.village}
+                                                            </span>
+                                                        </div>
                                                     )}
                                                 </div>
-                                                <div className="flex items-center gap-2 text-xs font-black text-teal-600 opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all">
-                                                    বিস্তারিত <LucideArrowRight size={14} />
+
+                                                <div className="p-8 flex-1 flex flex-col">
+                                                    <div className="flex items-center justify-between mb-4">
+                                                        <div className={`flex items-center gap-2.5 text-[11px] font-black uppercase tracking-widest ${styles.meta}`}>
+                                                            <Calendar size={16} className="text-teal-500" />
+                                                            {news.date}
+                                                        </div>
+                                                    </div>
+
+                                                    <h3 className={`text-xl font-black leading-tight mb-4 transition-colors line-clamp-2 ${styles.title}`}>
+                                                        {news.title}
+                                                    </h3>
+                                                    
+                                                    <p className={`text-sm font-bold leading-relaxed mb-8 line-clamp-3 ${styles.excerpt}`}>
+                                                        {news.excerpt || news.description || news.content}
+                                                    </p>
+
+                                                    {/* Donation-Specific Fields */}
+                                                    {news.type === 'donation' && (
+                                                        <div className="mb-6 space-y-3 pb-4 border-b border-slate-100/10">
+                                                            <div className="flex items-center justify-between text-[11px] font-black uppercase tracking-wider">
+                                                                <span className={styles.meta}>লক্ষ্য: ৳{(news.target_amount || 0).toLocaleString()}</span>
+                                                                <span className="text-teal-600">{Math.round(news.progress)}%</span>
+                                                            </div>
+                                                            <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                                                                <div 
+                                                                    className="h-full bg-gradient-to-r from-rose-500 to-pink-400 rounded-full transition-all duration-1000 shadow-sm"
+                                                                    style={{ width: `${news.progress}%` }}
+                                                                />
+                                                            </div>
+                                                            <div className={`text-[11px] font-black uppercase tracking-wider ${styles.meta}`}>
+                                                                সংগৃহীত: ৳{(news.raised_amount || 0).toLocaleString()}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    <div className="mt-auto flex items-center justify-between pt-5 border-t border-slate-100/10">
+                                                        <div className={`flex items-center gap-2 text-[10px] font-black uppercase tracking-widest ${styles.meta} truncate max-w-[70%]`}>
+                                                            {!news.is_global && (
+                                                                <>
+                                                                    <MapPin size={12} className="text-teal-500 shrink-0" />
+                                                                    {news.village}
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex items-center gap-2 text-xs font-black text-teal-600 opacity-0 group-hover:opacity-100 -translate-x-3 group-hover:translate-x-0 transition-all duration-300">
+                                                            বিস্তারিত <LucideArrowRight size={16} />
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
+                                        </Link>
                                     </div>
-                                </Link>
-                            </div>
-                        );
-                    })}
-                    </div>
-
-                    {/* Pagination Controls */}
-                    {totalPages > 1 && (
-                        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-12 pt-8 border-t border-slate-200">
-                            <button
-                                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                                disabled={currentPage === 1}
-                                className="px-6 py-3 rounded-xl border border-slate-200 bg-white text-sm font-black text-slate-700 hover:border-teal-200 hover:bg-teal-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
-                            >
-                                ← আগের পৃষ্ঠা
-                            </button>
-
-                            <div className="flex items-center gap-2 flex-wrap justify-center">
-                                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                                    <button
-                                        key={page}
-                                        onClick={() => setCurrentPage(page)}
-                                        className={`w-10 h-10 rounded-lg font-black text-xs transition-all ${
-                                            currentPage === page
-                                                ? 'bg-teal-600 text-white shadow-lg shadow-teal-200'
-                                                : 'border border-slate-200 bg-white text-slate-700 hover:border-teal-200'
-                                        }`}
-                                    >
-                                        {page}
-                                    </button>
-                                ))}
-                            </div>
-
-                            <button
-                                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                                disabled={currentPage === totalPages}
-                                className="px-6 py-3 rounded-xl border border-slate-200 bg-white text-sm font-black text-slate-700 hover:border-teal-200 hover:bg-teal-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
-                            >
-                                পরবর্তী পৃষ্ঠা →
-                            </button>
-
-                            <div className="text-xs font-bold text-slate-500 mt-2 sm:mt-0">
-                                পৃষ্ঠা {currentPage} / {totalPages}
-                            </div>
+                                );
+                            })}
                         </div>
                     )}
-                </>
-            )}
+                </div>
 
+                {/* Pagination Controls - Pill Design */}
+                {totalPages > 1 && (
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-4 py-8 border-t border-slate-200 bg-slate-50/30">
+                        <button
+                            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                            disabled={currentPage === 1}
+                            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white border border-slate-200 text-[10px] font-black uppercase tracking-widest text-slate-700 hover:border-teal-200 hover:bg-teal-50 hover:text-teal-700 transition-all disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 shadow-sm"
+                        >
+                            <ChevronLeft size={14} /> আগের পেজ
+                        </button>
+
+                        <div className="flex items-center gap-2 flex-wrap justify-center bg-white p-1.5 rounded-full border border-slate-200 shadow-sm">
+                            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => i + 1).map((page) => (
+                                <button
+                                    key={page}
+                                    onClick={() => setCurrentPage(page)}
+                                    className={`w-8 h-8 rounded-full font-black text-[10px] transition-all flex items-center justify-center ${
+                                        currentPage === page
+                                            ? 'bg-slate-900 text-white shadow-lg shadow-slate-300 scale-110'
+                                            : 'text-slate-500 hover:bg-slate-50'
+                                    }`}
+                                >
+                                    {page}
+                                </button>
+                            ))}
+                        </div>
+
+                        <button
+                            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                            disabled={currentPage === totalPages}
+                            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white border border-slate-200 text-[10px] font-black uppercase tracking-widest text-slate-700 hover:border-teal-200 hover:bg-teal-50 hover:text-teal-700 transition-all disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 shadow-sm"
+                        >
+                            পরবর্তী পেজ <ChevronRight size={14} />
+                        </button>
+                    </div>
+                )}
+            </div>
         </section>
     );
 }

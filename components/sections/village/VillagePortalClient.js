@@ -376,7 +376,7 @@ export default function VillagePortalClient({ ctx, ward, village }) {
                                                 {v.avatar_url ? (
                                                     <img src={v.avatar_url} alt="" className="w-full h-full object-cover" />
                                                 ) : (
-                                                    <User size={20} className="text-slate-400" />
+                                                    <UserCircle size={20} className="text-slate-400" />
                                                 )}
                                             </div>
                                             <div>

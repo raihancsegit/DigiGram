@@ -5,7 +5,7 @@ import {
     Phone, Ambulance, Shield, Flame, 
     UserPlus, HeartPulse, Pill, Search,
     ArrowUpRight, MapPin, Loader2, PhoneForwarded,
-    ChevronLeft, ChevronRight
+    ChevronLeft, ChevronRight, Calendar
 } from 'lucide-react';
 import { emergencyService } from '@/lib/services/emergencyService';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -78,10 +78,11 @@ export default function UnionEmergencyContacts({ locationId, unionName }) {
     const loadContacts = async () => {
         setLoading(true);
         try {
-            const data = await emergencyService.getContacts(locationId);
-            setContacts(data);
+            const response = await emergencyService.getContacts(locationId);
+            setContacts(Array.isArray(response.data) ? response.data : []);
         } catch (err) {
             console.error(err);
+            setContacts([]);
         } finally {
             setLoading(false);
         }
@@ -89,9 +90,9 @@ export default function UnionEmergencyContacts({ locationId, unionName }) {
 
     const categories = ['All', ...Object.keys(CATEGORY_STYLES)];
 
-    const filteredContacts = filter === 'All' 
-        ? contacts 
-        : contacts.filter(c => c.category === filter);
+    const filteredContacts = Array.isArray(contacts) 
+        ? (filter === 'All' ? contacts : contacts.filter(c => c.category === filter))
+        : [];
 
     if (loading) return (
         <div className="py-20 flex flex-col items-center justify-center">
@@ -102,18 +103,18 @@ export default function UnionEmergencyContacts({ locationId, unionName }) {
 
     return (
         <div className="space-y-8">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 px-2">
                 <div>
-                    <h2 className="text-3xl font-black text-slate-800 tracking-tight">জরুরি যোগাযোগ ও হেল্পলাইন</h2>
-                    <p className="text-sm font-bold text-slate-400 mt-1">{unionName} ইউনিয়নের গুরুত্বপূর্ণ সকল নাম্বারসমূহ</p>
+                    <h2 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight leading-none">জরুরি যোগাযোগ ও হেল্পলাইন</h2>
+                    <p className="text-xs font-bold text-slate-400 mt-2">{unionName} ইউনিয়নের গুরুত্বপূর্ণ সকল নাম্বারসমূহ</p>
                 </div>
 
-                <div className="flex bg-white p-1.5 rounded-2xl border border-slate-200 overflow-x-auto no-scrollbar gap-1 shadow-sm">
+                <div className="flex bg-white p-1.5 rounded-full border border-slate-200 overflow-x-auto no-scrollbar gap-1 shadow-sm">
                     {categories.map(cat => (
                         <button
                             key={cat}
                             onClick={() => { setFilter(cat); setCurrentPage(1); }}
-                            className={`px-4 py-2 rounded-xl text-xs font-black whitespace-nowrap transition-all ${
+                            className={`px-4 py-1.5 rounded-full text-[10px] font-black whitespace-nowrap transition-all ${
                                 filter === cat 
                                 ? 'bg-slate-900 text-white shadow-lg' 
                                 : 'text-slate-500 hover:bg-slate-50'
@@ -151,7 +152,7 @@ export default function UnionEmergencyContacts({ locationId, unionName }) {
                                     animate={{ opacity: 1, scale: 1 }}
                                     transition={{ delay: idx * 0.05 }}
                                     key={contact.id}
-                                    className="group bg-white rounded-[32px] border border-slate-200 p-6 hover:shadow-2xl hover:shadow-slate-200/50 transition-all duration-500 relative overflow-hidden"
+                                    className="group bg-white rounded-[32px] border border-slate-100 p-6 hover:shadow-2xl hover:shadow-slate-200/50 transition-all duration-500 relative overflow-hidden"
                                 >
                                     <div className={`absolute top-0 right-0 p-4 opacity-5 pointer-events-none group-hover:scale-110 transition-transform`}>
                                         <Icon size={120} />
@@ -213,37 +214,28 @@ export default function UnionEmergencyContacts({ locationId, unionName }) {
                 )}
             </AnimatePresence>
 
-            {/* Pagination Controls */}
+            {/* Pagination Controls - Shrunk Pill Design */}
             {filteredContacts.length > ITEMS_PER_PAGE && (
-                <div className="flex items-center justify-center gap-4 mt-12">
+                <div className="flex items-center justify-center gap-4 py-8 border-t border-slate-100 mt-8">
                     <button 
                         onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                         disabled={currentPage === 1}
-                        className="p-4 rounded-2xl bg-white border border-slate-200 text-slate-400 hover:text-slate-900 disabled:opacity-30 transition-all shadow-sm"
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-white border border-slate-200 text-[10px] font-black uppercase tracking-widest text-slate-700 hover:border-teal-200 hover:bg-teal-50 transition-all disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 shadow-sm"
                     >
-                        <ChevronLeft size={20} />
+                        <ChevronLeft size={16} /> আগের পাতা
                     </button>
-                    <div className="flex gap-2">
-                        {Array.from({ length: Math.ceil(filteredContacts.length / ITEMS_PER_PAGE) }).map((_, i) => (
-                            <button
-                                key={i}
-                                onClick={() => setCurrentPage(i + 1)}
-                                className={`w-12 h-12 rounded-2xl font-black text-sm transition-all ${
-                                    currentPage === i + 1 
-                                    ? 'bg-slate-900 text-white shadow-xl scale-110' 
-                                    : 'bg-white border border-slate-200 text-slate-500 hover:bg-slate-50'
-                                }`}
-                            >
-                                {i + 1}
-                            </button>
-                        ))}
+                    
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900 text-white text-[9px] font-black uppercase tracking-widest shadow-lg shadow-slate-200">
+                        <Calendar size={12} className="text-teal-400" />
+                        পাতা: {currentPage} / {Math.ceil(filteredContacts.length / ITEMS_PER_PAGE)}
                     </div>
+
                     <button 
                         onClick={() => setCurrentPage(p => Math.min(Math.ceil(filteredContacts.length / ITEMS_PER_PAGE), p + 1))}
                         disabled={currentPage === Math.ceil(filteredContacts.length / ITEMS_PER_PAGE)}
-                        className="p-4 rounded-2xl bg-white border border-slate-200 text-slate-400 hover:text-slate-900 disabled:opacity-30 transition-all shadow-sm"
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-white border border-slate-200 text-[10px] font-black uppercase tracking-widest text-slate-700 hover:border-teal-200 hover:bg-teal-50 transition-all disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 shadow-sm"
                     >
-                        <ChevronRight size={20} />
+                        পরের পাতা <ChevronRight size={16} />
                     </button>
                 </div>
             )}

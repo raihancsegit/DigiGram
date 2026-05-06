@@ -225,41 +225,54 @@ export default function Header() {
 
                             <div className={`hidden sm:block w-px h-10 transition-colors ${isScrolled ? 'bg-white/10' : 'bg-slate-200'}`} />
 
-                            {/* Advanced Location Picker */}
+                            {/* Advanced Location Picker - Split Logic */}
                             {mounted && (
-                                <div className={`flex items-center rounded-2xl border transition-all h-11 sm:h-13 overflow-hidden group/loc ${
+                                <div className={`flex items-center rounded-full border transition-all h-10 md:h-12 overflow-hidden shadow-sm ${
                                     isScrolled 
-                                    ? 'bg-white/5 border-white/10 hover:bg-white/10' 
-                                    : 'bg-slate-50 border-slate-100 hover:border-teal-200 hover:bg-white'
+                                    ? 'bg-white/5 border-white/10' 
+                                    : 'bg-white border-slate-200'
                                 }`}>
-                                    <button
-                                        onClick={() => dispatch(openModal())}
-                                        className="flex items-center gap-3 px-4 sm:px-6 h-full transition-all min-w-0 md:w-auto"
+                                    {/* Left Part: Navigation Link */}
+                                    <Link
+                                        href={selected.wardId ? `/w/${selected.wardId}` : (selected.unionSlug ? `/u/${selected.unionSlug}` : '#')}
+                                        onClick={(e) => {
+                                            if (!selected.unionSlug) {
+                                                e.preventDefault();
+                                                dispatch(openModal());
+                                            }
+                                        }}
+                                        className={`flex items-center gap-2.5 px-4 md:px-5 h-full transition-all hover:bg-slate-50/50 min-w-0 group/loc-text ${
+                                            isScrolled ? 'hover:bg-white/5' : ''
+                                        }`}
                                     >
-                                        <div className={`p-1.5 rounded-xl transition-colors shrink-0 ${
-                                            isScrolled ? 'bg-teal-500/20 text-teal-400' : 'bg-teal-50 text-teal-600'
+                                        <div className={`p-1.5 rounded-full transition-all shrink-0 ${
+                                            isScrolled 
+                                            ? 'bg-teal-500/20 text-teal-400 group-hover/loc-text:bg-teal-500 group-hover/loc-text:text-white' 
+                                            : 'bg-slate-100 text-slate-500 group-hover/loc-text:bg-teal-500 group-hover/loc-text:text-white'
                                         }`}>
-                                            <MapPin size={18} />
+                                            <MapPin size={14} />
                                         </div>
                                         <div className="flex flex-col items-start min-w-0 leading-tight">
-                                            <span className={`text-[8px] font-black uppercase tracking-[0.2em] mb-1 opacity-60 ${isScrolled ? 'text-teal-400' : 'text-slate-500'}`}>
+                                            <span className={`text-[8px] font-black uppercase tracking-[0.15em] opacity-60 ${isScrolled ? 'text-teal-400' : 'text-slate-500'}`}>
                                                 {selected.ward ? `${selected.ward} নং ওয়ার্ড` : 'আপনার অবস্থান'}
                                             </span>
-                                            <span className={`text-sm font-black truncate tracking-tight ${isScrolled ? 'text-white' : 'text-slate-900'}`}>
+                                            <span className={`text-xs md:text-sm font-black truncate tracking-tight ${isScrolled ? 'text-white' : 'text-slate-900'}`}>
                                                 {selected.union || 'নির্বাচন করুন'}
                                             </span>
                                         </div>
-                                    </button>
+                                    </Link>
+
+                                    {/* Right Part: Modal Trigger */}
                                     <button
-                                        onClick={(e) => {
-                                            e.preventDefault();
-                                            dispatch(openModal());
-                                        }}
-                                        className={`px-3 sm:px-4 h-full border-l flex items-center justify-center transition-all group-hover/loc:bg-teal-500/10 ${
-                                            isScrolled ? 'border-white/10 text-teal-400' : 'border-slate-100 text-slate-400'
+                                        onClick={() => dispatch(openModal())}
+                                        className={`w-10 h-full border-l flex items-center justify-center transition-all hover:bg-teal-500 hover:text-white group/arrow ${
+                                            isScrolled 
+                                            ? 'border-white/10 text-teal-400' 
+                                            : 'border-slate-100 text-slate-400'
                                         }`}
+                                        title="লোকেশন পরিবর্তন করুন"
                                     >
-                                        <ChevronDown size={14} className="transition-transform group-hover/loc:rotate-180" />
+                                        <ChevronDown size={14} className="transition-transform group-hover/arrow:rotate-180" />
                                     </button>
                                 </div>
                             )}
