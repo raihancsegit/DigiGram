@@ -241,23 +241,23 @@ export default function Header() {
                                                 dispatch(openModal());
                                             }
                                         }}
-                                        className={`flex items-center gap-2.5 px-4 md:px-5 h-full transition-all hover:bg-slate-50/50 min-w-0 group/loc-text ${
+                                        className={`flex items-center gap-2 md:gap-2.5 px-3 md:px-5 h-full transition-all hover:bg-slate-50/50 min-w-0 group/loc-text ${
                                             isScrolled ? 'hover:bg-white/5' : ''
                                         }`}
                                     >
-                                        <div className={`p-1.5 rounded-full transition-all shrink-0 ${
+                                        <div className={`p-1 md:p-1.5 rounded-full transition-all shrink-0 ${
                                             isScrolled 
                                             ? 'bg-teal-500/20 text-teal-400 group-hover/loc-text:bg-teal-500 group-hover/loc-text:text-white' 
                                             : 'bg-slate-100 text-slate-500 group-hover/loc-text:bg-teal-500 group-hover/loc-text:text-white'
                                         }`}>
-                                            <MapPin size={14} />
+                                            <MapPin size={12} className="md:w-3.5 md:h-3.5" />
                                         </div>
                                         <div className="flex flex-col items-start min-w-0 leading-tight">
-                                            <span className={`text-[8px] font-black uppercase tracking-[0.15em] opacity-60 ${isScrolled ? 'text-teal-400' : 'text-slate-500'}`}>
+                                            <span className={`hidden md:block text-[8px] font-black uppercase tracking-[0.15em] opacity-60 ${isScrolled ? 'text-teal-400' : 'text-slate-500'}`}>
                                                 {selected.ward ? `${selected.ward} নং ওয়ার্ড` : 'আপনার অবস্থান'}
                                             </span>
-                                            <span className={`text-xs md:text-sm font-black truncate tracking-tight ${isScrolled ? 'text-white' : 'text-slate-900'}`}>
-                                                {selected.union || 'নির্বাচন করুন'}
+                                            <span className={`text-[11px] md:text-sm font-black truncate tracking-tight ${isScrolled ? 'text-white' : 'text-slate-900'}`}>
+                                                {selected.union || 'নির্বাচন'}
                                             </span>
                                         </div>
                                     </Link>
@@ -265,14 +265,14 @@ export default function Header() {
                                     {/* Right Part: Modal Trigger */}
                                     <button
                                         onClick={() => dispatch(openModal())}
-                                        className={`w-10 h-full border-l flex items-center justify-center transition-all hover:bg-teal-500 hover:text-white group/arrow ${
+                                        className={`w-8 md:w-10 h-full border-l flex items-center justify-center transition-all hover:bg-teal-500 hover:text-white group/arrow ${
                                             isScrolled 
                                             ? 'border-white/10 text-teal-400' 
                                             : 'border-slate-100 text-slate-400'
                                         }`}
                                         title="লোকেশন পরিবর্তন করুন"
                                     >
-                                        <ChevronDown size={14} className="transition-transform group-hover/arrow:rotate-180" />
+                                        <ChevronDown size={12} className="transition-transform group-hover/arrow:rotate-180" />
                                     </button>
                                 </div>
                             )}
@@ -318,8 +318,8 @@ export default function Header() {
                                 </div>
                             )}
 
-                            {/* Search Button */}
-                            <button className={`w-11 h-11 sm:w-12 sm:h-12 rounded-2xl transition-all flex items-center justify-center active:scale-90 group ${
+                            {/* Search Button - Hidden on mobile as requested */}
+                            <button className={`hidden sm:flex w-11 h-11 sm:w-12 sm:h-12 rounded-2xl transition-all items-center justify-center active:scale-90 group ${
                                 isScrolled 
                                 ? 'bg-white/10 border border-white/10 text-white hover:bg-teal-500' 
                                 : 'bg-white border border-slate-200 text-slate-400 shadow-sm hover:border-teal-400 hover:text-teal-600'

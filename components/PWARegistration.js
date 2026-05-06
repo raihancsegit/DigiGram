@@ -10,6 +10,22 @@ export default function PWARegistration() {
           .register('/sw.js')
           .then((registration) => {
             console.log('SW registered: ', registration);
+            
+            // Listen for updates
+            registration.onupdatefound = () => {
+              const installingWorker = registration.installing;
+              if (installingWorker) {
+                installingWorker.onstatechange = () => {
+                  if (installingWorker.state === 'installed') {
+                    if (navigator.serviceWorker.controller) {
+                      // New content is available, force reload
+                      console.log('New content available, reloading...');
+                      window.location.reload();
+                    }
+                  }
+                };
+              }
+            };
           })
           .catch((registrationError) => {
             console.log('SW registration failed: ', registrationError);
