@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { 
     Users, Search, Shield, Loader2, Plus, X, UserCheck, 
     MoreVertical, Edit, Trash2, Filter, Building2, MapPin, 
-    School, MessageSquare, Activity, ChevronDown, CheckCircle2
+    School, MessageSquare, Activity, ChevronDown, CheckCircle2, ShoppingBag
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { adminService } from '@/lib/services/adminService';
@@ -47,6 +47,7 @@ export default function UserManagementPage() {
     const roles = [
         { id: 'super_admin', name: 'সুপার অ্যাডমিন', icon: Shield, color: 'text-rose-600 bg-rose-50' },
         { id: 'chairman', name: 'চেয়ারম্যান', icon: UserCheck, color: 'text-teal-600 bg-teal-50' },
+        { id: 'market_manager', name: 'হাট বাজার প্রতিনিধি', icon: ShoppingBag, color: 'text-orange-600 bg-orange-50' },
         { id: 'ward_member', name: 'ওয়ার্ড মেম্বার', icon: MapPin, color: 'text-indigo-600 bg-indigo-50' },
         { id: 'volunteer', name: 'ভলান্টিয়ার', icon: Activity, color: 'text-amber-600 bg-amber-50' },
         { id: 'school_admin', name: 'স্কুল ম্যানেজার', icon: School, color: 'text-blue-600 bg-blue-50' },

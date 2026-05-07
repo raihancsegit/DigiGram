@@ -59,9 +59,8 @@ export default function ServicePageView({ slug, data }) {
     const [unionName, setUnionName] = useState('');
 
     useEffect(() => {
-        if (unionQuery) {
-            checkServiceStatus();
-        }
+        if (!unionQuery) return;
+        checkServiceStatus();
     }, [unionQuery, slug, data.variant]);
 
     const checkServiceStatus = async () => {
@@ -70,6 +69,11 @@ export default function ServicePageView({ slug, data }) {
             const union = await getLocationBySlug(unionQuery);
             if (union) {
                 setUnionName(union.name_bn || union.name);
+                // হাট-বাজার পেজ ইউনিয়নভিত্তিক ডেমো কনটেন্ট সবসময় দেখানো হবে
+                if (slug === 'market' || data.variant === 'market') {
+                    setIsServiceActive(true);
+                    return;
+                }
                 const services = await adminService.getUnionServices(union.id);
                 const dbSlug = DB_SLUG_MAP[slug] || DB_SLUG_MAP[data.variant] || slug;
                 
@@ -325,7 +329,7 @@ export default function ServicePageView({ slug, data }) {
                         <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
                         সার্ভিস ডিরেক্টরিতে ফিরুন
                     </Link>
-                    <MarketCalendarView />
+                    <MarketCalendarView selectedUnionSlug={unionQuery} selectedUnionName={unionName} />
                 </div>
             </div>
         );

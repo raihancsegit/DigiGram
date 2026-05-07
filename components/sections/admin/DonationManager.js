@@ -26,6 +26,12 @@ export default function DonationManager({ locationId, unionSlug }) {
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(false);
 
+    // Pagination states
+    const [projectPage, setProjectPage] = useState(1);
+    const [ledgerPage, setLedgerPage] = useState(1);
+    const ITEMS_PER_PAGE = 6;
+    const LEDGER_PER_PAGE = 10;
+
     // Form states
     const [showProjectModal, setShowProjectModal] = useState(false);
     const [editingProject, setEditingProject] = useState(null);
@@ -232,7 +238,7 @@ export default function DonationManager({ locationId, unionSlug }) {
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {projects.map((proj) => (
+                            {projects.slice((projectPage - 1) * ITEMS_PER_PAGE, projectPage * ITEMS_PER_PAGE).map((proj) => (
                                 <div key={proj.id} className="p-6 rounded-[32px] border border-slate-200 bg-white hover:border-emerald-300 transition-all group relative overflow-hidden">
                                     <div className="flex justify-between items-start mb-4 gap-4">
                                         <div className="w-16 h-16 rounded-2xl bg-slate-100 overflow-hidden shrink-0 border border-slate-100">
@@ -300,6 +306,41 @@ export default function DonationManager({ locationId, unionSlug }) {
                                 </div>
                             ))}
                         </div>
+
+                        {/* Project Pagination */}
+                        {projects.length > ITEMS_PER_PAGE && (
+                            <div className="flex items-center justify-center gap-2 mt-8">
+                                <button 
+                                    onClick={() => setProjectPage(p => Math.max(1, p - 1))}
+                                    disabled={projectPage === 1}
+                                    className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 text-slate-400 disabled:opacity-30 transition-all"
+                                >
+                                    <ArrowRight className="rotate-180" size={20} />
+                                </button>
+                                <div className="flex gap-1">
+                                    {Array.from({ length: Math.ceil(projects.length / ITEMS_PER_PAGE) }).map((_, i) => (
+                                        <button
+                                            key={i}
+                                            onClick={() => setProjectPage(i + 1)}
+                                            className={`w-10 h-10 rounded-xl font-black text-sm transition-all ${
+                                                projectPage === i + 1 
+                                                ? 'bg-emerald-600 text-white shadow-lg' 
+                                                : 'bg-white border border-slate-100 text-slate-500 hover:bg-slate-50'
+                                            }`}
+                                        >
+                                            {toBnDigits((i + 1).toString())}
+                                        </button>
+                                    ))}
+                                </div>
+                                <button 
+                                    onClick={() => setProjectPage(p => Math.min(Math.ceil(projects.length / ITEMS_PER_PAGE), p + 1))}
+                                    disabled={projectPage === Math.ceil(projects.length / ITEMS_PER_PAGE)}
+                                    className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 text-slate-400 disabled:opacity-30 transition-all"
+                                >
+                                    <ArrowRight size={20} />
+                                </button>
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -324,7 +365,7 @@ export default function DonationManager({ locationId, unionSlug }) {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
-                                    {ledger.map((item) => (
+                                    {ledger.slice((ledgerPage - 1) * LEDGER_PER_PAGE, ledgerPage * LEDGER_PER_PAGE).map((item) => (
                                         <tr key={item.id} className="hover:bg-slate-50 transition-colors">
                                             <td className="py-5 px-4 text-xs font-bold text-slate-500">{toBnDigits(new Date(item.created_at).toLocaleDateString('bn-BD'))}</td>
                                             <td className="py-5 px-4">
@@ -359,6 +400,41 @@ export default function DonationManager({ locationId, unionSlug }) {
                                 </tbody>
                             </table>
                         </div>
+
+                        {/* Ledger Pagination */}
+                        {ledger.length > LEDGER_PER_PAGE && (
+                            <div className="flex items-center justify-center gap-2 mt-8">
+                                <button 
+                                    onClick={() => setLedgerPage(p => Math.max(1, p - 1))}
+                                    disabled={ledgerPage === 1}
+                                    className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 text-slate-400 disabled:opacity-30 transition-all"
+                                >
+                                    <ArrowRight className="rotate-180" size={20} />
+                                </button>
+                                <div className="flex gap-1">
+                                    {Array.from({ length: Math.ceil(ledger.length / LEDGER_PER_PAGE) }).map((_, i) => (
+                                        <button
+                                            key={i}
+                                            onClick={() => setLedgerPage(i + 1)}
+                                            className={`w-10 h-10 rounded-xl font-black text-sm transition-all ${
+                                                ledgerPage === i + 1 
+                                                ? 'bg-emerald-600 text-white shadow-lg' 
+                                                : 'bg-white border border-slate-100 text-slate-500 hover:bg-slate-50'
+                                            }`}
+                                        >
+                                            {toBnDigits((i + 1).toString())}
+                                        </button>
+                                    ))}
+                                </div>
+                                <button 
+                                    onClick={() => setLedgerPage(p => Math.min(Math.ceil(ledger.length / LEDGER_PER_PAGE), p + 1))}
+                                    disabled={ledgerPage === Math.ceil(ledger.length / LEDGER_PER_PAGE)}
+                                    className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 text-slate-400 disabled:opacity-30 transition-all"
+                                >
+                                    <ArrowRight size={20} />
+                                </button>
+                            </div>
+                        )}
                     </div>
                 )}
 

@@ -6,8 +6,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
     Save, User, Phone, Users, MapPin, 
     Plus, Trash2, ShieldCheck, CheckCircle2,
-    School, HeartPulse, Building2, Home, X, Edit3, ChevronRight, BookOpen
+    School, HeartPulse, Building2, Home, X, Edit3, ChevronRight, BookOpen, PlusCircle
 } from 'lucide-react';
+import Link from 'next/link';
+import { paths } from '@/lib/constants/paths';
 import { wardService } from '@/lib/services/wardService';
 import { createVillageAction, updateVillageAction, deleteVillageAction, updateWardStatsAction } from '@/lib/actions/wardActions';
 import { parseBnInt, toBnDigits } from '@/lib/utils/format';
@@ -390,42 +392,50 @@ export default function WardManagementSection({ user, wardInfo, villages: initia
                                                             </div>
                                                         </div>
                                                     </td>
-                                                    <td className="p-5 text-right">
-                                                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0">
-                                                            <button 
-                                                                onClick={() => setManagingVolunteersFor({ id: v.id, name: v.name })}
-                                                                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-teal-50 border border-teal-100 text-teal-600 hover:bg-teal-500 hover:text-white shadow-sm text-[10px] font-black transition-all"
-                                                                title="ভলান্টিয়ার ম্যানেজমেন্ট"
-                                                            >
-                                                                <Users size={12} /> ভলান্টিয়ার
-                                                            </button>
-                                                            <button 
-                                                                onClick={() => { 
-                                                                    setVillageForm({
-                                                                        ...v, 
-                                                                        name: v.name,
-                                                                        schools: Array.isArray(v.schools) ? v.schools : [],
-                                                                        mosques: Array.isArray(v.mosques) ? v.mosques : [],
-                                                                        madrassas: Array.isArray(v.madrassas) ? v.madrassas : [],
-                                                                        orphanages: Array.isArray(v.orphanages) ? v.orphanages : []
-                                                                    }); 
-                                                                    setEditingIndex(idx); 
-                                                                    setIsAddingVillage(true); 
-                                                                }}
-                                                                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 hover:border-teal-500 hover:text-teal-600 shadow-sm text-[10px] font-black transition-all"
-                                                            >
-                                                                <Edit3 size={12} /> এডিট
-                                                            </button>
-                                                            {!isVolunteerView && (
-                                                                <button 
-                                                                    onClick={() => handleDeleteVillage(v.id)}
-                                                                    className="p-1.5 rounded-lg bg-white border border-slate-200 text-slate-400 hover:border-red-500 hover:text-red-500 shadow-sm transition-all"
-                                                                >
-                                                                    <Trash2 size={12} />
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                    </td>
+                                                     <td className="p-5 text-right">
+                                                         <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0">
+                                                             <Link 
+                                                                 href={paths.villagePortal(v.id)}
+                                                                 target="_blank"
+                                                                 className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-100 text-emerald-600 hover:bg-emerald-500 hover:text-white shadow-sm text-[10px] font-black transition-all"
+                                                                 title="গ্রাম পোর্টালে প্রবেশ"
+                                                             >
+                                                                 <PlusCircle size={12} /> পোর্টালে প্রবেশ
+                                                             </Link>
+                                                             <button 
+                                                                 onClick={() => setManagingVolunteersFor({ id: v.id, name: v.name })}
+                                                                 className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-teal-50 border border-teal-100 text-teal-600 hover:bg-teal-500 hover:text-white shadow-sm text-[10px] font-black transition-all"
+                                                                 title="ভলান্টিয়ার ম্যানেজমেন্ট"
+                                                             >
+                                                                 <Users size={12} /> ভলান্টিয়ার
+                                                             </button>
+                                                             <button 
+                                                                 onClick={() => { 
+                                                                     setVillageForm({
+                                                                         ...v, 
+                                                                         name: v.name,
+                                                                         schools: Array.isArray(v.schools) ? v.schools : [],
+                                                                         mosques: Array.isArray(v.mosques) ? v.mosques : [],
+                                                                         madrassas: Array.isArray(v.madrassas) ? v.madrassas : [],
+                                                                         orphanages: Array.isArray(v.orphanages) ? v.orphanages : []
+                                                                     }); 
+                                                                     setEditingIndex(idx); 
+                                                                     setIsAddingVillage(true); 
+                                                                 }}
+                                                                 className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 hover:border-teal-500 hover:text-teal-600 shadow-sm text-[10px] font-black transition-all"
+                                                             >
+                                                                 <Edit3 size={12} /> এডিট
+                                                             </button>
+                                                             {!isVolunteerView && (
+                                                                 <button 
+                                                                     onClick={() => handleDeleteVillage(v.id)}
+                                                                     className="p-1.5 rounded-lg bg-white border border-slate-200 text-slate-400 hover:border-red-500 hover:text-red-500 shadow-sm transition-all"
+                                                                 >
+                                                                     <Trash2 size={12} />
+                                                                 </button>
+                                                             )}
+                                                         </div>
+                                                     </td>
                                                 </tr>
                                             ))
                                         )}
@@ -632,6 +642,8 @@ export default function WardManagementSection({ user, wardInfo, villages: initia
 // Helper component for managing list of names
 function InstitutionListManager({ label, icon, items, onUpdate, placeholder }) {
     const [inputValue, setInputValue] = useState('');
+    const [editingIdx, setEditingIdx] = useState(null);
+    const [editValue, setEditValue] = useState('');
     const safeItems = Array.isArray(items) ? items : [];
 
     const addItem = () => {
@@ -646,6 +658,20 @@ function InstitutionListManager({ label, icon, items, onUpdate, placeholder }) {
 
     const removeItem = (index) => {
         onUpdate(safeItems.filter((_, i) => i !== index));
+    };
+
+    const startEditing = (index) => {
+        setEditingIdx(index);
+        setEditValue(safeItems[index]);
+    };
+
+    const saveEdit = () => {
+        if (!editValue.trim()) return;
+        const newItems = [...safeItems];
+        newItems[editingIdx] = editValue.trim();
+        onUpdate(newItems);
+        setEditingIdx(null);
+        setEditValue('');
     };
 
     return (
@@ -677,14 +703,37 @@ function InstitutionListManager({ label, icon, items, onUpdate, placeholder }) {
             <div className="flex flex-wrap gap-2 min-h-[40px] p-2 rounded-xl border border-dashed border-slate-200 bg-white/50">
                 {safeItems.length === 0 && <p className="text-[10px] font-bold text-slate-300 m-auto">কোনো নাম যোগ করা হয়নি</p>}
                 {safeItems.map((item, idx) => (
-                    <span key={idx} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-teal-50 text-teal-700 text-[11px] font-black border border-teal-100 group animate-in fade-in zoom-in duration-200">
-                        {item}
-                        <button 
-                            onClick={(e) => { e.preventDefault(); removeItem(idx); }}
-                            className="text-teal-400 hover:text-rose-500 transition-colors"
-                        >
-                            <X size={12} />
-                        </button>
+                    <span key={idx} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-teal-50 text-teal-700 text-[11px] font-black border border-teal-100 group animate-in fade-in zoom-in duration-200 relative overflow-hidden">
+                        {editingIdx === idx ? (
+                            <div className="flex items-center gap-1">
+                                <input 
+                                    autoFocus
+                                    className="w-24 bg-white border-none outline-none p-0 text-[11px] font-black"
+                                    value={editValue}
+                                    onChange={(e) => setEditValue(e.target.value)}
+                                    onBlur={saveEdit}
+                                    onKeyDown={(e) => e.key === 'Enter' && saveEdit()}
+                                />
+                            </div>
+                        ) : (
+                            <>
+                                <span onClick={() => startEditing(idx)} className="cursor-pointer hover:text-teal-900">{item}</span>
+                                <div className="flex items-center gap-1 ml-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button 
+                                        onClick={(e) => { e.preventDefault(); startEditing(idx); }}
+                                        className="text-teal-400 hover:text-teal-600"
+                                    >
+                                        <Edit3 size={10} />
+                                    </button>
+                                    <button 
+                                        onClick={(e) => { e.preventDefault(); removeItem(idx); }}
+                                        className="text-teal-400 hover:text-rose-500 transition-colors"
+                                    >
+                                        <X size={12} />
+                                    </button>
+                                </div>
+                            </>
+                        )}
                     </span>
                 ))}
             </div>

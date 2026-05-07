@@ -9,7 +9,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
     PlusCircle, Newspaper, LogOut, ShieldCheck, ArrowLeft, Settings, 
     MessageSquare, TrendingUp, Users, MapPin, CheckCircle2, UserCircle,
-    ArrowUpRight, Sparkles, School, Building2, BookOpen, Phone, Search, HandHeart
+    ArrowUpRight, Sparkles, School, Building2, BookOpen, Phone, Search, HandHeart,
+    ChevronLeft, ChevronRight, ShoppingBag
 } from 'lucide-react';
 import { performLogout, login } from '@/lib/store/features/authSlice';
 import { wardService } from '@/lib/services/wardService';
@@ -21,6 +22,7 @@ import EmergencyServiceManager from '@/components/sections/admin/EmergencyServic
 import LostFoundManager from '@/components/sections/admin/LostFoundManager';
 import NewsManager from '@/components/sections/admin/NewsManager';
 import DonationManager from '@/components/sections/admin/DonationManager';
+import MarketManagement from '@/components/sections/admin/market/MarketManagement';
 import { toBnDigits, parseBnInt } from '@/lib/utils/format';
 
 export default function ChairmanDashboard() {
@@ -309,8 +311,8 @@ export default function ChairmanDashboard() {
                 </motion.div>
 
                 {/* Tab Switcher - Scrollable on Mobile */}
-                <div className="overflow-x-auto pb-4 -mb-4 scrollbar-hide">
-                    <div className="flex p-1 bg-slate-200/50 rounded-2xl w-fit mb-8 gap-1 whitespace-nowrap">
+                <div className="mb-8">
+                    <div className="flex flex-wrap p-1.5 bg-slate-200/50 rounded-[24px] w-full gap-1">
                         <button 
                             onClick={() => { setActiveTab('overview'); setServicePage(1); }}
                             className={`flex items-center gap-2 px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${activeTab === 'overview' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
@@ -359,6 +361,13 @@ export default function ChairmanDashboard() {
                         >
                             <HandHeart size={16} className="sm:w-[18px] sm:h-[18px]" />
                             স্বচ্ছ দান
+                        </button>
+                        <button 
+                            onClick={() => { setActiveTab('market'); setServicePage(1); }}
+                            className={`flex items-center gap-2 px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${activeTab === 'market' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        >
+                            <ShoppingBag size={16} className="sm:w-[18px] sm:h-[18px]" />
+                            হাট বাজার
                         </button>
                     </div>
                 </div>
@@ -564,6 +573,15 @@ export default function ChairmanDashboard() {
                             exit={{ opacity: 0, x: 20 }}
                         >
                             <DonationManager unionSlug={unionSlug} />
+                        </motion.div>
+                    ) : activeTab === 'market' ? (
+                        <motion.div 
+                            key="market"
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: 20 }}
+                        >
+                            <MarketManagement />
                         </motion.div>
                     ) : null}
                 </AnimatePresence>

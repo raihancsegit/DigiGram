@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
     LayoutDashboard, Users, Settings, Bell,
     LogOut, Menu, X, Shield, Globe,
-    CreditCard, Zap, School, Activity, MapPin
+    CreditCard, Zap, School, Activity, MapPin, ShoppingBag
 } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { performLogout } from '@/lib/store/features/authSlice';
@@ -28,6 +28,7 @@ export default function AdminShell({ children }) {
         { name: 'প্রশাসনিক এলাকা', icon: Globe, path: '/admin/union', permission: 'can_manage_locations' },
         { name: 'সকল এলাকা', icon: MapPin, path: '/admin/locations', permission: 'can_manage_locations' },
         { name: 'সেবা ব্যবস্থাপনা', icon: Zap, path: '/admin/services', permission: 'can_manage_services' },
+        { name: 'হাট বাজার', icon: ShoppingBag, path: '/admin/market' },
         { name: 'শিক্ষা প্রতিষ্ঠান', icon: School, path: '/admin/institutions', permission: 'can_manage_institutions' },
         { name: 'ইউজার ম্যানেজমেন্ট', icon: Users, path: '/admin/members', permission: 'can_manage_users' },
         { name: 'নোটিশবোর্ড', icon: Bell, path: '/admin/notices', permission: 'can_manage_news' },

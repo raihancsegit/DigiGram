@@ -1,16 +1,22 @@
 "use client";
 
-import { useState } from 'react';
-import { DAILY_PRICES, COMMODITIES, MARKETS_LIST } from '@/lib/constants/marketData';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
-export function PriceComparisonTable({ filterProduct = '', hatIds = null }) {
-    // Process data to tabular format (using Hat IDs as columns)
-    const activeHatIds = hatIds || MARKETS_LIST.map(h => h.id);
-    const activeHats = MARKETS_LIST.filter(h => activeHatIds.includes(h.id));
-    
-    // Filter commodities based on search input if provided
-    const visibleCommodities = COMMODITIES.filter(c => 
+export function PriceComparisonTable({ 
+    filterProduct = '', 
+    commodities = [], 
+    markets = [], 
+    prices = [] 
+}) {
+    // Process prices into a searchable object: { [marketId]: { [commodityId]: data } }
+    const priceMap = prices.reduce((acc, p) => {
+        if (!acc[p.market_id]) acc[p.market_id] = {};
+        acc[p.market_id][p.commodity_id] = p;
+        return acc;
+    }, {});
+
+    // Filter commodities based on search input
+    const visibleCommodities = commodities.filter(c => 
         !filterProduct || c.name.toLowerCase().includes(filterProduct.toLowerCase())
     );
 
@@ -21,7 +27,7 @@ export function PriceComparisonTable({ filterProduct = '', hatIds = null }) {
                     <thead>
                         <tr className="bg-slate-900 text-white">
                             <th className="py-6 px-8 font-black text-[10px] uppercase tracking-[0.2em] min-w-[220px] border-b border-white/10">পণ্য ও একক</th>
-                            {activeHats.map(market => (
+                            {markets.map(market => (
                                 <th key={market.id} className="py-6 px-8 font-black text-slate-100 min-w-[200px] border-b border-white/10 border-l border-white/5">
                                     <div className="flex flex-col">
                                         <span className="text-sm tracking-tight">{market.name}</span>
@@ -33,11 +39,11 @@ export function PriceComparisonTable({ filterProduct = '', hatIds = null }) {
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                         {visibleCommodities.length > 0 ? visibleCommodities.map(commodity => {
-                            // Find min price for this commodity
+                            // Find min price for this commodity among these markets
                             let minPrice = Infinity;
-                            activeHatIds.forEach(id => {
-                                const p = DAILY_PRICES[id]?.[commodity.id]?.price;
-                                if (p && p < minPrice) minPrice = p;
+                            markets.forEach(m => {
+                                const p = priceMap[m.id]?.[commodity.id]?.price;
+                                if (p && Number(p) < minPrice) minPrice = Number(p);
                             });
 
                             return (
@@ -52,22 +58,22 @@ export function PriceComparisonTable({ filterProduct = '', hatIds = null }) {
                                         </div>
                                     </td>
                                     
-                                    {activeHatIds.map(hatId => {
-                                        const marketData = DAILY_PRICES[hatId]?.[commodity.id];
-                                        const isCheapest = marketData && marketData.price === minPrice;
+                                    {markets.map(market => {
+                                        const marketData = priceMap[market.id]?.[commodity.id];
+                                        const isCheapest = marketData && Number(marketData.price) === minPrice;
                                         
                                         if (!marketData) {
-                                            return <td key={`${commodity.id}-${hatId}`} className="py-6 px-8 text-slate-300 italic text-xs border-l border-slate-50">- তথ্য নেই -</td>;
+                                            return <td key={`${commodity.id}-${market.id}`} className="py-6 px-8 text-slate-300 italic text-xs border-l border-slate-50">- তথ্য নেই -</td>;
                                         }
 
                                         return (
-                                            <td key={`${commodity.id}-${hatId}`} className={`py-6 px-8 border-l border-slate-50 transition-all ${isCheapest ? 'bg-emerald-50/50' : ''}`}>
+                                            <td key={`${commodity.id}-${market.id}`} className={`py-6 px-8 border-l border-slate-50 transition-all ${isCheapest ? 'bg-emerald-50/50' : ''}`}>
                                                 <div className="flex flex-col">
                                                     <div className="flex items-baseline gap-1">
                                                         <span className={`font-black text-xl tracking-tighter ${isCheapest ? 'text-emerald-700' : 'text-slate-900'}`}>
-                                                            ৳{marketData.price.toLocaleString('bn-BD')}
+                                                            ৳{Number(marketData.price).toLocaleString('bn-BD')}
                                                         </span>
-                                                        {isCheapest && (
+                                                        {isCheapest && markets.length > 1 && (
                                                             <span className="text-[9px] font-black bg-emerald-600 text-white px-1.5 py-0.5 rounded ml-1 animate-pulse">সেরা দর</span>
                                                         )}
                                                     </div>
@@ -93,7 +99,7 @@ export function PriceComparisonTable({ filterProduct = '', hatIds = null }) {
                             );
                         }) : (
                             <tr>
-                                <td colSpan={activeHatIds.length + 1} className="py-20 text-center text-slate-400 font-black">
+                                <td colSpan={markets.length + 1} className="py-20 text-center text-slate-400 font-black">
                                     কোনো পণ্য পাওয়া যায়নি
                                 </td>
                             </tr>

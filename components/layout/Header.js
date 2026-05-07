@@ -227,14 +227,14 @@ export default function Header() {
 
                             {/* Advanced Location Picker - Split Logic */}
                             {mounted && (
-                                <div className={`flex items-center rounded-full border transition-all h-10 md:h-12 overflow-hidden shadow-sm ${
+                                <div className={`flex items-center rounded-full border transition-all h-10 md:h-12 overflow-hidden shadow-sm w-fit min-w-[140px] md:min-w-[180px] ${
                                     isScrolled 
                                     ? 'bg-white/5 border-white/10' 
                                     : 'bg-white border-slate-200'
                                 }`}>
                                     {/* Left Part: Navigation Link */}
                                     <Link
-                                        href={selected.wardId ? `/w/${selected.wardId}` : (selected.unionSlug ? `/u/${selected.unionSlug}` : '#')}
+                                        href={selected.unionSlug ? `/u/${selected.unionSlug}` : '#'}
                                         onClick={(e) => {
                                             if (!selected.unionSlug) {
                                                 e.preventDefault();

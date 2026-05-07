@@ -46,7 +46,8 @@ export default function VillagePortalClient({ ctx, ward, village }) {
         (n) => n.wardId === ward.id && n.unionId === union.slug
     ).slice(0, 3); // Showing generic ward news for this mock, limited to 3
 
-    // Mock Institutions for Demo showing the Mosque Portal
+    // Dynamic Institutions from DB
+    const stats = village.stats || {};
     const institutions = [
         {
             type: 'mosque',
@@ -54,10 +55,17 @@ export default function VillagePortalClient({ ctx, ward, village }) {
             subtext: 'আয়-ব্যয়ের হিসাব ও ধর্মীয় সেবা গেইটওয়ে',
             icon: Building2,
             color: 'emerald',
-            items: [
-                { id: 'baitul-mukkaram', name: `${vName} জামে মসজিদ المركز`, features: 'স্বচ্ছ হিসাব · ডিজিটাল পাসবুক · খুতবা আপডেট', url: '/m/baitul-mukkaram' },
-                { id: 'poschim-para-masjid', name: 'পশ্চিম পাড়া বাইতুন নূর', features: 'স্বচ্ছ হিসাব · জুম্মার কালেকশন', url: '/m/poschim-para-masjid' }
-            ]
+            items: Array.isArray(stats.mosques) ? stats.mosques.map((m, idx) => ({
+                id: `mosque-${idx}`,
+                name: m,
+                features: 'স্বচ্ছ হিসাব · ডিজিটাল পাসবুক',
+                url: '#'
+            })) : (typeof stats.mosques === 'string' && stats.mosques !== '0' ? [{
+                id: 'm-1',
+                name: stats.mosques,
+                features: 'ডিজিটাল রেকর্ড',
+                url: '#'
+            }] : [])
         },
         {
             type: 'school',
@@ -65,20 +73,35 @@ export default function VillagePortalClient({ ctx, ward, village }) {
             subtext: 'প্রাথমিক ও মাধ্যমিক বিদ্যালয়',
             icon: School,
             color: 'blue',
-            items: [
-                { id: 'primary-1', name: `${vName} সরকারি প্রাথমিক বিদ্যালয়`, features: '৫০০+ শিক্ষার্থী · ডিজিটাল হাজিরা', url: '#' },
-                { id: 'high-school-1', name: 'আদর্শ উচ্চ বিদ্যালয়', features: 'বিজ্ঞান ও মানবিক শাখা', url: '#' }
-            ]
+            items: Array.isArray(stats.schools) ? stats.schools.map((s, idx) => ({
+                id: `school-${idx}`,
+                name: s,
+                features: 'শিক্ষা তথ্য ও ডিজিটাল হাজিরা',
+                url: '#'
+            })) : (typeof stats.schools === 'string' && stats.schools !== '0' ? [{
+                id: 's-1',
+                name: stats.schools,
+                features: 'শিক্ষা তথ্য',
+                url: '#'
+            }] : [])
         },
         {
-            type: 'graveyard',
-            label: 'গ্রামের রিমোট গোরস্থান রেকর্ড',
-            subtext: 'দাফনের রেকর্ড ও লোকেশন ম্যাপ',
+            type: 'madrassa',
+            label: 'মাদরাসা ও এতিমখানা',
+            subtext: 'ধর্মীয় শিক্ষা ও সেবা প্রতিষ্ঠান',
             icon: BookOpen,
             color: 'slate',
-            items: [
-                { id: 'central-graveyard', name: `${vName} কেন্দ্রীয় গোরস্থান`, features: 'ডিজিটাল রেকর্ড · মাটি খোঁড়ার হটলাইন', url: '#' }
-            ]
+            items: Array.isArray(stats.madrassas) ? stats.madrassas.map((m, idx) => ({
+                id: `madrassa-${idx}`,
+                name: m,
+                features: 'ডিজিটাল রেকর্ড',
+                url: '#'
+            })) : (typeof stats.madrassas === 'string' && stats.madrassas !== '0' ? [{
+                id: 'md-1',
+                name: stats.madrassas,
+                features: 'ডিজিটাল রেকর্ড',
+                url: '#'
+            }] : [])
         },
     ];
 
@@ -92,11 +115,11 @@ export default function VillagePortalClient({ ctx, ward, village }) {
                         <Home size={18} className="text-slate-500" />
                     </Link>
                     <span className="text-slate-300">/</span>
-                    <Link href={`/u/${union.slug}`} className="text-sm font-bold text-slate-500 hover:text-teal-600 transition-colors">
+                    <Link href={paths.unionPortal(union.slug)} className="text-sm font-bold text-slate-500 hover:text-teal-600 transition-colors">
                         {union.name}
                     </Link>
                     <span className="text-slate-300">/</span>
-                    <Link href={`/w/${ward.id}`} className="text-sm font-bold text-slate-500 hover:text-teal-600 transition-colors">
+                    <Link href={paths.wardPortal(ward.id)} className="text-sm font-bold text-slate-500 hover:text-teal-600 transition-colors">
                         {ward.name}
                     </Link>
                     <span className="text-slate-300">/</span>
@@ -143,11 +166,11 @@ export default function VillagePortalClient({ ctx, ward, village }) {
                                 
                                 <div className="w-full"></div> {/* Break to next line for links */}
                                 
-                                <Link href={`/u/${union.slug}/w/${ward.id}`} className="p-4 rounded-2xl bg-emerald-600/20 hover:bg-emerald-600/40 backdrop-blur-md border border-emerald-500/30 w-fit transition-colors group">
+                                <Link href={paths.wardPortal(ward.id)} className="p-4 rounded-2xl bg-emerald-600/20 hover:bg-emerald-600/40 backdrop-blur-md border border-emerald-500/30 w-fit transition-colors group">
                                     <p className="text-[10px] font-black uppercase text-emerald-200 tracking-wider mb-1 flex items-center gap-1.5 group-hover:text-emerald-100 transition-colors"><MapPin size={12}/> নিয়ন্ত্রক ওয়ার্ড পোর্টাল</p>
                                     <p className="text-base font-black text-white flex items-center gap-2">{ward.name} <MoveRight size={16} className="text-emerald-400 group-hover:text-emerald-300 group-hover:translate-x-1 transition-all"/></p>
                                 </Link>
-                                <Link href={`/u/${union.slug}`} className="p-4 rounded-2xl bg-emerald-600/20 hover:bg-emerald-600/40 backdrop-blur-md border border-emerald-500/30 w-fit transition-colors group hidden sm:block">
+                                <Link href={paths.unionPortal(union.slug)} className="p-4 rounded-2xl bg-emerald-600/20 hover:bg-emerald-600/40 backdrop-blur-md border border-emerald-500/30 w-fit transition-colors group hidden sm:block">
                                     <p className="text-[10px] font-black uppercase text-emerald-200 tracking-wider mb-1 flex items-center gap-1.5 group-hover:text-emerald-100 transition-colors"><Building2 size={12}/> ইউনিয়ন মেইন পোর্টাল</p>
                                     <p className="text-base font-black text-white flex items-center gap-2">{union.name} <MoveRight size={16} className="text-emerald-400 group-hover:text-emerald-300 group-hover:translate-x-1 transition-all"/></p>
                                 </Link>
@@ -397,7 +420,7 @@ export default function VillagePortalClient({ ctx, ward, village }) {
 
                         {/* Back Links to Ward and Union */}
                         <div className="space-y-4">
-                            <Link href={`/w/${ward.id}`} className="flex items-center gap-4 p-5 rounded-[24px] bg-teal-50 border border-teal-100 hover:bg-teal-100 hover:border-teal-200 transition-all group">
+                            <Link href={paths.wardPortal(ward.id)} className="flex items-center gap-4 p-5 rounded-[24px] bg-teal-50 border border-teal-100 hover:bg-teal-100 hover:border-teal-200 transition-all group">
                                 <div className="w-12 h-12 rounded-2xl bg-white border border-teal-100 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
                                     <ArrowLeft size={20} className="text-teal-600" />
                                 </div>
@@ -406,8 +429,8 @@ export default function VillagePortalClient({ ctx, ward, village }) {
                                     <p className="font-black text-teal-900 text-sm">{ward.name} মেইন পোর্টাল</p>
                                 </div>
                             </Link>
-
-                            <Link href={`/u/${union.slug}`} className="flex items-center gap-4 p-5 rounded-[24px] bg-slate-50 border border-slate-200 hover:bg-slate-100 hover:border-slate-300 transition-all group">
+                                
+                            <Link href={paths.unionPortal(union.slug)} className="flex items-center gap-4 p-5 rounded-[24px] bg-slate-50 border border-slate-200 hover:bg-slate-100 hover:border-slate-300 transition-all group">
                                 <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
                                     <Home size={20} className="text-slate-600" />
                                 </div>

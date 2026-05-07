@@ -33,8 +33,10 @@ export default function UnionManagementPage() {
     
     // Pagination States
     const [currentPage, setCurrentPage] = useState(1);
+    const [modalCurrentPage, setModalCurrentPage] = useState(1);
     const [totalCount, setTotalCount] = useState(0);
     const pageSize = 10;
+    const modalPageSize = 5;
     const [userSearchQuery, setUserSearchQuery] = useState('');
     const [showAddUserForm, setShowAddUserForm] = useState(false);
     const [errorMessage, setErrorMessage] = useState('');
@@ -401,10 +403,20 @@ export default function UnionManagementPage() {
         u.name_bn.includes(searchQuery)
     );
 
-    const filteredUsers = allUsers.filter(u => 
-        (u.first_name || '').toLowerCase().includes(userSearchQuery.toLowerCase()) ||
-        (u.phone || '').includes(userSearchQuery)
-    );
+    const filteredUsers = allUsers.filter(u => {
+        const matchesSearch = (u.first_name || '').toLowerCase().includes(userSearchQuery.toLowerCase()) ||
+                             (u.phone || '').includes(userSearchQuery);
+        
+        // Filter by role if assigning
+        if (isAssignModalOpen) {
+            // If assigning chairman, show only chairmen or people with no assigned scope
+            return matchesSearch && (u.role === activeRoleAssign);
+        }
+        
+        return matchesSearch;
+    });
+
+    const paginatedModalUsers = filteredUsers.slice((modalCurrentPage - 1) * modalPageSize, modalCurrentPage * modalPageSize);
 
     if (loading) {
         return (
@@ -1055,7 +1067,7 @@ export default function UnionManagementPage() {
                                                                     email: manager.email,
                                                                     phone: manager.phone,
                                                                     role: manager.role,
-                                                                    password: '********' // Password hidden during edit
+                                                                    password: '********'
                                                                 });
                                                                 setShowAddUserForm(true);
                                                             }}
@@ -1086,9 +1098,9 @@ export default function UnionManagementPage() {
                                             )}
                                         </div>
                                     )}
+
                                     {showAddUserForm ? (
                                         <form onSubmit={handleQuickAddUser} className="space-y-4">
-                                            {/* ... form inputs same as before ... */}
                                             <div className="p-4 bg-teal-50/50 rounded-2xl border border-teal-100/50 mb-2">
                                                 <p className="text-[10px] font-black text-teal-600 uppercase tracking-widest text-center">
                                                     {selectedUserToEdit ? 'ইউজার প্রোফাইল আপডেট করুন' : (activeRoleAssign === 'ward_member' ? 'নতুন মেম্বার তৈরি করুন' : 'নতুন চেয়ারম্যান তৈরি করুন')}
@@ -1124,13 +1136,12 @@ export default function UnionManagementPage() {
                                                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-wider ml-1">রোল / পদবী</label>
                                                 <select 
                                                     className="w-full bg-slate-50 border border-slate-100 rounded-xl p-3.5 text-sm font-bold outline-none focus:border-teal-500 transition-all"
-                                                    value={newUser.role || (activeRoleAssign === 'ward_member' ? 'ward_member' : activeRoleAssign === 'volunteer' ? 'volunteer' : 'chairman')}
+                                                    value={newUser.role}
                                                     onChange={(e) => setNewUser({...newUser, role: e.target.value})}
                                                 >
-                                                    <option value="chairman">চেয়ারম্যান</option>
-                                                    <option value="ward_member">ওয়ার্ড মেম্বার</option>
-                                                    <option value="volunteer">গ্রাম ভলান্টিয়ার</option>
-                                                    <option value="institution_admin">প্রতিষ্ঠান অ্যাডমিন</option>
+                                                    <option value="chairman">Chairman</option>
+                                                    <option value="ward_member">Ward Member</option>
+                                                    <option value="volunteer">Volunteer</option>
                                                 </select>
                                             </div>
                                             <div className="space-y-1">
@@ -1162,46 +1173,78 @@ export default function UnionManagementPage() {
                                                         placeholder="নাম বা ফোন দিয়ে খুঁজুন..."
                                                         className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 pl-12 pr-4 text-xs font-bold outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all"
                                                         value={userSearchQuery}
-                                                        onChange={(e) => setUserSearchQuery(e.target.value)}
+                                                        onChange={(e) => {
+                                                            setUserSearchQuery(e.target.value);
+                                                            setModalCurrentPage(1);
+                                                        }}
                                                     />
                                                 </div>
                                             </div>
 
                                             <div className="space-y-3">
-                                                {filteredUsers.length === 0 ? (
-                                                    <div className="text-center py-10">
-                                                        <p className="text-slate-400 text-sm font-bold mb-4">কোনো ইউজার পাওয়া যায়নি।</p>
+                                                {paginatedModalUsers.length === 0 ? (
+                                                    <div className="text-center py-10 bg-slate-50 rounded-[32px] border-2 border-dashed border-slate-100">
+                                                        <Users2 size={40} className="mx-auto text-slate-200 mb-4" />
+                                                        <p className="text-slate-400 text-sm font-bold mb-4">
+                                                            {userSearchQuery ? 'এই নামে কোনো ইউজার পাওয়া যায়নি।' : `কোনো ${activeRoleAssign === 'ward_member' ? 'মেম্বার' : activeRoleAssign === 'volunteer' ? 'ভলান্টিয়ার' : 'চেয়ারম্যান'} পাওয়া যায়নি।`}
+                                                        </p>
                                                         <button 
-                                                            onClick={() => setShowAddUserForm(true)}
-                                                            className="text-teal-600 text-xs font-black uppercase tracking-widest border-b-2 border-teal-100 hover:border-teal-500 transition-all"
+                                                            onClick={() => {
+                                                                setNewUser({ ...newUser, role: activeRoleAssign });
+                                                                setShowAddUserForm(true);
+                                                            }}
+                                                            className="bg-slate-900 text-white px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-teal-600 transition-all shadow-lg active:scale-95"
                                                         >
                                                             নতুন ইউজার তৈরি করুন
                                                         </button>
                                                     </div>
                                                 ) : (
-                                                    filteredUsers.map(user => (
-                                                        <div 
-                                                            key={user.id} 
-                                                            className="p-4 rounded-2xl border border-slate-100 bg-slate-50 flex items-center justify-between group hover:border-teal-200 transition-all"
-                                                        >
-                                                            <div className="flex items-center gap-3">
-                                                                <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-slate-400 border border-slate-100">
-                                                                    <Users2 size={20} />
-                                                                </div>
-                                                                <div>
-                                                                    <p className="text-sm font-black text-slate-800">{user.first_name} {user.last_name}</p>
-                                                                    <p className="text-[10px] font-bold text-slate-400 uppercase">{user.phone || 'No Phone'}</p>
-                                                                </div>
-                                                            </div>
-                                                            <button 
-                                                                disabled={submitting}
-                                                                onClick={() => handleAssignChairman(user.id)}
-                                                                className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-teal-600 hover:text-white hover:border-teal-600 transition-all active:scale-95 disabled:opacity-50"
+                                                    <>
+                                                        {paginatedModalUsers.map(user => (
+                                                            <div 
+                                                                key={user.id} 
+                                                                className="p-4 rounded-2xl border border-slate-100 bg-slate-50 flex items-center justify-between group hover:border-teal-200 transition-all"
                                                             >
-                                                                নিয়োগ দিন
-                                                            </button>
-                                                        </div>
-                                                    ))
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-slate-400 border border-slate-100">
+                                                                        <Users2 size={20} />
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-sm font-black text-slate-800">{user.first_name} {user.last_name}</p>
+                                                                        <p className="text-[10px] font-bold text-slate-400 uppercase">{user.phone || 'No Phone'}</p>
+                                                                    </div>
+                                                                </div>
+                                                                <button 
+                                                                    disabled={submitting}
+                                                                    onClick={() => handleAssignChairman(user.id)}
+                                                                    className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-teal-600 hover:text-white hover:border-teal-600 transition-all active:scale-95 disabled:opacity-50"
+                                                                >
+                                                                    নিয়োগ দিন
+                                                                </button>
+                                                            </div>
+                                                        ))}
+
+                                                        {/* Modal Pagination Controls */}
+                                                        {filteredUsers.length > modalPageSize && (
+                                                            <div className="flex items-center justify-center gap-2 mt-6 py-4 border-t border-slate-50">
+                                                                <button 
+                                                                    onClick={() => setModalCurrentPage(p => Math.max(1, p - 1))}
+                                                                    disabled={modalCurrentPage === 1}
+                                                                    className="p-2 rounded-lg bg-slate-100 text-slate-400 disabled:opacity-30"
+                                                                >
+                                                                    <ChevronLeft size={16} />
+                                                                </button>
+                                                                <span className="text-xs font-black text-slate-400">পেজ {toBnDigits(modalCurrentPage)}</span>
+                                                                <button 
+                                                                    onClick={() => setModalCurrentPage(p => Math.min(Math.ceil(filteredUsers.length / modalPageSize), p + 1))}
+                                                                    disabled={modalCurrentPage * modalPageSize >= filteredUsers.length}
+                                                                    className="p-2 rounded-lg bg-slate-100 text-slate-400 disabled:opacity-30"
+                                                                >
+                                                                    <ChevronRight size={16} />
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </>
                                                 )}
                                             </div>
                                         </>

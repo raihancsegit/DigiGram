@@ -53,6 +53,7 @@ export default function LoginPage() {
             else if (profile.role === 'chairman') router.push('/chairman/dashboard');
             else if (profile.role === 'ward_member') router.push('/ward-member/dashboard');
             else if (profile.role === 'institution_admin') router.push('/admin/institution');
+            else if (profile.role === 'market_manager') router.push('/market-manager');
             else router.push('/');
 
         } catch (err) {

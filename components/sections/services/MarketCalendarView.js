@@ -30,9 +30,28 @@ const AnimatedCounter = ({ end, duration = 2, suffix = '' }) => {
     return <span>{toBnNum(count)}{suffix}</span>;
 };
 
-export default function MarketCalendarView() {
-    const [selectedHat, setSelectedHat] = useState(MARKETS_LIST[0]);
+export default function MarketCalendarView({ selectedUnionSlug = '', selectedUnionName = '' }) {
+    const normalizeUnionSlug = (slug) => {
+        const raw = String(slug || '').trim().toLowerCase();
+        const aliasMap = {
+            hujipara: 'hujuripara',
+            hojuripara: 'hujuripara',
+            dumuria: 'dumuria',
+            damkura: 'dumuria',
+        };
+        return aliasMap[raw] || raw;
+    };
+
+    const normalizedUnionSlug = normalizeUnionSlug(selectedUnionSlug);
+    const filteredMarkets = normalizedUnionSlug
+        ? MARKETS_LIST.filter((m) => normalizeUnionSlug(m.unionSlug) === normalizedUnionSlug)
+        : MARKETS_LIST;
+    const [selectedHat, setSelectedHat] = useState(filteredMarkets[0] || null);
     const [filterCategory, setFilterCategory] = useState('All');
+
+    useEffect(() => {
+        setSelectedHat(filteredMarkets[0] || null);
+    }, [normalizedUnionSlug]);
 
     const categories = ['All', ...Array.from(new Set(COMMODITIES.map(c => c.category)))];
     
@@ -63,6 +82,12 @@ export default function MarketCalendarView() {
                         <h2 className="text-4xl md:text-6xl font-black text-white leading-[1.2] mb-6">
                             গ্রামের সব হাট ও বাজারের <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-400">খবর এক জায়গায়</span>
                         </h2>
+                        {selectedUnionName && (
+                            <p className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/20 text-amber-100 text-xs font-black tracking-widest uppercase mb-4">
+                                <MapPin size={13} />
+                                ইউনিয়ন: {selectedUnionName}
+                            </p>
+                        )}
                         <p className="text-lg text-amber-100 font-medium mb-8 leading-relaxed max-w-xl">
                             গরু, ধান, পাট থেকে শুরু করে কাঁচাবাজার—কোন হাটে আজ কীসের দাম কেমন, তা বাড়ি বসেই জেনে নিন।
                         </p>
@@ -82,7 +107,7 @@ export default function MarketCalendarView() {
                     <div className="grid grid-cols-2 gap-4 shrink-0 w-full md:w-auto">
                         <div className="bg-white/5 border border-white/10 rounded-[32px] p-6 text-center backdrop-blur-md">
                             <Store size={32} className="text-amber-400 mx-auto mb-3" />
-                            <div className="text-3xl font-black text-white mb-1"><AnimatedCounter end={MARKETS_LIST.length} /></div>
+                            <div className="text-3xl font-black text-white mb-1"><AnimatedCounter end={filteredMarkets.length} /></div>
                             <p className="text-[10px] font-black text-amber-300 uppercase tracking-widest">তালিকাভুক্ত হাট</p>
                         </div>
                         <div className="bg-white/5 border border-white/10 rounded-[32px] p-6 text-center backdrop-blur-md mt-6">
@@ -100,7 +125,7 @@ export default function MarketCalendarView() {
                 <div className="lg:col-span-1 space-y-4">
                     <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest pl-2 mb-4">বাজার নির্বাচন করুন</h3>
                     <div className="space-y-3 h-[600px] overflow-y-auto pr-2 scrollbar-hide">
-                        {MARKETS_LIST.map((hat) => (
+                        {filteredMarkets.map((hat) => (
                             <button
                                 key={hat.id}
                                 onClick={() => setSelectedHat(hat)}
@@ -133,6 +158,15 @@ export default function MarketCalendarView() {
 
                 {/* ── Main Content: Selected Market Details ── */}
                 <div className="lg:col-span-3">
+                    {!selectedHat ? (
+                        <div className="bg-white rounded-[40px] p-10 border border-slate-100 shadow-sm text-center">
+                            <Store size={44} className="mx-auto text-slate-300 mb-4" />
+                            <h4 className="text-2xl font-black text-slate-700 mb-2">এই ইউনিয়নে এখনো হাট ডেটা যোগ হয়নি</h4>
+                            <p className="text-sm text-slate-500 font-bold">
+                                {selectedUnionName ? `${selectedUnionName} ইউনিয়নের` : 'নির্বাচিত ইউনিয়নের'} হাট-বাজার তালিকা খুব শিগগিরই যুক্ত হবে।
+                            </p>
+                        </div>
+                    ) : (
                     <AnimatePresence mode="wait">
                         <motion.div
                             key={selectedHat.id}
@@ -271,6 +305,7 @@ export default function MarketCalendarView() {
                             )}
                         </motion.div>
                     </AnimatePresence>
+                    )}
                 </div>
             </div>
             

@@ -60,16 +60,19 @@ export default function WardPortalClient({ ctx, ward: initialWard }) {
     // Aggregate institutional stats for this ward
     const wardStats = useMemo(() => {
         const villages = ward.villages || [];
-        return villages.reduce((acc, v) => ({
-            population: acc.population + parseBnInt(v.population || '0'),
-            voters: acc.voters + parseBnInt(v.voters || '0'),
-            schools: acc.schools + parseBnInt(v.schools || '0'),
-            mosques: acc.mosques + parseBnInt(v.mosques || '0'),
-            madrassas: acc.madrassas + parseBnInt(v.madrassas || '0'),
-            orphanages: acc.orphanages + parseBnInt(v.orphanages || '0'),
-            maleVoters: acc.maleVoters + parseBnInt(v.maleVoters || '0'),
-            femaleVoters: acc.femaleVoters + parseBnInt(v.femaleVoters || '0'),
-        }), { population: 0, voters: 0, schools: 0, mosques: 0, madrassas: 0, orphanages: 0, maleVoters: 0, femaleVoters: 0 });
+        return villages.reduce((acc, v) => {
+            const getCount = (val) => Array.isArray(val) ? val.length : parseBnInt(val || '0');
+            return {
+                population: acc.population + parseBnInt(v.population || '0'),
+                voters: acc.voters + parseBnInt(v.voters || '0'),
+                schools: acc.schools + getCount(v.schools),
+                mosques: acc.mosques + getCount(v.mosques),
+                madrassas: acc.madrassas + getCount(v.madrassas),
+                orphanages: acc.orphanages + getCount(v.orphanages),
+                maleVoters: acc.maleVoters + parseBnInt(v.maleVoters || '0'),
+                femaleVoters: acc.femaleVoters + parseBnInt(v.femaleVoters || '0'),
+            };
+        }, { population: 0, voters: 0, schools: 0, mosques: 0, madrassas: 0, orphanages: 0, maleVoters: 0, femaleVoters: 0 });
     }, [ward.villages]);
 
     // Ward-specific news from Redux
@@ -220,7 +223,7 @@ export default function WardPortalClient({ ctx, ward: initialWard }) {
                                                 transition={{ delay: idx * 0.05 }}
                                             >
                                                 <Link
-                                                    href={`/u/${union.slug}/w/${ward.id}/v/${encodeURIComponent(vName)}`}
+                                                    href={isObj && v.id ? `/g/${v.id}` : '#'}
                                                     className="flex flex-col p-5 rounded-[24px] border border-slate-100 bg-white hover:border-teal-300 hover:shadow-lg transition-all group"
                                                 >
                                                     <div className="flex items-center justify-between mb-4">

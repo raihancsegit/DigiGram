@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useDispatch, useSelector } from 'react-redux';
 import { motion } from 'framer-motion';
 import { 
@@ -37,6 +38,7 @@ const DB_SLUG_MAP = {
 
 export default function UnionPortalClient({ ctx, activeServices = [], chairman = null }) {
     const dispatch = useDispatch();
+    const router = useRouter();
     const { district, upazila, union } = ctx;
     const { dynamicWardData } = useSelector((state) => state.wardData);
     const { user, isAuthenticated } = useSelector((state) => state.auth);
@@ -61,15 +63,19 @@ export default function UnionPortalClient({ ctx, activeServices = [], chairman =
             );
 
             // Per-ward stats aggregation
-            const stats = normalizedVillages.reduce((acc, v) => ({
-                population: acc.population + parseBnInt(v.population || '0'),
-                voters: acc.voters + parseBnInt(v.voters || '0'),
-                maleVoters: acc.maleVoters + parseBnInt(v.maleVoters || '0'),
-                femaleVoters: acc.femaleVoters + parseBnInt(v.femaleVoters || '0'),
-                schools: acc.schools + parseBnInt(v.schools || '0'),
-                mosques: acc.mosques + parseBnInt(v.mosques || '0'),
-                madrassas: acc.madrassas + parseBnInt(v.madrassas || '0'),
-            }), { 
+            const stats = normalizedVillages.reduce((acc, v) => {
+                const getCount = (val) => Array.isArray(val) ? val.length : parseBnInt(val || '0');
+                
+                return {
+                    population: acc.population + parseBnInt(v.population || '0'),
+                    voters: acc.voters + parseBnInt(v.voters || '0'),
+                    maleVoters: acc.maleVoters + parseBnInt(v.maleVoters || '0'),
+                    femaleVoters: acc.femaleVoters + parseBnInt(v.femaleVoters || '0'),
+                    schools: acc.schools + getCount(v.schools),
+                    mosques: acc.mosques + getCount(v.mosques),
+                    madrassas: acc.madrassas + getCount(v.madrassas),
+                };
+            }, { 
                 population: 0, 
                 voters: 0, 
                 maleVoters: 0, 
@@ -299,9 +305,9 @@ export default function UnionPortalClient({ ctx, activeServices = [], chairman =
                                             animate={{ opacity: 1, y: 0 }}
                                             transition={{ delay: idx * 0.05 }}
                                         >
-                                            <Link
-                                                href={`/w/${ward.id}`}
-                                                className="block border border-slate-100 rounded-[24px] overflow-hidden group hover:border-teal-300 hover:shadow-xl transition-all duration-300 bg-white"
+                                            <div
+                                                onClick={() => router.push(`/w/${ward.id}`)}
+                                                className="block cursor-pointer border border-slate-100 rounded-[24px] overflow-hidden group hover:border-teal-300 hover:shadow-xl transition-all duration-300 bg-white"
                                             >
                                                 <div className="flex items-center justify-between p-5 bg-gradient-to-r from-slate-50 to-white relative overflow-hidden gap-4">
                                                     <div className="flex items-center gap-4 relative z-10">
@@ -416,20 +422,26 @@ export default function UnionPortalClient({ ctx, activeServices = [], chairman =
                                                 
                                                 <div className="px-5 pb-5 pt-3 border-t border-slate-50 bg-white group-hover:bg-slate-50/30 transition-colors">
                                                     <div className="flex flex-wrap gap-2">
-                                                        {(ward.villages || []).slice(0, 5).map((v) => (
-                                                            <span
-                                                                key={typeof v === 'string' ? v : v.name}
-                                                                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-50 border border-slate-100 text-[11px] font-bold text-slate-500"
-                                                            >
-                                                                {typeof v === 'string' ? v : v.name}
-                                                            </span>
-                                                        ))}
+                                                        {(ward.villages || []).slice(0, 5).map((v) => {
+                                                            const isObj = typeof v === 'object';
+                                                            const vName = isObj ? v.name : v;
+                                                            return (
+                                                                <Link
+                                                                    key={vName}
+                                                                    href={isObj && v.id ? `/g/${v.id}` : '#'}
+                                                                    onClick={(e) => e.stopPropagation()}
+                                                                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-50 border border-slate-100 text-[11px] font-bold text-slate-500 hover:bg-teal-50 hover:border-teal-200 hover:text-teal-600 transition-all"
+                                                                >
+                                                                    {vName}
+                                                                </Link>
+                                                            );
+                                                        })}
                                                         {ward.villages?.length > 5 && (
                                                             <span className="text-[10px] font-black text-teal-600 pt-1">+{toBnDigits((ward.villages.length - 5).toString())} আরো</span>
                                                         )}
                                                     </div>
                                                 </div>
-                                            </Link>
+                                            </div>
                                         </motion.div>
                                     ))}
                                 </div>
@@ -600,7 +612,7 @@ export default function UnionPortalClient({ ctx, activeServices = [], chairman =
                                     className="h-full"
                                 >
                                     <Link
-                                        href={`${paths.service(cat.id)}?u=${encodeURIComponent(union.slug)}`}
+                                        href={`${paths.service(cat.id === 'market' ? 'market' : cat.id)}?u=${encodeURIComponent(union.slug)}`}
                                         className={`group relative flex h-full flex-col overflow-hidden rounded-[32px] bg-white border ${isActiveFromDB ? 'border-teal-400 shadow-teal-100 shadow-lg' : 'border-slate-200/60'} p-5 sm:p-6 transition-all duration-300`}
                                     >
                                         <div className={`absolute -right-10 -top-10 h-32 w-32 rounded-full bg-gradient-to-br ${cat.gradient} opacity-[0.08] blur-2xl group-hover:opacity-[0.15] transition-opacity`} />

@@ -135,12 +135,13 @@ export default function WardMemberDashboard() {
     }, [dispatch, isAuthenticated, loadWardData, router, user]);
 
     const aggregatedTotals = useMemo(() => {
+        const getCount = (val) => Array.isArray(val) ? val.length : parseBnInt(val || '0');
         return (villages || []).reduce((acc, v) => ({
             population: acc.population + parseBnInt(v.population || '0'),
             voters: acc.voters + parseBnInt(v.voters || '0'),
-            schools: acc.schools + parseBnInt(v.schools || '0'),
-            mosques: acc.mosques + parseBnInt(v.mosques || '0'),
-            madrassas: acc.madrassas + parseBnInt(v.madrassas || '0')
+            schools: acc.schools + getCount(v.schools),
+            mosques: acc.mosques + getCount(v.mosques),
+            madrassas: acc.madrassas + getCount(v.madrassas)
         }), { population: 0, voters: 0, schools: 0, mosques: 0, madrassas: 0 });
     }, [villages]);
 
@@ -346,9 +347,9 @@ export default function WardMemberDashboard() {
                                     </div>
                                 </div>
                                 {wardInfo?.parent?.slug && (
-                                    <Link
-                                        href={`/u/${wardInfo.parent.slug}/w/${user.access_scope_id}`}
-                                        target="_blank"
+                                     <Link
+                                         href={paths.wardPortal(user.access_scope_id)}
+                                         target="_blank"
                                         className="bg-white text-slate-900 px-6 py-4 rounded-[22px] font-black hover:bg-teal-400 hover:text-white transition-all shadow-xl flex items-center gap-3 group whitespace-nowrap"
                                     >
                                         ভিউ মোড
@@ -389,8 +390,8 @@ export default function WardMemberDashboard() {
                 </div>
 
                 {/* Tab Switcher - Scrollable on Mobile */}
-                <div className="overflow-x-auto pb-4 -mb-4 scrollbar-hide">
-                    <div className="flex p-1 bg-slate-200/50 rounded-2xl w-fit mb-8 gap-1 whitespace-nowrap">
+                <div className="mb-8">
+                    <div className="flex flex-wrap p-1.5 bg-slate-200/50 rounded-[24px] w-full gap-1">
                         <button 
                             onClick={() => setActiveTab('news')}
                             className={`flex items-center gap-2 px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${activeTab === 'news' ? 'bg-white text-teal-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}

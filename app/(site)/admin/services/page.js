@@ -7,7 +7,7 @@ import {
     CheckCircle2, XCircle, MoreVertical,
     School, Activity, Sprout, Landmark, 
     MessageSquare, Fuel, ChevronLeft, ChevronRight,
-    MapPin, Building2, Check, HandHeart
+    MapPin, Building2, Check, HandHeart, ShoppingBag
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { adminService } from '@/lib/services/adminService';
@@ -28,7 +28,8 @@ const SERVICE_ICONS = {
     'emergency-hotline': Phone,
     'lost-found': HelpCircle,
     'news-updates': Newspaper,
-    'donation': HandHeart
+    'donation': HandHeart,
+    'village-market': ShoppingBag
 };
 
 export default function ServiceManagementPage() {
@@ -51,7 +52,7 @@ export default function ServiceManagementPage() {
     const [showLocationModal, setShowLocationModal] = useState(false);
     const [activeSettingsService, setActiveSettingsService] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
-    const ITEMS_PER_PAGE = 6;
+    const ITEMS_PER_PAGE = 9;
 
     useEffect(() => {
         loadInitialData();
@@ -170,7 +171,7 @@ export default function ServiceManagementPage() {
                         </h2>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                         {masterServices.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map((service, idx) => {
                             const isActive = getStatusForService(service.id);
                             const Icon = SERVICE_ICONS[service.slug] || Zap;
@@ -179,71 +180,54 @@ export default function ServiceManagementPage() {
                             return (
                                 <motion.div
                                     key={service.id}
-                                    initial={{ opacity: 0, y: 20 }}
+                                    initial={{ opacity: 0, y: 15 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ delay: idx * 0.05 }}
-                                    className={`relative overflow-hidden rounded-[32px] border-2 transition-all duration-500 group ${
+                                    className={`relative overflow-hidden rounded-[28px] border transition-all duration-500 group ${
                                         isActive 
-                                        ? 'bg-white border-teal-500/20 shadow-xl shadow-teal-500/5' 
+                                        ? 'bg-white border-teal-500/20 shadow-lg shadow-teal-500/5' 
                                         : 'bg-slate-50/50 border-slate-200 grayscale opacity-70'
                                     }`}
                                 >
-                                    {/* Card Glow Effect */}
-                                    {isActive && (
-                                        <div className="absolute top-0 right-0 w-32 h-32 bg-teal-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-                                    )}
-
-                                    <div className="p-8">
-                                        <div className="flex items-start justify-between mb-8">
-                                            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-500 ${
-                                                isActive ? 'bg-teal-600 text-white shadow-lg shadow-teal-600/20' : 'bg-slate-200 text-slate-400'
+                                    <div className="p-6">
+                                        <div className="flex items-start justify-between mb-6">
+                                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 ${
+                                                isActive ? 'bg-teal-600 text-white shadow-lg' : 'bg-slate-200 text-slate-400'
                                             }`}>
-                                                <Icon size={28} />
+                                                <Icon size={24} />
                                             </div>
 
                                             <button 
                                                 onClick={() => toggleService(service.id, isActive)}
                                                 disabled={isUpdating}
-                                                className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-teal-600 focus:ring-offset-2 ${
+                                                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
                                                     isActive ? 'bg-teal-600' : 'bg-slate-300'
                                                 }`}
                                             >
-                                                <span className="sr-only">Toggle Service</span>
-                                                <span
-                                                    className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                                                        isActive ? 'translate-x-5' : 'translate-x-0'
-                                                    }`}
-                                                />
+                                                <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow transition duration-200 ease-in-out ${
+                                                    isActive ? 'translate-x-5' : 'translate-x-0'
+                                                }`} />
                                                 {isUpdating && (
                                                     <div className="absolute inset-0 flex items-center justify-center bg-black/10 rounded-full">
-                                                        <Loader2 size={12} className="animate-spin text-white" />
+                                                        <Loader2 size={10} className="animate-spin text-white" />
                                                     </div>
                                                 )}
                                             </button>
                                         </div>
 
-                                        <div className="space-y-2">
-                                            <h3 className="text-xl font-black text-slate-800">{service.name}</h3>
-                                            <p className="text-sm font-bold text-slate-500 leading-relaxed line-clamp-2">
+                                        <div className="space-y-1.5">
+                                            <h3 className="text-lg font-black text-slate-800 tracking-tight">{service.name}</h3>
+                                            <p className="text-[12px] font-bold text-slate-400 leading-snug line-clamp-2">
                                                 {service.name_bn || 'এই ফিচারের বিস্তারিত বিবরণ এখানে দেখা যাবে।'}
                                             </p>
                                         </div>
 
-                                        <div className="mt-8 flex items-center justify-between">
-                                            <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                                        <div className="mt-6 pt-5 border-t border-slate-50 flex items-center justify-between">
+                                            <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${
                                                 isActive ? 'bg-teal-50 text-teal-600' : 'bg-slate-100 text-slate-400'
                                             }`}>
-                                                {isActive ? (
-                                                    <>
-                                                        <CheckCircle2 size={12} />
-                                                        Active
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <XCircle size={12} />
-                                                        Inactive
-                                                    </>
-                                                )}
+                                                <div className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-teal-500 animate-pulse' : 'bg-slate-300'}`} />
+                                                {isActive ? 'Active' : 'Inactive'}
                                             </div>
 
                                             <button 
@@ -252,10 +236,10 @@ export default function ServiceManagementPage() {
                                                     setShowSettingsModal(true);
                                                 }}
                                                 className={`p-2 rounded-xl transition-all ${
-                                                    isActive ? 'text-teal-600 hover:bg-teal-50' : 'text-slate-300 pointer-events-none'
+                                                    isActive ? 'text-teal-600 hover:bg-teal-50 border border-teal-100' : 'text-slate-300 pointer-events-none border border-transparent'
                                                 }`}
                                             >
-                                                <Settings size={20} />
+                                                <Settings size={18} />
                                             </button>
                                         </div>
                                     </div>
@@ -263,6 +247,41 @@ export default function ServiceManagementPage() {
                             );
                         })}
                     </div>
+
+                    {/* Pagination Controls */}
+                    {masterServices.length > ITEMS_PER_PAGE && (
+                        <div className="flex items-center justify-center gap-2 mt-12 bg-white w-fit mx-auto p-2 rounded-3xl border border-slate-100 shadow-sm">
+                            <button 
+                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                disabled={currentPage === 1}
+                                className="p-2.5 rounded-2xl bg-slate-50 border border-slate-100 text-slate-400 hover:text-teal-600 disabled:opacity-30 transition-all"
+                            >
+                                <ChevronLeft size={20} />
+                            </button>
+                            <div className="flex gap-1">
+                                {Array.from({ length: Math.ceil(masterServices.length / ITEMS_PER_PAGE) }).map((_, i) => (
+                                    <button
+                                        key={i}
+                                        onClick={() => setCurrentPage(i + 1)}
+                                        className={`w-10 h-10 rounded-2xl font-black text-sm transition-all ${
+                                            currentPage === i + 1 
+                                            ? 'bg-teal-600 text-white shadow-lg' 
+                                            : 'bg-white border border-slate-100 text-slate-500 hover:bg-slate-50'
+                                        }`}
+                                    >
+                                        {i + 1}
+                                    </button>
+                                ))}
+                            </div>
+                            <button 
+                                onClick={() => setCurrentPage(p => Math.min(Math.ceil(masterServices.length / ITEMS_PER_PAGE), p + 1))}
+                                disabled={currentPage === Math.ceil(masterServices.length / ITEMS_PER_PAGE)}
+                                className="p-2.5 rounded-2xl bg-slate-50 border border-slate-100 text-slate-400 hover:text-teal-600 disabled:opacity-30 transition-all"
+                            >
+                                <ChevronRight size={20} />
+                            </button>
+                        </div>
+                    )}
                 </div>
             ) : (
                 <div className="py-20 text-center bg-white rounded-[40px] border border-slate-100 shadow-sm">
