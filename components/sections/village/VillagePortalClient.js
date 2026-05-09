@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSelector } from 'react-redux';
 import { motion } from 'framer-motion';
@@ -12,12 +12,15 @@ import {
 import { layout } from '@/lib/theme';
 import { paths } from '@/lib/constants/paths';
 import { toBnDigits } from '@/lib/utils/format';
+import PortalLoginModal from '@/components/modals/PortalLoginModal';
 
 export default function VillagePortalClient({ ctx, ward, village }) {
     const { district, upazila, union, volunteers = [] } = ctx || {};
     const { dynamicNews } = useSelector((s) => s.news);
     const { dynamicWardData } = useSelector((state) => state.wardData);
-    const dVillage = useSelector((state) => state.location?.selected?.village);
+    const { user, isAuthenticated } = useSelector((s) => s.auth);
+    
+    const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
     
     // Normalize village data from DB
     const isObj = typeof village === 'object';
@@ -40,6 +43,10 @@ export default function VillagePortalClient({ ctx, ward, village }) {
     const villageBloodDonors = allBloodDonors.filter(d => 
         d.village === vName || d.village?.includes(vName) || vName.includes(d.village)
     );
+
+    const isMyVillage = isAuthenticated && 
+        user?.role === 'volunteer' && 
+        user?.access_scope_id === village.id;
 
     // Mock Village News
     const villageNews = dynamicNews.filter(
@@ -164,16 +171,23 @@ export default function VillagePortalClient({ ctx, ward, village }) {
                                     <p className="text-2xl font-black text-white">{toBnDigits(villageBloodDonors.length)}</p>
                                 </div>
                                 
-                                <div className="w-full"></div> {/* Break to next line for links */}
-                                
-                                <Link href={paths.wardPortal(ward.id)} className="p-4 rounded-2xl bg-emerald-600/20 hover:bg-emerald-600/40 backdrop-blur-md border border-emerald-500/30 w-fit transition-colors group">
-                                    <p className="text-[10px] font-black uppercase text-emerald-200 tracking-wider mb-1 flex items-center gap-1.5 group-hover:text-emerald-100 transition-colors"><MapPin size={12}/> নিয়ন্ত্রক ওয়ার্ড পোর্টাল</p>
-                                    <p className="text-base font-black text-white flex items-center gap-2">{ward.name} <MoveRight size={16} className="text-emerald-400 group-hover:text-emerald-300 group-hover:translate-x-1 transition-all"/></p>
-                                </Link>
-                                <Link href={paths.unionPortal(union.slug)} className="p-4 rounded-2xl bg-emerald-600/20 hover:bg-emerald-600/40 backdrop-blur-md border border-emerald-500/30 w-fit transition-colors group hidden sm:block">
-                                    <p className="text-[10px] font-black uppercase text-emerald-200 tracking-wider mb-1 flex items-center gap-1.5 group-hover:text-emerald-100 transition-colors"><Building2 size={12}/> ইউনিয়ন মেইন পোর্টাল</p>
-                                    <p className="text-base font-black text-white flex items-center gap-2">{union.name} <MoveRight size={16} className="text-emerald-400 group-hover:text-emerald-300 group-hover:translate-x-1 transition-all"/></p>
-                                </Link>
+                                <div className="flex flex-wrap gap-4 mt-8">
+                                    <Link href="/services" className="inline-flex items-center gap-2 px-8 py-4 bg-white text-slate-900 rounded-[22px] font-black text-sm uppercase tracking-widest hover:bg-teal-50 transition-all shadow-xl shadow-black/20 active:scale-95">
+                                        সবগুলো সেবা দেখুন
+                                    </Link>
+                                    {isMyVillage ? (
+                                        <Link href="/volunteer/dashboard" className="inline-flex items-center gap-2 px-8 py-4 bg-teal-500 text-white rounded-[22px] font-black text-sm uppercase tracking-widest hover:bg-teal-600 transition-all shadow-xl shadow-teal-900/20 active:scale-95">
+                                            <ShieldCheck size={18} /> ড্যাশবোর্ডে যান
+                                        </Link>
+                                    ) : (
+                                        <button 
+                                            onClick={() => setIsLoginModalOpen(true)}
+                                            className="inline-flex items-center gap-2 px-8 py-4 bg-white/10 text-white border border-white/20 rounded-[22px] font-black text-sm uppercase tracking-widest hover:bg-white/20 transition-all backdrop-blur-md shadow-xl active:scale-95"
+                                        >
+                                            <Users size={18} /> ভলান্টিয়ার লগইন
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -444,6 +458,12 @@ export default function VillagePortalClient({ ctx, ward, village }) {
 
                 </div>
             </div>
+            <PortalLoginModal 
+                isOpen={isLoginModalOpen}
+                onClose={() => setIsLoginModalOpen(false)}
+                defaultRole="volunteer"
+                locationName={`${vName}, ${union.name}`}
+            />
         </div>
     );
 }

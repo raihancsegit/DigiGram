@@ -39,10 +39,19 @@ export async function POST(request) {
         }
 
         if (action === 'update_profile') {
+            const { password, ...profileUpdates } = updates || {};
+
+            if (password) {
+                const { error: passwordError } = await supabaseAdmin.auth.admin.updateUserById(id, {
+                    password
+                });
+                if (passwordError) throw passwordError;
+            }
+
             const { data, error } = await supabaseAdmin
                 .from('profiles')
                 .update({
-                    ...updates,
+                    ...profileUpdates,
                     updated_at: new Date()
                 })
                 .eq('id', id)

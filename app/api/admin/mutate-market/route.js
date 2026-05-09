@@ -134,6 +134,18 @@ export async function POST(request) {
             }
             
             if (error) throw error;
+
+            // 3. Save to History for date-wise tracking
+            await supabaseAdmin
+                .from('market_price_history')
+                .insert({
+                    market_id: marketId,
+                    commodity_id: commodityId,
+                    price: price,
+                    supply: supply,
+                    recorded_at: new Date().toISOString()
+                });
+
             return NextResponse.json({ success: true, data: updated });
         }
 

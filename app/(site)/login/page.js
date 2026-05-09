@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { useRouter } from 'next/navigation';
-import { login } from '@/lib/store/features/authSlice';
+import { login, performLogout } from '@/lib/store/features/authSlice';
 import { authService } from '@/lib/services/authService';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -24,6 +24,67 @@ export default function LoginPage() {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [checkingSession, setCheckingSession] = useState(true);
+    const [existingProfile, setExistingProfile] = useState(null);
+
+    useEffect(() => {
+        let active = true;
+
+        const checkExistingLogin = async () => {
+            try {
+                const { session, profile } = await authService.getCurrentSessionProfile();
+                if (!active) return;
+
+                if (session?.user && profile) {
+                    setExistingProfile({
+                        id: session.user.id,
+                        email: session.user.email,
+                        role: profile.role,
+                        access_scope_id: profile.access_scope_id,
+                        first_name: profile.first_name,
+                        last_name: profile.last_name,
+                        avatar_url: profile.avatar_url
+                    });
+                }
+            } catch (err) {
+                console.error('Existing login check failed:', err);
+            } finally {
+                if (active) setCheckingSession(false);
+            }
+        };
+
+        checkExistingLogin();
+
+        return () => {
+            active = false;
+        };
+    }, []);
+
+    const roleLabel = (role) => ({
+        super_admin: 'সুপার অ্যাডমিন',
+        chairman: 'চেয়ারম্যান',
+        ward_member: 'ওয়ার্ড মেম্বার',
+        volunteer: 'ভলান্টিয়ার',
+        market_manager: 'বাজার ম্যানেজার',
+        institution_admin: 'প্রতিষ্ঠান অ্যাডমিন',
+        teacher: 'শিক্ষক',
+        student: 'সাধারণ ইউজার'
+    }[role] || role || 'ইউজার');
+
+    const handleExistingLogout = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            await dispatch(performLogout()).unwrap();
+            setExistingProfile(null);
+            setEmail('');
+            setPassword('');
+        } catch (err) {
+            setError(err.message || 'লগআউট করতে সমস্যা হয়েছে।');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleAdminLogin = async (e) => {
         e.preventDefault();
@@ -54,6 +115,7 @@ export default function LoginPage() {
             else if (profile.role === 'ward_member') router.push('/ward-member/dashboard');
             else if (profile.role === 'institution_admin') router.push('/admin/institution');
             else if (profile.role === 'market_manager') router.push('/market-manager');
+            else if (profile.role === 'volunteer') router.push('/volunteer/dashboard');
             else router.push('/');
 
         } catch (err) {
@@ -171,6 +233,31 @@ export default function LoginPage() {
                         </div>
                     )}
 
+                    {checkingSession ? (
+                        <div className="p-8 rounded-3xl bg-white border border-slate-200 flex flex-col items-center justify-center gap-3">
+                            <Loader2 className="animate-spin text-teal-600" size={24} />
+                            <p className="text-xs font-black text-slate-400 uppercase tracking-widest">সেশন চেক হচ্ছে...</p>
+                        </div>
+                    ) : existingProfile ? (
+                        <div className="p-6 rounded-3xl bg-white border border-amber-100 shadow-sm">
+                            <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mb-4">
+                                <AlertCircle size={24} />
+                            </div>
+                            <h3 className="text-xl font-black text-slate-800 mb-2">আপনি ইতিমধ্যে লগইন আছেন</h3>
+                            <p className="text-sm font-bold text-slate-500 leading-relaxed mb-6">
+                                আপনি এখন {roleLabel(existingProfile.role)} হিসেবে লগইন আছেন। অন্য পোর্টালে লগইন করতে হলে আগে লগআউট করুন, তারপর আবার লগইন করুন।
+                            </p>
+                            <button
+                                onClick={handleExistingLogout}
+                                disabled={loading}
+                                className="w-full flex items-center justify-center gap-2 p-4 rounded-2xl bg-slate-900 text-white font-black text-xs uppercase tracking-widest hover:bg-rose-600 transition-all disabled:opacity-60"
+                            >
+                                {loading ? <Loader2 className="animate-spin" size={18} /> : null}
+                                আগে লগআউট করুন
+                            </button>
+                        </div>
+                    ) : (
+
                     <AnimatePresence mode="wait">
                         {loginType === 'citizen' ? (
                             <motion.div
@@ -265,6 +352,7 @@ export default function LoginPage() {
                             </motion.form>
                         )}
                     </AnimatePresence>
+                    )}
 
                     <div className="mt-12 text-center">
                         <p className="text-xs font-bold text-slate-400">

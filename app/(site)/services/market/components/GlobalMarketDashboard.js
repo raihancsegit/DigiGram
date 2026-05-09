@@ -4,13 +4,15 @@ import { useState, useEffect } from 'react';
 import { marketService } from '@/lib/services/marketService';
 import { Search, MapPin, TrendingUp, Minus, Store, Zap, ArrowUpRight, ShoppingBag, Loader2 } from 'lucide-react';
 import { PriceComparisonTable } from './PriceComparisonTable';
-import { motion } from 'framer-motion';
+import { PriceHistoryModal } from '@/components/sections/admin/market/PriceHistoryModal';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export function GlobalMarketDashboard() {
     const [searchQuery, setSearchQuery] = useState('');
     const [data, setData] = useState({ markets: [], prices: [], commodities: [] });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [selectedHistory, setSelectedHistory] = useState(null); // { commodityId, marketId }
 
     useEffect(() => {
         async function loadGlobalData() {
@@ -132,6 +134,7 @@ export function GlobalMarketDashboard() {
                                 commodities={data.commodities}
                                 markets={data.markets}
                                 prices={data.prices}
+                                onShowHistory={(commodityId, marketId) => setSelectedHistory({ commodityId, marketId })}
                             />
                         </div>
                     </div>
@@ -198,6 +201,19 @@ export function GlobalMarketDashboard() {
                     </div>
                 </div>
             </div>
+
+            {/* Price History Modal for Public View */}
+            <AnimatePresence>
+                {selectedHistory && (
+                    <PriceHistoryModal 
+                        isOpen={!!selectedHistory}
+                        onClose={() => setSelectedHistory(null)}
+                        marketId={selectedHistory.marketId}
+                        marketName={data.markets.find(m => m.id === selectedHistory.marketId)?.name}
+                        commodity={data.commodities.find(c => c.id === selectedHistory.commodityId)}
+                    />
+                )}
+            </AnimatePresence>
         </div>
     );
 }

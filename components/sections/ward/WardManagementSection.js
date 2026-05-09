@@ -22,7 +22,7 @@ import { LayoutDashboard, Droplets } from 'lucide-react';
 const inputStyles = "w-full p-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 outline-none transition-all font-bold text-slate-700 text-sm";
 const labelStyles = "text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1.5 block flex items-center gap-1.5";
 
-export default function WardManagementSection({ user, wardInfo, villages: initialVillages = [], isVolunteerView = false }) {
+export default function WardManagementSection({ user = {}, wardInfo, villages: initialVillages = [], isVolunteerView = false }) {
     const dynamicData = wardInfo?.stats || {};
 
     const [activeTab, setActiveTab] = useState('stats'); // 'stats' or 'blood'
@@ -42,7 +42,7 @@ export default function WardManagementSection({ user, wardInfo, villages: initia
     const [managingVolunteersFor, setManagingVolunteersFor] = useState(null);
 
     const [formData, setFormData] = useState({
-        memberName: dynamicData?.memberName || user.name,
+        memberName: dynamicData?.memberName || user?.name || '',
         memberPhone: dynamicData?.memberPhone || '01700000000',
     });
 
@@ -335,7 +335,7 @@ export default function WardManagementSection({ user, wardInfo, villages: initia
 
                         <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
                             <div className="overflow-x-auto">
-                                <table className="w-full text-left border-collapse">
+                                <table className="w-full min-w-[860px] text-left border-collapse">
                                     <thead className="bg-slate-50/50">
                                         <tr className="border-b border-slate-100">
                                             <th className="p-5 text-[10px] font-black uppercase text-slate-400 tracking-[0.15em] text-left">গ্রামের নাম</th>
@@ -392,22 +392,22 @@ export default function WardManagementSection({ user, wardInfo, villages: initia
                                                             </div>
                                                         </div>
                                                     </td>
-                                                     <td className="p-5 text-right">
-                                                         <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0">
+                                                     <td className="p-5 text-right w-[250px]">
+                                                         <div className="flex items-center justify-end gap-2">
                                                              <Link 
                                                                  href={paths.villagePortal(v.id)}
                                                                  target="_blank"
-                                                                 className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-100 text-emerald-600 hover:bg-emerald-500 hover:text-white shadow-sm text-[10px] font-black transition-all"
+                                                                 className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 border border-emerald-100 text-emerald-600 hover:bg-emerald-500 hover:text-white shadow-sm transition-all"
                                                                  title="গ্রাম পোর্টালে প্রবেশ"
                                                              >
-                                                                 <PlusCircle size={12} /> পোর্টালে প্রবেশ
+                                                                 <PlusCircle size={15} />
                                                              </Link>
                                                              <button 
                                                                  onClick={() => setManagingVolunteersFor({ id: v.id, name: v.name })}
-                                                                 className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-teal-50 border border-teal-100 text-teal-600 hover:bg-teal-500 hover:text-white shadow-sm text-[10px] font-black transition-all"
+                                                                 className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-teal-50 border border-teal-100 text-teal-600 hover:bg-teal-500 hover:text-white shadow-sm transition-all"
                                                                  title="ভলান্টিয়ার ম্যানেজমেন্ট"
                                                              >
-                                                                 <Users size={12} /> ভলান্টিয়ার
+                                                                 <Users size={15} />
                                                              </button>
                                                              <button 
                                                                  onClick={() => { 
@@ -422,16 +422,18 @@ export default function WardManagementSection({ user, wardInfo, villages: initia
                                                                      setEditingIndex(idx); 
                                                                      setIsAddingVillage(true); 
                                                                  }}
-                                                                 className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 hover:border-teal-500 hover:text-teal-600 shadow-sm text-[10px] font-black transition-all"
+                                                                 className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-600 hover:border-teal-500 hover:text-teal-600 shadow-sm transition-all"
+                                                                 title="এডিট"
                                                              >
-                                                                 <Edit3 size={12} /> এডিট
+                                                                 <Edit3 size={15} />
                                                              </button>
                                                              {!isVolunteerView && (
                                                                  <button 
                                                                      onClick={() => handleDeleteVillage(v.id)}
-                                                                     className="p-1.5 rounded-lg bg-white border border-slate-200 text-slate-400 hover:border-red-500 hover:text-red-500 shadow-sm transition-all"
+                                                                     className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-400 hover:border-red-500 hover:text-red-500 shadow-sm transition-all"
+                                                                     title="ডিলিট"
                                                                  >
-                                                                     <Trash2 size={12} />
+                                                                     <Trash2 size={15} />
                                                                  </button>
                                                              )}
                                                          </div>

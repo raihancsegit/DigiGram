@@ -10,6 +10,7 @@ import { MarketReviewSection } from './MarketReviewSection';
 import { PriceComparisonTable } from './PriceComparisonTable';
 import { toBnDigits } from '@/lib/utils/format';
 import { paths } from '@/lib/constants/paths';
+import { PriceHistoryModal } from '@/components/sections/admin/market/PriceHistoryModal';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export function UnionMarketView({ unionSlug }) {
@@ -18,6 +19,7 @@ export function UnionMarketView({ unionSlug }) {
     const [error, setError] = useState(null);
     const [data, setData] = useState({ markets: [], allPrices: [], commodities: [], union: null });
     const [selectedHatId, setSelectedHatId] = useState(null);
+    const [selectedHistory, setSelectedHistory] = useState(null); // { commodityId, marketId }
 
     useEffect(() => {
         async function loadUnionMarketData() {
@@ -124,7 +126,8 @@ export function UnionMarketView({ unionSlug }) {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.05 }}
-                className={`relative bg-white p-6 rounded-[32px] border transition-all duration-500 group ${
+                onClick={() => setSelectedHistory({ commodityId: priceData.commodity_id, marketId: priceData.market_id })}
+                className={`relative bg-white p-6 rounded-[32px] border transition-all duration-500 group cursor-pointer ${
                     isLowest ? 'border-teal-500/30 shadow-xl shadow-teal-500/5' : 'border-slate-100 hover:border-teal-200 hover:shadow-lg'
                 }`}
             >
@@ -349,20 +352,7 @@ export function UnionMarketView({ unionSlug }) {
                     <div className="lg:col-span-4 space-y-8">
                         <MarketReviewSection unionSlug={unionSlug} hatId={selectedHat.id} marketName={selectedHat.name} />
                         
-                        <div className="p-10 rounded-[50px] bg-slate-900 text-white relative overflow-hidden group shadow-2xl border border-white/5">
-                            <div className="absolute -right-10 -bottom-10 w-48 h-48 bg-emerald-500/20 rounded-full blur-[80px] transition-all duration-700 group-hover:scale-150 group-hover:bg-emerald-500/30" />
-                            <div className="relative z-10">
-                                <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center mb-6">
-                                    <Info className="text-emerald-400" size={24} />
-                                </div>
-                                <h4 className="text-emerald-400 font-black uppercase tracking-[0.2em] text-[10px] mb-4">বাজার প্রতিনিধি</h4>
-                                <p className="text-xl font-black mb-4 leading-tight tracking-tight">স্বচ্ছ বাজার নিশ্চিত করতে আমাদের প্রতিনিধিরা প্রতিদিন দাম সংগ্রহ করেন।</p>
-                                <p className="text-sm text-slate-400 font-medium mb-8 leading-relaxed">কোনো ভুল তথ্য দেখলে বা অস্বাভাবিক দাম বৃদ্ধি পেলে আমাদের সরাসরি জানান।</p>
-                                <button className="w-full py-4 rounded-2xl bg-white/5 border border-white/10 text-[11px] font-black uppercase tracking-widest text-slate-300 hover:bg-white hover:text-slate-900 transition-all flex items-center justify-center gap-3 active:scale-95 group/btn">
-                                    অভিযোগ জানান <ChevronRight size={16} className="group-hover/btn:translate-x-1 transition-transform" />
-                                </button>
-                            </div>
-                        </div>
+                        {/* More relevant info for Union View could go here, or leave empty for cleaner look */}
                     </div>
                 </div>
             )}
@@ -383,6 +373,7 @@ export function UnionMarketView({ unionSlug }) {
                             commodities={data.commodities}
                             markets={data.markets}
                             prices={data.allPrices}
+                            onShowHistory={(commodityId, marketId) => setSelectedHistory({ commodityId, marketId })}
                         />
                     </div>
                 </div>
@@ -404,6 +395,18 @@ export function UnionMarketView({ unionSlug }) {
                     {unionInfo?.union?.name || data.union?.name_bn || 'ইউনিয়ন'} পোর্টালে ফিরে যান
                 </Link>
             </div>
+
+            <AnimatePresence>
+                {selectedHistory && (
+                    <PriceHistoryModal 
+                        isOpen={!!selectedHistory}
+                        onClose={() => setSelectedHistory(null)}
+                        marketId={selectedHistory.marketId}
+                        marketName={data.markets.find(m => m.id === selectedHistory.marketId)?.name}
+                        commodity={data.commodities.find(c => c.id === selectedHistory.commodityId)}
+                    />
+                )}
+            </AnimatePresence>
         </div>
     );
 }

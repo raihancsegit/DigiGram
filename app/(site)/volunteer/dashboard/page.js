@@ -4,20 +4,23 @@ import { useSelector } from 'react-redux';
 import { useState, useEffect, useCallback } from 'react';
 import { 
     LayoutDashboard, Newspaper, Settings, LogOut, 
-    MapPin, Users, School, Building2, BookOpen,
+    MapPin, Users, School, Building2, BookOpen, Home,
     Loader2, PlusCircle, ArrowRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import WardNewsForm from '@/components/sections/ward/WardNewsForm';
 import WardManagementSection from '@/components/sections/ward/WardManagementSection';
+import WardHouseholdManager from '@/components/sections/ward/WardHouseholdManager';
 import { getVillageFullContext } from '@/lib/services/hierarchyService';
+import { householdService } from '@/lib/services/householdService';
 import { wardService } from '@/lib/services/wardService';
 import { toBnDigits } from '@/lib/utils/format';
 
 export default function VolunteerDashboard() {
     const { user } = useSelector((state) => state.auth);
-    const [activeTab, setActiveTab] = useState('news');
+    const [activeTab, setActiveTab] = useState('households');
     const [villageData, setVillageData] = useState(null);
+    const [householdVillage, setHouseholdVillage] = useState(null);
     const [loading, setLoading] = useState(true);
     const [newsList, setNewsList] = useState([]);
 
@@ -30,11 +33,24 @@ export default function VolunteerDashboard() {
 
             // Fetch news for this village/ward
             if (context?.ward?.id) {
-                const news = await wardService.getWardNews(context.ward.id);
+                const news = await wardService.getNewsByLocation(context.ward.id);
                 setNewsList(news);
             }
+
+            if (context?.ward?.id && context?.village?.id) {
+                try {
+                    const syncedVillage = await householdService.getOrCreateVillageForLocation(
+                        context.ward.id,
+                        context.village
+                    );
+                    setHouseholdVillage(syncedVillage);
+                } catch (syncError) {
+                    console.error("Error syncing volunteer household village:", syncError?.message || syncError);
+                    setHouseholdVillage(null);
+                }
+            }
         } catch (err) {
-            console.error("Error loading volunteer data:", err);
+            console.error("Error loading volunteer data:", err?.message || err);
         } finally {
             setLoading(false);
         }
@@ -82,6 +98,13 @@ export default function VolunteerDashboard() {
                         খবর ও নোটিশ
                     </button>
                     <button 
+                        onClick={() => setActiveTab('households')}
+                        className={`flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-black transition-all ${activeTab === 'households' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+                    >
+                        <Home size={18} />
+                        বাড়ি এন্ট্রি
+                    </button>
+                    <button 
                         onClick={() => setActiveTab('management')}
                         className={`flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-black transition-all ${activeTab === 'management' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
                     >
@@ -127,6 +150,7 @@ export default function VolunteerDashboard() {
                     >
                         <div className="lg:col-span-1">
                             <WardNewsForm 
+                                user={user}
                                 wardId={villageData?.ward?.id} 
                                 onSuccess={loadData}
                                 villageContext={village?.name_bn}
@@ -160,6 +184,29 @@ export default function VolunteerDashboard() {
                             ))}
                         </div>
                     </motion.div>
+                ) : activeTab === 'households' ? (
+                    <motion.div
+                        key="households"
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        className="bg-white rounded-[40px] p-6 md:p-10 border border-slate-200 shadow-sm"
+                    >
+                        <div className="flex items-center gap-4 mb-8">
+                            <div className="w-14 h-14 rounded-3xl bg-teal-900 flex items-center justify-center text-teal-400 shadow-xl shrink-0">
+                                <Home size={28} />
+                            </div>
+                            <div>
+                                <h3 className="text-2xl font-black text-slate-800 leading-tight">বাড়ি এন্ট্রি</h3>
+                                <p className="text-sm font-bold text-slate-400 mt-1">{householdVillage?.bn_name || village?.name_bn} গ্রামের বাড়ি ও সদস্য যোগ করুন</p>
+                            </div>
+                        </div>
+                        <WardHouseholdManager
+                            wardId={villageData?.ward?.id}
+                            assignedVillage={householdVillage}
+                            volunteerMode={true}
+                        />
+                    </motion.div>
                 ) : (
                     <motion.div
                         key="management"
@@ -168,6 +215,7 @@ export default function VolunteerDashboard() {
                         exit={{ opacity: 0, x: -20 }}
                     >
                         <WardManagementSection 
+                            user={user}
                             wardId={villageData?.ward?.id}
                             villages={[village]}
                             onUpdate={loadData}

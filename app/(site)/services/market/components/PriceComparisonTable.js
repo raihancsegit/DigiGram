@@ -6,7 +6,8 @@ export function PriceComparisonTable({
     filterProduct = '', 
     commodities = [], 
     markets = [], 
-    prices = [] 
+    prices = [],
+    onShowHistory
 }) {
     // Process prices into a searchable object: { [marketId]: { [commodityId]: data } }
     const priceMap = prices.reduce((acc, p) => {
@@ -67,7 +68,11 @@ export function PriceComparisonTable({
                                         }
 
                                         return (
-                                            <td key={`${commodity.id}-${market.id}`} className={`py-6 px-8 border-l border-slate-50 transition-all ${isCheapest ? 'bg-emerald-50/50' : ''}`}>
+                                            <td 
+                                                key={`${commodity.id}-${market.id}`} 
+                                                onClick={() => onShowHistory(commodity.id, market.id)}
+                                                className={`py-6 px-8 border-l border-slate-50 transition-all cursor-pointer hover:bg-teal-50 group/cell ${isCheapest ? 'bg-emerald-50/50' : ''}`}
+                                            >
                                                 <div className="flex flex-col">
                                                     <div className="flex items-baseline gap-1">
                                                         <span className={`font-black text-xl tracking-tighter ${isCheapest ? 'text-emerald-700' : 'text-slate-900'}`}>

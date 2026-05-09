@@ -5,15 +5,20 @@ import { useSelector } from 'react-redux';
 import { marketService } from '@/lib/services/marketService';
 import { adminService } from '@/lib/services/adminService';
 import { 
-    Plus, Store, Users, TrendingUp, TrendingDown, 
-    Minus, Edit3, Trash2, MapPin, Calendar, 
-    Save, X, Loader2, Search, CheckCircle2, ShoppingBag
+    Plus, Store, Search, Filter, Trash2, Edit2, 
+    Save, X, ChevronRight, TrendingUp, History, Info,
+    Users, TrendingDown, Minus, MapPin, Calendar, 
+    Loader2, CheckCircle2, ShoppingBag
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { PriceHistoryModal } from './PriceHistoryModal';
+import { toBnDigits } from '@/lib/utils/format';
 
 export default function MarketManagement() {
     const { user } = useSelector((state) => state.auth);
     
+    const [historyModal, setHistoryModal] = useState({ isOpen: false, commodity: null });
+
     const isManager = user?.role === 'market_manager';
     const isChairman = user?.role === 'chairman';
     const isAdmin = user?.role === 'super_admin';
@@ -80,7 +85,7 @@ export default function MarketManagement() {
             const [commods, unionMarkets] = await Promise.all([
                 marketService.getCommodities(),
                 isAdmin 
-                    ? (selectedUnionId ? marketService.getMarketsByUnion(selectedUnionId) : marketService.getGlobalMarketOverview().then(d => d.markets))
+                    ? (selectedUnionId ? marketService.getMarketsByUnion(selectedUnionId) : marketService.getAllMarketsGlobal())
                     : marketService.getMarketsByUnion(user?.access_scope_id, isManager ? user.id : null)
             ]);
             
@@ -251,7 +256,9 @@ export default function MarketManagement() {
                     >
                         <Store size={18} />
                         <div className="text-left">
-                            <p className="text-[9px] font-black uppercase tracking-widest opacity-60 leading-none mb-1">{m.type}</p>
+                            <p className="text-[9px] font-black uppercase tracking-widest opacity-60 leading-none mb-1">
+                                {m.type} {m.location?.name_bn ? `• ${m.location.name_bn}` : ''}
+                            </p>
                             <p className="font-black text-sm leading-none">{m.name}</p>
                         </div>
                         {selectedMarketId === m.id && (isAdmin || isChairman) && (
@@ -273,7 +280,7 @@ export default function MarketManagement() {
                                     className="p-1.5 rounded-lg bg-teal-500/10 text-teal-600 hover:bg-teal-500 hover:text-white transition-colors"
                                     title="এডিট করুন"
                                 >
-                                    <Edit3 size={14} />
+                                    <Edit2 size={14} />
                                 </div>
                                 <div 
                                     onClick={(e) => { e.stopPropagation(); handleDeleteMarket(m.id); }} 
@@ -338,6 +345,7 @@ export default function MarketManagement() {
                                                 commodity={commodity} 
                                                 priceRecord={priceRecord} 
                                                 onUpdate={handleUpdatePrice}
+                                                onShowHistory={(commodity) => setHistoryModal({ isOpen: true, commodity })}
                                             />
                                         );
                                     }) : (
@@ -498,11 +506,19 @@ export default function MarketManagement() {
                     </div>
                 )}
             </AnimatePresence>
+
+            <PriceHistoryModal 
+                isOpen={historyModal.isOpen}
+                onClose={() => setHistoryModal({ isOpen: false, commodity: null })}
+                marketId={selectedMarketId}
+                marketName={markets.find(m => m.id === selectedMarketId)?.name}
+                commodity={historyModal.commodity}
+            />
         </div>
     );
 }
 
-function PriceRow({ commodity, priceRecord, onUpdate }) {
+function PriceRow({ commodity, priceRecord, onUpdate, onShowHistory }) {
     const [editValue, setEditValue] = useState(priceRecord?.price || '');
     const [supply, setSupply] = useState(priceRecord?.supply || 'Normal');
     const [isSaving, setIsSaving] = useState(false);
@@ -582,22 +598,31 @@ function PriceRow({ commodity, priceRecord, onUpdate }) {
                 </select>
             </td>
             <td className="px-8 py-6 text-right">
-                <button 
-                    disabled={!hasChanged || isSaving}
-                    onClick={handleSave}
-                    className={`p-3 rounded-xl transition-all flex items-center justify-center ml-auto ${
-                        saveStatus === 'success' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-200' :
-                        saveStatus === 'error' ? 'bg-rose-500 text-white shadow-lg shadow-rose-200' :
-                        hasChanged 
-                            ? 'bg-teal-600 text-white shadow-lg shadow-teal-200 hover:scale-110 active:scale-95' 
-                            : 'bg-slate-100 text-slate-300'
-                    }`}
-                    title={saveStatus === 'success' ? 'সেভ হয়েছে!' : saveStatus === 'error' ? 'সমস্যা হয়েছে' : 'সেভ করুন'}
-                >
-                    {isSaving ? <Loader2 size={18} className="animate-spin" /> : 
-                     saveStatus === 'success' ? <CheckCircle2 size={18} /> :
-                     <Save size={18} />}
-                </button>
+                <div className="flex items-center justify-end gap-2">
+                    <button 
+                        onClick={() => onShowHistory(commodity)}
+                        className="p-3 rounded-xl bg-slate-50 border border-slate-100 text-slate-400 hover:bg-teal-50 hover:text-teal-600 hover:border-teal-200 transition-all"
+                        title="দামের ইতিহাস"
+                    >
+                        <History size={18} />
+                    </button>
+                    <button 
+                        disabled={!hasChanged || isSaving}
+                        onClick={handleSave}
+                        className={`p-3 rounded-xl transition-all flex items-center justify-center ${
+                            saveStatus === 'success' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-200' :
+                            saveStatus === 'error' ? 'bg-rose-500 text-white shadow-lg shadow-rose-200' :
+                            hasChanged 
+                                ? 'bg-teal-600 text-white shadow-lg shadow-teal-200 hover:scale-110 active:scale-95' 
+                                : 'bg-slate-100 text-slate-300'
+                        }`}
+                        title={saveStatus === 'success' ? 'সেভ হয়েছে!' : saveStatus === 'error' ? 'সমস্যা হয়েছে' : 'সেভ করুন'}
+                    >
+                        {isSaving ? <Loader2 size={18} className="animate-spin" /> : 
+                        saveStatus === 'success' ? <CheckCircle2 size={18} /> :
+                        <Save size={18} />}
+                    </button>
+                </div>
             </td>
         </tr>
     );

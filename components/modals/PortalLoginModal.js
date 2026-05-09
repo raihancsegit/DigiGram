@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -9,7 +9,7 @@ import {
     Loader2, AlertCircle, ArrowRight as LucideArrowRight,
     CheckCircle2
 } from 'lucide-react';
-import { login } from '@/lib/store/features/authSlice';
+import { login, performLogout } from '@/lib/store/features/authSlice';
 import { authService } from '@/lib/services/authService';
 import ModalPortal from '@/components/common/ModalPortal';
 
@@ -26,9 +26,75 @@ export default function PortalLoginModal({
     const [password, setPassword] = useState('');
     const [rememberMe, setRememberMe] = useState(true);
     const [loading, setLoading] = useState(false);
+    const [checkingSession, setCheckingSession] = useState(false);
+    const [existingProfile, setExistingProfile] = useState(null);
     const [error, setError] = useState(null);
 
+    useEffect(() => {
+        if (!isOpen) return;
+        let active = true;
+
+        const checkExistingLogin = async () => {
+            setCheckingSession(true);
+            setError(null);
+            try {
+                const { session, profile } = await authService.getCurrentSessionProfile();
+                if (!active) return;
+
+                if (session?.user && profile) {
+                    setExistingProfile({
+                        id: session.user.id,
+                        email: session.user.email,
+                        role: profile.role,
+                        access_scope_id: profile.access_scope_id,
+                        first_name: profile.first_name,
+                        last_name: profile.last_name,
+                        avatar_url: profile.avatar_url
+                    });
+                } else {
+                    setExistingProfile(null);
+                }
+            } catch (err) {
+                console.error('Portal login session check failed:', err);
+            } finally {
+                if (active) setCheckingSession(false);
+            }
+        };
+
+        checkExistingLogin();
+
+        return () => {
+            active = false;
+        };
+    }, [isOpen]);
+
     if (!isOpen) return null;
+
+    const roleLabel = (role) => ({
+        super_admin: 'সুপার অ্যাডমিন',
+        chairman: 'চেয়ারম্যান',
+        ward_member: 'ওয়ার্ড মেম্বার',
+        volunteer: 'ভলান্টিয়ার',
+        market_manager: 'বাজার ম্যানেজার',
+        institution_admin: 'প্রতিষ্ঠান অ্যাডমিন',
+        teacher: 'শিক্ষক',
+        student: 'সাধারণ ইউজার'
+    }[role] || role || 'ইউজার');
+
+    const handleExistingLogout = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            await dispatch(performLogout()).unwrap();
+            setExistingProfile(null);
+            setEmail('');
+            setPassword('');
+        } catch (err) {
+            setError(err.message || 'লগআউট করতে সমস্যা হয়েছে।');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleLogin = async (e) => {
         e.preventDefault();
@@ -56,6 +122,8 @@ export default function PortalLoginModal({
             if (profile.role === 'chairman') router.push('/chairman/dashboard');
             else if (profile.role === 'ward_member') router.push('/ward-member/dashboard');
             else if (profile.role === 'super_admin') router.push('/admin');
+            else if (profile.role === 'volunteer') router.push('/volunteer/dashboard');
+            else if (profile.role === 'market_manager') router.push('/market-manager');
             else router.push('/');
 
             onClose();
@@ -103,6 +171,35 @@ export default function PortalLoginModal({
                         </div>
                     )}
 
+                    {checkingSession ? (
+                        <div className="py-12 flex flex-col items-center justify-center gap-3">
+                            <Loader2 className="animate-spin text-teal-600" size={24} />
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">সেশন চেক হচ্ছে...</p>
+                        </div>
+                    ) : existingProfile ? (
+                        <div className="space-y-4">
+                            <div className="p-4 rounded-2xl bg-amber-50 border border-amber-100">
+                                <div className="flex items-start gap-3">
+                                    <AlertCircle className="text-amber-600 shrink-0 mt-0.5" size={18} />
+                                    <div>
+                                        <h3 className="text-sm font-black text-slate-800">ইতিমধ্যে লগইন আছে</h3>
+                                        <p className="text-xs font-bold text-slate-500 mt-1 leading-relaxed">
+                                            আপনি এখন {roleLabel(existingProfile.role)} হিসেবে লগইন আছেন। অন্য পোর্টালে লগইন করতে আগে লগআউট করুন।
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={handleExistingLogout}
+                                disabled={loading}
+                                className="w-full flex items-center justify-center gap-2 p-4 rounded-xl bg-slate-900 text-white font-black text-xs shadow-lg shadow-slate-200 hover:bg-rose-600 transition-all active:scale-95 disabled:opacity-70"
+                            >
+                                {loading ? <Loader2 size={16} className="animate-spin" /> : null}
+                                আগে লগআউট করুন
+                            </button>
+                        </div>
+                    ) : (
                     <form onSubmit={handleLogin} className="space-y-4">
                         <div className="space-y-1">
                             <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">ইমেইল</label>
@@ -165,6 +262,7 @@ export default function PortalLoginModal({
                             )}
                         </button>
                     </form>
+                    )}
 
                     <p className="mt-6 text-[9px] font-bold text-center text-slate-300 uppercase tracking-[0.2em]">
                         DIGIGRAM SECURITY PROTOCOL ENFORCED

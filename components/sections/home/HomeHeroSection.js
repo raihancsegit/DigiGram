@@ -11,10 +11,12 @@ import { openModal } from '@/lib/store/features/locationSlice';
 export default function HomeHeroSection() {
     const dispatch = useDispatch();
     const { selected } = useSelector((s) => s.location);
-    const words = ["ব্লাড ডোনার", "জরুরি ডাক্তার", "ইউনিয়ন সেবা", "স্মার্ট স্কুল", "কৃষি তথ্য"];
+    const words = ["ব্লাড ডোনার", "বাজারদর", "জরুরি ডাক্তার", "ইউনিয়ন সেবা", "স্মার্ট স্কুল", "কৃষি তথ্য"];
     const [index, setIndex] = useState(0);
+    const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
+        setMounted(true);
         const timer = setInterval(() => {
             setIndex((prevIndex) => (prevIndex + 1) % words.length);
         }, 3000);
@@ -70,22 +72,26 @@ export default function HomeHeroSection() {
                         </motion.p>
 
                         <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 mb-10">
-                            {selected.unionSlug ? (
-                                <Link
-                                    href={paths.unionPortal(selected.unionSlug)}
-                                    className="flex items-center gap-3 px-8 py-5 rounded-[24px] bg-teal-500 hover:bg-teal-400 text-white font-black text-base shadow-xl shadow-teal-500/20 transition-all active:scale-95 group"
-                                >
-                                    <Home size={20} className="group-hover:animate-bounce" />
-                                    {selected.union} ইউনিয়ন পোর্টাল
-                                </Link>
-                            ) : (
-                                <button
-                                    onClick={() => dispatch(openModal())}
-                                    className="flex items-center gap-3 px-8 py-5 rounded-[24px] bg-teal-500 hover:bg-teal-400 text-white font-black text-base shadow-xl shadow-teal-500/20 transition-all active:scale-95"
-                                >
-                                    <MapPin size={20} />
-                                    আপনার ইউনিয়ন সিলেক্ট করুন
-                                </button>
+                            {mounted && (
+                                <>
+                                    {selected.unionSlug ? (
+                                        <Link
+                                            href={paths.unionPortal(selected.unionSlug)}
+                                            className="flex items-center gap-3 px-8 py-5 rounded-[24px] bg-teal-500 hover:bg-teal-400 text-white font-black text-base shadow-xl shadow-teal-500/20 transition-all active:scale-95 group"
+                                        >
+                                            <Home size={20} className="group-hover:animate-bounce" />
+                                            {selected.union} ইউনিয়ন পোর্টাল
+                                        </Link>
+                                    ) : (
+                                        <button
+                                            onClick={() => dispatch(openModal())}
+                                            className="flex items-center gap-3 px-8 py-5 rounded-[24px] bg-teal-500 hover:bg-teal-400 text-white font-black text-base shadow-xl shadow-teal-500/20 transition-all active:scale-95"
+                                        >
+                                            <MapPin size={20} />
+                                            আপনার ইউনিয়ন সিলেক্ট করুন
+                                        </button>
+                                    )}
+                                </>
                             )}
                             <div className="flex items-center gap-4 bg-white/5 border border-white/10 px-6 py-4 rounded-[24px] backdrop-blur-xl">
                                 <span className="text-slate-400 text-sm font-bold">খুঁজুন:</span>

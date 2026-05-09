@@ -9,11 +9,12 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
     PlusCircle, Newspaper, LogOut, ShieldCheck, ArrowLeft, Settings, 
-    MessageSquare, TrendingUp, ArrowUpRight, ArrowRight, Users, MapPin, School, Building2, BookOpen
+    MessageSquare, TrendingUp, ArrowUpRight, ArrowRight, Users, MapPin, School, Building2, BookOpen, Home
 } from 'lucide-react';
 import { performLogout, login } from '@/lib/store/features/authSlice';
 import WardNewsForm from '@/components/sections/ward/WardNewsForm';
 import WardManagementSection from '@/components/sections/ward/WardManagementSection';
+import WardHouseholdManager from '@/components/sections/ward/WardHouseholdManager';
 import { wardService } from '@/lib/services/wardService';
 import { getActiveServices } from '@/lib/services/hierarchyService';
 import { authService } from '@/lib/services/authService';
@@ -25,7 +26,7 @@ export default function WardMemberDashboard() {
     const { user, isAuthenticated } = useSelector((state) => state.auth);
     const dispatch = useDispatch();
     const router = useRouter();
-    const [activeTab, setActiveTab] = useState('news'); // 'news' or 'management'
+    const [activeTab, setActiveTab] = useState('news'); // 'news', 'management', or 'households'
     const [wardInfo, setWardInfo] = useState(null);
     const [newsList, setNewsList] = useState([]);
     const [villages, setVillages] = useState([]);
@@ -407,6 +408,13 @@ export default function WardMemberDashboard() {
                             ডিজিটাল সেবাসমূহ
                         </button>
                         <button 
+                            onClick={() => setActiveTab('households')}
+                            className={`flex items-center gap-2 px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${activeTab === 'households' ? 'bg-white text-teal-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        >
+                            <Home size={16} className="sm:w-[18px] sm:h-[18px]" />
+                            হাউসহোল্ড ম্যানেজমেন্ট
+                        </button>
+                        <button 
                             onClick={() => setActiveTab('management')}
                             className={`flex items-center gap-2 px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${activeTab === 'management' ? 'bg-white text-teal-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                         >
@@ -536,7 +544,7 @@ export default function WardMemberDashboard() {
                                 </div>
                             </div>
                         </motion.div>
-                    ) : (
+                    ) : activeTab === 'management' ? (
                         <motion.div 
                             key="management"
                             initial={{ opacity: 0, x: 20 }}
@@ -554,6 +562,26 @@ export default function WardMemberDashboard() {
                                 </div>
                             </div>
                             <WardManagementSection user={user} wardInfo={wardInfo} />
+                        </motion.div>
+                    ) : (
+                        <motion.div 
+                            key="households"
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -20 }}
+                        >
+                            <div className="bg-white rounded-[40px] p-6 md:p-12 border border-slate-200 shadow-sm">
+                                <div className="flex items-center gap-4 mb-10">
+                                    <div className="w-14 h-14 rounded-3xl bg-teal-900 flex items-center justify-center text-teal-400 shadow-xl shrink-0">
+                                        <Home size={28} />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-2xl font-black text-slate-800 leading-tight">বাড়ি ও জনসংখ্যা ম্যানেজমেন্ট</h3>
+                                        <p className="text-sm font-bold text-slate-400 mt-1">গ্রাম ভিত্তিক ভলান্টিয়ার এবং বাড়ির ডাটা কন্ট্রোল করুন</p>
+                                    </div>
+                                </div>
+                                <WardHouseholdManager wardId={user.access_scope_id} />
+                            </div>
                         </motion.div>
                     )}
                 </AnimatePresence>

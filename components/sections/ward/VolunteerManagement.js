@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { 
     Users, Plus, Trash2, ShieldCheck, 
-    X, Loader2, Search, UserPlus, Phone
+    X, Loader2, Search, UserPlus, Phone, Edit3, Save
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { wardService } from '@/lib/services/wardService';
@@ -16,9 +16,23 @@ export default function VolunteerManagement({ villageId, villageName }) {
     const [volunteers, setVolunteers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isAdding, setIsAdding] = useState(false);
+    const [addMode, setAddMode] = useState('create');
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState([]);
     const [searching, setSearching] = useState(false);
+    const [creating, setCreating] = useState(false);
+    const [newVolunteer, setNewVolunteer] = useState({
+        name: '',
+        phone: '',
+        password: ''
+    });
+    const [editingVolunteer, setEditingVolunteer] = useState(null);
+    const [editForm, setEditForm] = useState({
+        name: '',
+        phone: '',
+        password: ''
+    });
+    const [updating, setUpdating] = useState(false);
     const [error, setError] = useState(null);
 
     useEffect(() => {
@@ -76,16 +90,91 @@ export default function VolunteerManagement({ villageId, villageName }) {
         }
     };
 
+    const createVolunteer = async (e) => {
+        e.preventDefault();
+        if (!newVolunteer.name || !newVolunteer.phone || !newVolunteer.password) return;
+
+        setCreating(true);
+        try {
+            const nameParts = newVolunteer.name.trim().split(/\s+/);
+            const firstName = nameParts.shift() || newVolunteer.name.trim();
+            const lastName = nameParts.join(' ');
+            const phoneKey = newVolunteer.phone.replace(/\D/g, '') || Date.now().toString();
+
+            await adminService.quickCreateChairman({
+                email: `${phoneKey}@volunteer.digigram.com`,
+                password: newVolunteer.password,
+                first_name: firstName,
+                last_name: lastName,
+                phone: newVolunteer.phone,
+                role: 'volunteer',
+                access_scope_id: villageId
+            });
+
+            alert('নতুন ভলান্টিয়ার তৈরি ও নিয়োগ সফল হয়েছে।');
+            setIsAdding(false);
+            setNewVolunteer({ name: '', phone: '', password: '' });
+            await loadVolunteers();
+        } catch (err) {
+            alert('নতুন ভলান্টিয়ার তৈরি করতে সমস্যা হয়েছে: ' + err.message);
+        } finally {
+            setCreating(false);
+        }
+    };
+
     const removeVolunteer = async (volunteer) => {
         if (!confirm('আপনি কি এই ভলান্টিয়ারকে দায়িত্ব থেকে অব্যাহতি দিতে চান?')) return;
         try {
             await adminService.mutateUser(volunteer.id, 'update_profile', {
-                role: 'user',
+                role: 'student',
                 access_scope_id: null
             });
             setVolunteers(volunteers.filter(v => v.id !== volunteer.id));
         } catch (err) {
             alert('অব্যাহতি দিতে সমস্যা হয়েছে');
+        }
+    };
+
+    const startEdit = (volunteer) => {
+        setEditingVolunteer(volunteer);
+        setEditForm({
+            name: `${volunteer.first_name || ''} ${volunteer.last_name || ''}`.trim(),
+            phone: volunteer.phone || '',
+            password: ''
+        });
+        setIsAdding(false);
+    };
+
+    const updateVolunteer = async (e) => {
+        e.preventDefault();
+        if (!editingVolunteer?.id || !editForm.name || !editForm.phone) return;
+
+        setUpdating(true);
+        try {
+            const nameParts = editForm.name.trim().split(/\s+/);
+            const firstName = nameParts.shift() || editForm.name.trim();
+            const lastName = nameParts.join(' ');
+            const updates = {
+                first_name: firstName,
+                last_name: lastName,
+                phone: editForm.phone,
+                role: 'volunteer',
+                access_scope_id: villageId
+            };
+
+            if (editForm.password) {
+                updates.password = editForm.password;
+            }
+
+            await adminService.mutateUser(editingVolunteer.id, 'update_profile', updates);
+            alert('ভলান্টিয়ার তথ্য আপডেট হয়েছে।');
+            setEditingVolunteer(null);
+            setEditForm({ name: '', phone: '', password: '' });
+            await loadVolunteers();
+        } catch (err) {
+            alert('ভলান্টিয়ার আপডেট করতে সমস্যা হয়েছে: ' + err.message);
+        } finally {
+            setUpdating(false);
         }
     };
 
@@ -114,6 +203,59 @@ export default function VolunteerManagement({ villageId, villageName }) {
                     </div>
                 )}
                 <AnimatePresence mode="wait">
+                    {editingVolunteer && (
+                        <motion.form
+                            key="editing"
+                            onSubmit={updateVolunteer}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 10 }}
+                            className="space-y-4 mb-8 p-6 rounded-3xl bg-sky-50/60 border border-sky-100"
+                        >
+                            <div className="flex items-center justify-between">
+                                <p className="text-xs font-black uppercase tracking-widest text-sky-700">ভলান্টিয়ার এডিট</p>
+                                <button
+                                    type="button"
+                                    onClick={() => setEditingVolunteer(null)}
+                                    className="p-1.5 rounded-lg text-slate-400 hover:bg-white hover:text-slate-700 transition-all"
+                                >
+                                    <X size={16} />
+                                </button>
+                            </div>
+                            <input
+                                required
+                                type="text"
+                                placeholder="পূর্ণ নাম"
+                                className={inputStyles}
+                                value={editForm.name}
+                                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                            />
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <input
+                                    required
+                                    type="tel"
+                                    placeholder="মোবাইল নম্বর"
+                                    className={inputStyles}
+                                    value={editForm.phone}
+                                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                                />
+                                <input
+                                    type="password"
+                                    placeholder="নতুন পাসওয়ার্ড (না বদলালে খালি রাখুন)"
+                                    className={inputStyles}
+                                    value={editForm.password}
+                                    onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
+                                />
+                            </div>
+                            <button
+                                disabled={updating}
+                                className="w-full py-3.5 rounded-xl bg-slate-900 text-white font-black text-xs uppercase tracking-widest hover:bg-sky-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                            >
+                                {updating ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+                                আপডেট করুন
+                            </button>
+                        </motion.form>
+                    )}
 
                     {isAdding ? (
                         <motion.div 
@@ -123,51 +265,108 @@ export default function VolunteerManagement({ villageId, villageName }) {
                             exit={{ opacity: 0, y: 10 }}
                             className="space-y-4 mb-8 p-6 rounded-3xl bg-teal-50/50 border border-teal-100"
                         >
-                            <div className="flex gap-2">
-                                <div className="relative flex-1">
-                                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                                    <input 
-                                        type="text" 
-                                        placeholder="নাম বা ফোন নাম্বার দিয়ে খুঁজুন..."
-                                        className={inputStyles}
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                        onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                                    />
-                                </div>
-                                <button 
-                                    onClick={handleSearch}
-                                    disabled={searching}
-                                    className="px-6 rounded-xl bg-teal-600 text-white font-black text-sm hover:bg-teal-700 transition-all disabled:opacity-50"
+                            <div className="flex rounded-2xl bg-white p-1 border border-teal-100">
+                                <button
+                                    type="button"
+                                    onClick={() => setAddMode('create')}
+                                    className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all ${addMode === 'create' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
                                 >
-                                    {searching ? <Loader2 className="animate-spin" size={18} /> : 'খুঁজুন'}
+                                    নতুন তৈরি
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setAddMode('assign')}
+                                    className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all ${addMode === 'assign' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                                >
+                                    পুরোনো ইউজার অ্যাসাইন
                                 </button>
                             </div>
 
-                            <div className="space-y-2">
-                                {searchResults.map(user => (
-                                    <div key={user.id} className="flex items-center justify-between p-3 rounded-2xl bg-white border border-teal-100">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200">
-                                                <UserPlus size={18} className="text-slate-400" />
-                                            </div>
-                                            <div>
-                                                <p className="text-sm font-black text-slate-800">{user.first_name} {user.last_name}</p>
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase">{user.phone || user.email}</p>
-                                            </div>
+                            {addMode === 'create' ? (
+                                <form onSubmit={createVolunteer} className="space-y-4">
+                                    <input
+                                        required
+                                        type="text"
+                                        placeholder="ভলান্টিয়ারের পূর্ণ নাম"
+                                        className={inputStyles}
+                                        value={newVolunteer.name}
+                                        onChange={(e) => setNewVolunteer({ ...newVolunteer, name: e.target.value })}
+                                    />
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <input
+                                            required
+                                            type="tel"
+                                            placeholder="মোবাইল নম্বর"
+                                            className={inputStyles}
+                                            value={newVolunteer.phone}
+                                            onChange={(e) => setNewVolunteer({ ...newVolunteer, phone: e.target.value })}
+                                        />
+                                        <input
+                                            required
+                                            type="password"
+                                            placeholder="লগইন পাসওয়ার্ড"
+                                            className={inputStyles}
+                                            value={newVolunteer.password}
+                                            onChange={(e) => setNewVolunteer({ ...newVolunteer, password: e.target.value })}
+                                        />
+                                    </div>
+                                    <button
+                                        disabled={creating}
+                                        className="w-full py-3.5 rounded-xl bg-teal-600 text-white font-black text-xs uppercase tracking-widest hover:bg-teal-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                                    >
+                                        {creating ? <Loader2 className="animate-spin" size={18} /> : <UserPlus size={18} />}
+                                        তৈরি করে নিয়োগ দিন
+                                    </button>
+                                </form>
+                            ) : (
+                                <>
+                                    <div className="flex gap-2">
+                                        <div className="relative flex-1">
+                                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                            <input 
+                                                type="text" 
+                                                placeholder="নাম বা ফোন নাম্বার দিয়ে খুঁজুন..."
+                                                className={inputStyles}
+                                                value={searchQuery}
+                                                onChange={(e) => setSearchQuery(e.target.value)}
+                                                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                                            />
                                         </div>
                                         <button 
-                                            onClick={() => assignVolunteer(user)}
-                                            className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-black hover:bg-teal-600 transition-all active:scale-95"
+                                            onClick={handleSearch}
+                                            disabled={searching}
+                                            className="px-6 rounded-xl bg-teal-600 text-white font-black text-sm hover:bg-teal-700 transition-all disabled:opacity-50"
                                         >
-                                            অ্যাসাইন করুন
+                                            {searching ? <Loader2 className="animate-spin" size={18} /> : 'খুঁজুন'}
                                         </button>
                                     </div>
-                                ))}
-                                {searchQuery && searchResults.length === 0 && !searching && (
-                                    <p className="text-center text-xs font-bold text-slate-400 py-4">কোনো ইউজার পাওয়া যায়নি</p>
-                                )}
-                            </div>
+
+                                    <div className="space-y-2">
+                                        {searchResults.map(user => (
+                                            <div key={user.id} className="flex items-center justify-between p-3 rounded-2xl bg-white border border-teal-100">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200">
+                                                        <UserPlus size={18} className="text-slate-400" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm font-black text-slate-800">{user.first_name} {user.last_name}</p>
+                                                        <p className="text-[10px] font-bold text-slate-400 uppercase">{user.phone || user.email}</p>
+                                                    </div>
+                                                </div>
+                                                <button 
+                                                    onClick={() => assignVolunteer(user)}
+                                                    className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-black hover:bg-teal-600 transition-all active:scale-95"
+                                                >
+                                                    অ্যাসাইন করুন
+                                                </button>
+                                            </div>
+                                        ))}
+                                        {searchQuery && searchResults.length === 0 && !searching && (
+                                            <p className="text-center text-xs font-bold text-slate-400 py-4">কোনো ইউজার পাওয়া যায়নি</p>
+                                        )}
+                                    </div>
+                                </>
+                            )}
                         </motion.div>
                     ) : null}
                 </AnimatePresence>
@@ -207,13 +406,22 @@ export default function VolunteerManagement({ villageId, villageName }) {
                                         </p>
                                     </div>
                                 </div>
-                                <button 
-                                    onClick={() => removeVolunteer(v)}
-                                    className="p-2 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-all opacity-0 group-hover:opacity-100"
-                                    title="অব্যাহতি দিন"
-                                >
-                                    <Trash2 size={16} />
-                                </button>
+                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button 
+                                        onClick={() => startEdit(v)}
+                                        className="p-2 rounded-lg text-slate-400 hover:text-sky-600 hover:bg-sky-50 transition-all"
+                                        title="এডিট"
+                                    >
+                                        <Edit3 size={16} />
+                                    </button>
+                                    <button 
+                                        onClick={() => removeVolunteer(v)}
+                                        className="p-2 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-all"
+                                        title="অব্যাহতি দিন"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                </div>
                             </div>
                         ))}
                     </div>
