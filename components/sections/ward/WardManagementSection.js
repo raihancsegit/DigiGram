@@ -60,6 +60,7 @@ export default function WardManagementSection({ user = {}, wardInfo, villages: i
             // Map location row to village form structure
             const mapped = data.map(v => ({
                 id: v.id,
+                slug: v.slug,
                 name: v.name_bn,
                 name_en: v.name_en,
                 ...v.stats
@@ -395,7 +396,7 @@ export default function WardManagementSection({ user = {}, wardInfo, villages: i
                                                      <td className="p-5 text-right w-[250px]">
                                                          <div className="flex items-center justify-end gap-2">
                                                              <Link 
-                                                                 href={paths.villagePortal(v.id)}
+                                                                 href={paths.villagePortal(wardInfo?.parent?.slug || 'union', wardInfo?.slug || wardInfo?.id || 'ward', v.slug || v.id)}
                                                                  target="_blank"
                                                                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 border border-emerald-100 text-emerald-600 hover:bg-emerald-500 hover:text-white shadow-sm transition-all"
                                                                  title="গ্রাম পোর্টালে প্রবেশ"

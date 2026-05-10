@@ -70,7 +70,7 @@ export default function ChairmanDashboard() {
 
             const { data: unionData } = await supabase
                 .from('locations')
-                .select('name_bn, name_en, slug')
+                .select('name_bn, name_en, slug, survey_status, real_stats, stats')
                 .eq('id', user.access_scope_id)
                 .single();
             if(unionData) {
@@ -105,14 +105,36 @@ export default function ChairmanDashboard() {
     }
 
     const aggregatedTotals = useMemo(() => {
+        if (unionInfo?.survey_status === 'verified' && unionInfo?.real_stats) {
+            return {
+                population: unionInfo.real_stats.total_members || 0,
+                voters: unionInfo.real_stats.voters || 0,
+                villages: unionInfo.real_stats.total_houses || 0, // Using total_houses as approximation or we can just sum up the wards' villages
+                schools: parseBnInt(unionInfo.stats?.schools || '0'),
+                mosques: parseBnInt(unionInfo.stats?.mosques || '0'),
+                madrassas: parseBnInt(unionInfo.stats?.madrassas || '0')
+            };
+        }
+
         return wards.reduce((acc, w) => {
-            const dynamicStats = (w.villages || []).reduce((vAcc, v) => ({
-                population: vAcc.population + parseBnInt(v.population || '0'),
-                voters: vAcc.voters + parseBnInt(v.voters || '0'),
-                schools: vAcc.schools + parseBnInt(v.schools || '0'),
-                mosques: vAcc.mosques + parseBnInt(v.mosques || '0'),
-                madrassas: vAcc.madrassas + parseBnInt(v.madrassas || '0')
-            }), { population: 0, voters: 0, schools: 0, mosques: 0, madrassas: 0 });
+            let dynamicStats = { population: 0, voters: 0, schools: 0, mosques: 0, madrassas: 0 };
+            
+            if (w.survey_status === 'verified' && w.real_stats) {
+                dynamicStats.population = w.real_stats.total_members || 0;
+                dynamicStats.voters = w.real_stats.voters || 0;
+                // For institutions, we still rely on stats
+                dynamicStats.schools = parseBnInt(w.stats?.schools || '0');
+                dynamicStats.mosques = parseBnInt(w.stats?.mosques || '0');
+                dynamicStats.madrassas = parseBnInt(w.stats?.madrassas || '0');
+            } else {
+                dynamicStats = (w.villages || []).reduce((vAcc, v) => ({
+                    population: vAcc.population + parseBnInt(v.population || '0'),
+                    voters: vAcc.voters + parseBnInt(v.voters || '0'),
+                    schools: vAcc.schools + parseBnInt(v.schools || '0'),
+                    mosques: vAcc.mosques + parseBnInt(v.mosques || '0'),
+                    madrassas: vAcc.madrassas + parseBnInt(v.madrassas || '0')
+                }), { population: 0, voters: 0, schools: 0, mosques: 0, madrassas: 0 });
+            }
 
             return {
                 population: acc.population + dynamicStats.population,
@@ -123,7 +145,7 @@ export default function ChairmanDashboard() {
                 madrassas: acc.madrassas + dynamicStats.madrassas
             };
         }, { population: 0, voters: 0, villages: 0, schools: 0, mosques: 0, madrassas: 0 });
-    }, [wards]);
+    }, [wards, unionInfo]);
 
     if (!isAuthenticated || !user || loading) {
         return (
@@ -292,10 +314,17 @@ export default function ChairmanDashboard() {
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                     {wards.map((ward) => {
-                                        const dynamicStats = (ward.villages || []).reduce((acc, v) => ({
-                                            population: acc.population + parseBnInt(v.population || '0'),
-                                            voters: acc.voters + parseBnInt(v.voters || '0')
-                                        }), { population: 0, voters: 0 });
+                                        let dynamicStats = { population: 0, voters: 0 };
+                                        
+                                        if (ward.survey_status === 'verified' && ward.real_stats) {
+                                            dynamicStats.population = ward.real_stats.total_members || 0;
+                                            dynamicStats.voters = ward.real_stats.voters || 0;
+                                        } else {
+                                            dynamicStats = (ward.villages || []).reduce((acc, v) => ({
+                                                population: acc.population + parseBnInt(v.population || '0'),
+                                                voters: acc.voters + parseBnInt(v.voters || '0')
+                                            }), { population: 0, voters: 0 });
+                                        }
                                         
                                         return (
                                         <div key={ward.id} className="p-6 rounded-[32px] bg-white border border-slate-200 hover:border-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/5 transition-all group relative overflow-hidden">

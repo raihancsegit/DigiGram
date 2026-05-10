@@ -73,7 +73,7 @@ export default function LocationModal() {
         } else if (step === 4) {
             dispatch(setStepData({ level: "ward", value: item.name_bn, wardId: item.id }));
             dispatch(toggleModal());
-            router.push(paths.wardPortal(item.id));
+            router.push(paths.wardPortal(selected.unionSlug, item.slug || item.id));
         }
     };
 

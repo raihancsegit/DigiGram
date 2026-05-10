@@ -9,7 +9,7 @@ import {
     MapPin, Home, Sparkles, ArrowUpRight, ArrowRight as LucideArrowRight,
     Users, UserCheck, ShieldCheck, School, GraduationCap, 
     BookOpen, Phone, UserCircle, CheckCircle2, LogIn, ChevronLeft, ChevronRight, Building2, Droplets,
-    Activity, BellRing, Navigation
+    Activity, BellRing, Navigation, Calendar
 } from 'lucide-react';
 import { applyLocationSnapshot, openModal } from '@/lib/store/features/locationSlice';
 import { SERVICE_CATEGORIES } from '@/lib/constants/serviceCategories';
@@ -306,7 +306,7 @@ export default function UnionPortalClient({ ctx, activeServices = [], chairman =
                                             transition={{ delay: idx * 0.05 }}
                                         >
                                             <div
-                                                onClick={() => router.push(`/w/${ward.id}`)}
+                                                onClick={() => router.push(paths.wardPortal(union.slug, ward.slug || ward.id))}
                                                 className="block cursor-pointer border border-slate-100 rounded-[24px] overflow-hidden group hover:border-teal-300 hover:shadow-xl transition-all duration-300 bg-white"
                                             >
                                                 <div className="flex items-center justify-between p-5 bg-gradient-to-r from-slate-50 to-white relative overflow-hidden gap-4">
@@ -428,7 +428,7 @@ export default function UnionPortalClient({ ctx, activeServices = [], chairman =
                                                             return (
                                                                 <Link
                                                                     key={vName}
-                                                                    href={isObj && v.id ? `/g/${v.id}` : '#'}
+                                                                    href={isObj && v.id ? paths.villagePortal(union.slug, ward.slug || ward.id, v.slug || v.id) : '#'}
                                                                     onClick={(e) => e.stopPropagation()}
                                                                     className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-50 border border-slate-100 text-[11px] font-bold text-slate-500 hover:bg-teal-50 hover:border-teal-200 hover:text-teal-600 transition-all"
                                                                 >

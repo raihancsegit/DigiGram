@@ -17,7 +17,9 @@ export default async function VillagePortalPage({ params }) {
     if (locationData) {
         const fullContext = await getFullContextBySlug(unionSlug);
         const wards = await getWardsWithDetailsByUnion(locationData.id);
-        const matchedWard = wards.find(w => w.id === wardId);
+        
+        // Match by ID or Slug
+        const matchedWard = wards.find(w => w.id === wardId || w.slug === wardId);
         
         if (!matchedWard) notFound();
 
@@ -37,17 +39,22 @@ export default async function VillagePortalPage({ params }) {
         ctx = findUnionBySlug(unionSlug);
         if (!ctx) notFound();
 
-        ward = ctx.union.wards?.find((w) => w.id === wardId);
+        ward = ctx.union.wards?.find((w) => w.id === wardId || w.slug === wardId);
         if (!ward) notFound();
     }
 
     // Fetch dynamic village from DB
     let village = null;
     try {
-        village = await wardService.getVillageById(villageId);
+        // Try UUID first if it looks like one, otherwise try Slug
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(villageId);
+        if (isUUID) {
+            village = await wardService.getVillageById(villageId);
+        } else {
+            village = await wardService.getVillageBySlug(villageId);
+        }
     } catch (error) {
-        console.error("Village not found:", error);
-        notFound();
+        console.error("Village resolution error:", error);
     }
 
     if (!village) notFound();

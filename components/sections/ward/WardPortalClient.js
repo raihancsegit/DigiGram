@@ -195,10 +195,10 @@ export default function WardPortalClient({ ctx, ward: initialWard }) {
                     {/* Left Column */}
                     <div className="lg:col-span-8 space-y-8">
                         {/* Villages Grid with Detailed Stats */}
-                        <div className="space-y-6">
-                            <div className="flex items-center justify-between mb-2">
+                        <div className="rounded-[32px] bg-white border border-slate-200/60 shadow-sm overflow-hidden">
+                            <div className="px-6 py-5 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
                                 <div>
-                                    <h2 className="text-2xl font-black text-slate-800 flex items-center gap-2">
+                                    <h2 className="text-xl font-black text-slate-800 flex items-center gap-2">
                                         <Navigation className="text-teal-600" />
                                         ওয়ার্ডের গ্রাম ও পাড়াসমূহ
                                     </h2>
@@ -209,117 +209,119 @@ export default function WardPortalClient({ ctx, ward: initialWard }) {
                                 </span>
                             </div>
 
-                            <div className="grid grid-cols-1 gap-6">
-                                {(ward.villages || []).map((v, idx) => {
-                                    const isObj = typeof v === 'object';
-                                    const vName = isObj ? v.name : v;
-                                    const getCount = (val) => Array.isArray(val) ? val.length : parseBnInt(val || '0');
-                                    
-                                    return (
-                                        <motion.div
-                                            key={idx}
-                                            initial={{ opacity: 0, y: 20 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            transition={{ delay: idx * 0.05 }}
-                                        >
-                                            <div
-                                                onClick={() => isObj && v.id && (window.location.href = `/g/${v.id}`)}
-                                                className="block cursor-pointer border border-slate-200/60 rounded-[32px] overflow-hidden group hover:border-teal-400 hover:shadow-2xl hover:shadow-teal-900/5 transition-all duration-300 bg-white"
+                            <div className="p-6 sm:p-8 space-y-6">
+                                <div className="grid grid-cols-1 gap-6">
+                                    {(ward.villages || []).map((v, idx) => {
+                                        const isObj = typeof v === 'object';
+                                        const vName = isObj ? v.name : v;
+                                        const getCount = (val) => Array.isArray(val) ? val.length : parseBnInt(val || '0');
+                                        
+                                        return (
+                                            <motion.div
+                                                key={idx}
+                                                initial={{ opacity: 0, y: 20 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                transition={{ delay: idx * 0.05 }}
                                             >
-                                                <div className="flex items-center justify-between p-6 bg-gradient-to-r from-slate-50 to-white relative overflow-hidden gap-4">
-                                                    <div className="flex items-center gap-4 relative z-10">
-                                                        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center text-white font-black text-xl shadow-lg shadow-teal-200 shrink-0 group-hover:scale-110 transition-transform">
-                                                            <MapPin size={24} />
+                                                <div
+                                                    onClick={() => isObj && v.id && (window.location.href = paths.villagePortal(union.slug, ward.slug || ward.id, v.slug || v.id))}
+                                                    className="block cursor-pointer border border-slate-200/60 rounded-[32px] overflow-hidden group hover:border-teal-400 hover:shadow-2xl hover:shadow-teal-900/5 transition-all duration-300 bg-white"
+                                                >
+                                                    <div className="flex items-center justify-between p-6 bg-gradient-to-r from-slate-50 to-white relative overflow-hidden gap-4">
+                                                        <div className="flex items-center gap-4 relative z-10">
+                                                            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center text-white font-black text-xl shadow-lg shadow-teal-200 shrink-0 group-hover:scale-110 transition-transform">
+                                                                <MapPin size={24} />
+                                                            </div>
+                                                            <div>
+                                                                <h3 className="font-black text-slate-800 text-xl group-hover:text-teal-700 transition-colors leading-tight">{vName}</h3>
+                                                                <p className="text-[10px] font-black text-teal-600 uppercase tracking-[0.2em] mt-1">ডিজিটাল গ্রাম পোর্টাল</p>
+                                                            </div>
                                                         </div>
-                                                        <div>
-                                                            <h3 className="font-black text-slate-800 text-xl group-hover:text-teal-700 transition-colors leading-tight">{vName}</h3>
-                                                            <p className="text-[10px] font-black text-teal-600 uppercase tracking-[0.2em] mt-1">ডিজিটাল গ্রাম পোর্টাল</p>
-                                                        </div>
-                                                    </div>
-                                                    <div className="w-10 h-10 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0 group-hover:bg-teal-500 group-hover:border-teal-500 transition-all shadow-sm">
-                                                        <LucideArrowRight size={18} className="text-slate-400 group-hover:text-white transition-colors" />
-                                                    </div>
-                                                </div>
-                                                
-                                                <div className="px-6 py-6 border-t border-slate-50 bg-slate-50/30 grid grid-cols-2 sm:grid-cols-4 gap-y-6 gap-x-4">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0 shadow-sm border border-blue-100/50">
-                                                            <Users size={18} />
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-[9px] font-black text-slate-400 uppercase leading-none mb-1.5">জনসংখ্যা</p>
-                                                            <p className="text-sm font-black text-slate-800 leading-none">{toBnDigits(v.population || '0')}</p>
+                                                        <div className="w-10 h-10 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0 group-hover:bg-teal-500 group-hover:border-teal-500 transition-all shadow-sm">
+                                                            <LucideArrowRight size={18} className="text-slate-400 group-hover:text-white transition-colors" />
                                                         </div>
                                                     </div>
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center text-teal-600 shrink-0 shadow-sm border border-teal-100/50">
-                                                            <UserCheck size={18} />
+                                                    
+                                                    <div className="px-6 py-6 border-t border-slate-50 bg-slate-50/30 grid grid-cols-2 sm:grid-cols-4 gap-y-6 gap-x-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0 shadow-sm border border-blue-100/50">
+                                                                <Users size={18} />
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-[9px] font-black text-slate-400 uppercase leading-none mb-1.5">জনসংখ্যা</p>
+                                                                <p className="text-sm font-black text-slate-800 leading-none">{toBnDigits(v.population || '0')}</p>
+                                                            </div>
                                                         </div>
-                                                        <div>
-                                                            <p className="text-[9px] font-black text-slate-400 uppercase leading-none mb-1.5">ভোটার</p>
-                                                            <p className="text-sm font-black text-slate-800 leading-none">{toBnDigits(v.voters || '0')}</p>
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center text-teal-600 shrink-0 shadow-sm border border-teal-100/50">
+                                                                <UserCheck size={18} />
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-[9px] font-black text-slate-400 uppercase leading-none mb-1.5">ভোটার</p>
+                                                                <p className="text-sm font-black text-slate-800 leading-none">{toBnDigits(v.voters || '0')}</p>
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0 shadow-sm border border-indigo-100/50">
-                                                            <UserCircle size={18} />
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0 shadow-sm border border-indigo-100/50">
+                                                                <UserCircle size={18} />
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-[9px] font-black text-slate-400 uppercase leading-none mb-1.5">পুরুষ</p>
+                                                                <p className="text-sm font-black text-slate-800 leading-none">{toBnDigits(v.maleVoters || '0')}</p>
+                                                            </div>
                                                         </div>
-                                                        <div>
-                                                            <p className="text-[9px] font-black text-slate-400 uppercase leading-none mb-1.5">পুরুষ</p>
-                                                            <p className="text-sm font-black text-slate-800 leading-none">{toBnDigits(v.maleVoters || '0')}</p>
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-10 h-10 rounded-xl bg-violet-50 flex items-center justify-center text-violet-600 shrink-0 shadow-sm border border-violet-100/50">
+                                                                <UserCircle size={18} />
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-[9px] font-black text-slate-400 uppercase leading-none mb-1.5">মহিলা</p>
+                                                                <p className="text-sm font-black text-slate-800 leading-none">{toBnDigits(v.femaleVoters || '0')}</p>
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-10 h-10 rounded-xl bg-violet-50 flex items-center justify-center text-violet-600 shrink-0 shadow-sm border border-violet-100/50">
-                                                            <UserCircle size={18} />
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-[9px] font-black text-slate-400 uppercase leading-none mb-1.5">মহিলা</p>
-                                                            <p className="text-sm font-black text-slate-800 leading-none">{toBnDigits(v.femaleVoters || '0')}</p>
-                                                        </div>
-                                                    </div>
 
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center text-orange-600 shrink-0 shadow-sm border border-orange-100/50">
-                                                            <School size={18} />
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center text-orange-600 shrink-0 shadow-sm border border-orange-100/50">
+                                                                <School size={18} />
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-[9px] font-black text-slate-400 uppercase leading-none mb-1.5">স্কুল</p>
+                                                                <p className="text-sm font-black text-slate-800 leading-none">{toBnDigits(getCount(v.schools).toString())}টি</p>
+                                                            </div>
                                                         </div>
-                                                        <div>
-                                                            <p className="text-[9px] font-black text-slate-400 uppercase leading-none mb-1.5">স্কুল</p>
-                                                            <p className="text-sm font-black text-slate-800 leading-none">{toBnDigits(getCount(v.schools).toString())}টি</p>
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0 shadow-sm border border-emerald-100/50">
+                                                                <Building2 size={18} />
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-[9px] font-black text-slate-400 uppercase leading-none mb-1.5">মসজিদ</p>
+                                                                <p className="text-sm font-black text-slate-800 leading-none">{toBnDigits(getCount(v.mosques).toString())}টি</p>
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0 shadow-sm border border-emerald-100/50">
-                                                            <Building2 size={18} />
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-10 h-10 rounded-xl bg-sky-50 flex items-center justify-center text-sky-600 shrink-0 shadow-sm border border-sky-100/50">
+                                                                <BookOpen size={18} />
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-[9px] font-black text-slate-400 uppercase leading-none mb-1.5">মাদ্রাসা</p>
+                                                                <p className="text-sm font-black text-slate-800 leading-none">{toBnDigits(getCount(v.madrassas).toString())}টি</p>
+                                                            </div>
                                                         </div>
-                                                        <div>
-                                                            <p className="text-[9px] font-black text-slate-400 uppercase leading-none mb-1.5">মসজিদ</p>
-                                                            <p className="text-sm font-black text-slate-800 leading-none">{toBnDigits(getCount(v.mosques).toString())}টি</p>
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-10 h-10 rounded-xl bg-sky-50 flex items-center justify-center text-sky-600 shrink-0 shadow-sm border border-sky-100/50">
-                                                            <BookOpen size={18} />
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-[9px] font-black text-slate-400 uppercase leading-none mb-1.5">মাদ্রাসা</p>
-                                                            <p className="text-sm font-black text-slate-800 leading-none">{toBnDigits(getCount(v.madrassas).toString())}টি</p>
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 shrink-0 shadow-sm border border-amber-100/50">
-                                                            <Home size={18} />
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-[9px] font-black text-slate-400 uppercase leading-none mb-1.5">এতিমখানা</p>
-                                                            <p className="text-sm font-black text-slate-800 leading-none">{toBnDigits(getCount(v.orphanages).toString())}টি</p>
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 shrink-0 shadow-sm border border-amber-100/50">
+                                                                <Home size={18} />
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-[9px] font-black text-slate-400 uppercase leading-none mb-1.5">এতিমখানা</p>
+                                                                <p className="text-sm font-black text-slate-800 leading-none">{toBnDigits(getCount(v.orphanages).toString())}টি</p>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        </motion.div>
-                                    );
-                                })}
+                                            </motion.div>
+                                        );
+                                    })}
+                                </div>
                             </div>
                         </div>
 

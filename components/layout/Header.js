@@ -207,10 +207,10 @@ export default function Header() {
                     ? 'bg-slate-900/95 backdrop-blur-2xl border-b border-white/10 shadow-xl' 
                     : 'bg-white/95 backdrop-blur-md border-b border-slate-100'
                 }`}>
-                    <nav className="flex items-center justify-between h-16 sm:h-20">
+                    <nav className="flex w-full items-center justify-between h-16 sm:h-20">
                         
                         {/* Left: Branding & Location */}
-                        <div className="flex items-center gap-4 sm:gap-8">
+                        <div className="flex-1 flex items-center justify-start gap-4 sm:gap-8">
                             <Link href={paths.home} className="flex items-center gap-3 group shrink-0">
                                 <div className={`w-11 h-11 sm:w-13 sm:h-13 rounded-2xl flex items-center justify-center transition-all duration-500 group-hover:rotate-6 ${
                                     isScrolled ? 'bg-teal-500 shadow-[0_0_25px_rgba(20,184,166,0.4)]' : 'bg-slate-900 shadow-xl'
@@ -279,9 +279,10 @@ export default function Header() {
                         </div>
 
                         {/* Middle: Desktop Nav Quick Links */}
-                        <div className={`hidden xl:flex items-center gap-1 p-1 rounded-2xl transition-all duration-500 ${
-                            isScrolled ? 'bg-white/5 border border-white/10' : 'bg-slate-100 border border-slate-200/50 shadow-inner'
-                        }`}>
+                        <div className="flex-1 hidden xl:flex items-center justify-center">
+                            <div className={`flex items-center gap-1 p-1 rounded-2xl transition-all duration-500 ${
+                                isScrolled ? 'bg-white/5 border border-white/10' : 'bg-slate-100 border border-slate-200/50 shadow-inner'
+                            }`}>
                             {HEADER_QUICK_LINKS.map((item) => (
                                 <Link
                                     key={item.id}
@@ -302,10 +303,11 @@ export default function Header() {
                                     )}
                                 </Link>
                             ))}
+                            </div>
                         </div>
 
                         {/* Right: Info & Profile */}
-                        <div className="flex items-center gap-3 sm:gap-5">
+                        <div className="flex-1 flex items-center justify-end gap-3 sm:gap-5">
                             
                             {/* Time & Info (Desktop) */}
                             {mounted && (

@@ -11,6 +11,8 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { adminService } from '@/lib/services/adminService';
 import Link from 'next/link';
+import WardHouseholdManager from '@/components/sections/ward/WardHouseholdManager';
+import ModalPortal from '@/components/common/ModalPortal';
 
 export default function UnionManagementPage() {
     // Hierarchy States
@@ -30,6 +32,8 @@ export default function UnionManagementPage() {
     const [selectedWard, setSelectedWard] = useState(null);
     const [selectedItemForAction, setSelectedItemForAction] = useState(null);
     const [submitting, setSubmitting] = useState(false);
+    const [isHouseholdsModalOpen, setIsHouseholdsModalOpen] = useState(false);
+    const [targetLocationForHouseholds, setTargetLocationForHouseholds] = useState(null);
     
     // Pagination States
     const [currentPage, setCurrentPage] = useState(1);
@@ -766,29 +770,43 @@ export default function UnionManagementPage() {
                                             )}
 
                                             {(viewLevel === 'unions' || viewLevel === 'wards' || viewLevel === 'villages') && (
-                                                <button 
-                                                    onClick={() => {
-                                                        if (viewLevel === 'unions') {
-                                                            setSelectedUnion(item);
-                                                            setActiveWardForAssign(null);
-                                                            setActiveVillageForAssign(null);
-                                                            setActiveRoleAssign('chairman');
-                                                        } else if (viewLevel === 'wards') {
-                                                            setActiveWardForAssign(item);
-                                                            setActiveVillageForAssign(null);
-                                                            setActiveRoleAssign('ward_member');
-                                                        } else if (viewLevel === 'villages') {
-                                                            setActiveWardForAssign(null);
-                                                            setActiveVillageForAssign(item);
-                                                            setActiveRoleAssign('volunteer');
-                                                        }
-                                                        setIsAssignModalOpen(true);
-                                                    }}
-                                                    className="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-indigo-600 hover:border-indigo-200 hover:shadow-lg transition-all"
-                                                    title={viewLevel === 'villages' ? 'ভলান্টিয়ার নিয়োগ করুন' : 'অ্যাসাইন করুন'}
-                                                >
-                                                    <UserCheck size={18} />
-                                                </button>
+                                                <>
+                                                    {viewLevel === 'villages' && (
+                                                        <button 
+                                                            onClick={() => {
+                                                                setTargetLocationForHouseholds(item);
+                                                                setIsHouseholdsModalOpen(true);
+                                                            }}
+                                                            className="p-2.5 rounded-xl bg-teal-50 border border-teal-100 text-teal-600 hover:text-teal-700 hover:border-teal-200 hover:shadow-lg transition-all"
+                                                            title="বাড়ি ও সদস্য তালিকা"
+                                                        >
+                                                            <Home size={18} />
+                                                        </button>
+                                                    )}
+                                                    <button 
+                                                        onClick={() => {
+                                                            if (viewLevel === 'unions') {
+                                                                setSelectedUnion(item);
+                                                                setActiveWardForAssign(null);
+                                                                setActiveVillageForAssign(null);
+                                                                setActiveRoleAssign('chairman');
+                                                            } else if (viewLevel === 'wards') {
+                                                                setActiveWardForAssign(item);
+                                                                setActiveVillageForAssign(null);
+                                                                setActiveRoleAssign('ward_member');
+                                                            } else if (viewLevel === 'villages') {
+                                                                setActiveWardForAssign(null);
+                                                                setActiveVillageForAssign(item);
+                                                                setActiveRoleAssign('volunteer');
+                                                            }
+                                                            setIsAssignModalOpen(true);
+                                                        }}
+                                                        className="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-indigo-600 hover:border-indigo-200 hover:shadow-lg transition-all"
+                                                        title={viewLevel === 'villages' ? 'ভলান্টিয়ার নিয়োগ করুন' : 'অ্যাসাইন করুন'}
+                                                    >
+                                                        <UserCheck size={18} />
+                                                    </button>
+                                                </>
                                             )}
 
                                             <button 
@@ -1554,6 +1572,42 @@ export default function UnionManagementPage() {
                 document.body
             )}
 
+
+
+            {/* Household Management Modal */}
+            <AnimatePresence>
+                {isHouseholdsModalOpen && targetLocationForHouseholds && (
+                    <ModalPortal isOpen={isHouseholdsModalOpen} onClose={() => setIsHouseholdsModalOpen(false)}>
+                        <motion.div 
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            className="bg-white rounded-[40px] shadow-2xl relative z-[1001] w-full max-w-6xl overflow-hidden border border-slate-100 flex flex-col max-h-[90vh]"
+                        >
+                            <div className="p-8 pb-4 flex items-center justify-between shrink-0 bg-slate-50 border-b border-slate-100">
+                                <div>
+                                    <h2 className="text-2xl font-black text-slate-800">বাড়ি ও সদস্য ম্যানেজমেন্ট</h2>
+                                    <p className="text-xs font-bold text-slate-400 mt-1">{targetLocationForHouseholds.name_bn} গ্রামের হাউসহোল্ড তালিকা</p>
+                                </div>
+                                <button 
+                                    onClick={() => setIsHouseholdsModalOpen(false)} 
+                                    className="p-2 rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-rose-500 transition-colors"
+                                >
+                                    <X size={24} />
+                                </button>
+                            </div>
+                            
+                            <div className="p-8 pt-4 overflow-y-auto custom-scrollbar flex-1">
+                                <WardHouseholdManager 
+                                    wardId={navigationPath[navigationPath.length - 1]?.id} 
+                                    assignedVillage={targetLocationForHouseholds}
+                                    volunteerMode={false} 
+                                />
+                            </div>
+                        </motion.div>
+                    </ModalPortal>
+                )}
+            </AnimatePresence>
 
         </div>
     );

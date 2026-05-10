@@ -6,10 +6,11 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
     LayoutDashboard, Users, Settings, Bell,
     LogOut, Menu, X, Shield, Globe,
-    CreditCard, Zap, School, Activity, MapPin, ShoppingBag
+    CreditCard, Zap, School, Activity, MapPin, ShoppingBag, Database
 } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { performLogout } from '@/lib/store/features/authSlice';
+import NotificationBell from '@/components/ui/NotificationBell';
 
 export default function AdminShell({ children }) {
     const [isSidebarOpen, setSidebarOpen] = useState(true);
@@ -27,12 +28,14 @@ export default function AdminShell({ children }) {
         { name: 'ড্যাশবোর্ড', icon: LayoutDashboard, path: '/admin' },
         { name: 'প্রশাসনিক এলাকা', icon: Globe, path: '/admin/union', permission: 'can_manage_locations' },
         { name: 'সকল এলাকা', icon: MapPin, path: '/admin/locations', permission: 'can_manage_locations' },
+        { name: 'ডাটা সিঙ্ক', icon: Activity, path: '/admin/data-sync', permission: 'can_manage_locations' },
         { name: 'সেবা ব্যবস্থাপনা', icon: Zap, path: '/admin/services', permission: 'can_manage_services' },
         { name: 'হাট বাজার', icon: ShoppingBag, path: '/admin/market' },
         { name: 'শিক্ষা প্রতিষ্ঠান', icon: School, path: '/admin/institutions', permission: 'can_manage_institutions' },
         { name: 'ইউজার ম্যানেজমেন্ট', icon: Users, path: '/admin/members', permission: 'can_manage_users' },
         { name: 'নোটিশবোর্ড', icon: Bell, path: '/admin/notices', permission: 'can_manage_news' },
         { name: 'বিলিং / ক্রেডিট', icon: CreditCard, path: '/admin/billing' },
+        { name: 'সিস্টেম মেনটেন্যান্স', icon: Database, path: '/admin/maintenance', permission: 'can_manage_system' },
         { name: 'সেটিংস', icon: Settings, path: '/admin/settings' },
     ];
 
@@ -131,6 +134,8 @@ export default function AdminShell({ children }) {
                     </div>
 
                     <div className="flex items-center gap-4">
+                        <NotificationBell />
+                        
                         <Link href="/admin/settings" className="flex items-center gap-3 px-4 py-2 hover:bg-slate-50 rounded-2xl border border-transparent hover:border-slate-200 transition-all group">
                             <div className="flex flex-col text-right hidden sm:flex">
                                 <span className="text-sm font-black text-slate-800 leading-none group-hover:text-teal-600 transition-colors">

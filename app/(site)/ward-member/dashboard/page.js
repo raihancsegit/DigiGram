@@ -136,6 +136,16 @@ export default function WardMemberDashboard() {
     }, [dispatch, isAuthenticated, loadWardData, router, user]);
 
     const aggregatedTotals = useMemo(() => {
+        if (wardInfo?.survey_status === 'verified' && wardInfo?.real_stats) {
+            return {
+                population: wardInfo.real_stats.total_members || 0,
+                voters: wardInfo.real_stats.voters || 0,
+                schools: parseBnInt(wardInfo.stats?.schools || '0'),
+                mosques: parseBnInt(wardInfo.stats?.mosques || '0'),
+                madrassas: parseBnInt(wardInfo.stats?.madrassas || '0')
+            };
+        }
+
         const getCount = (val) => Array.isArray(val) ? val.length : parseBnInt(val || '0');
         return (villages || []).reduce((acc, v) => ({
             population: acc.population + parseBnInt(v.population || '0'),
@@ -144,7 +154,7 @@ export default function WardMemberDashboard() {
             mosques: acc.mosques + getCount(v.mosques),
             madrassas: acc.madrassas + getCount(v.madrassas)
         }), { population: 0, voters: 0, schools: 0, mosques: 0, madrassas: 0 });
-    }, [villages]);
+    }, [villages, wardInfo]);
 
     const volunteerCount = volunteers.length;
 
@@ -349,7 +359,7 @@ export default function WardMemberDashboard() {
                                 </div>
                                 {wardInfo?.parent?.slug && (
                                      <Link
-                                         href={paths.wardPortal(user.access_scope_id)}
+                                         href={paths.wardPortal(wardInfo.parent.slug, wardInfo.slug || wardInfo.id)}
                                          target="_blank"
                                         className="bg-white text-slate-900 px-6 py-4 rounded-[22px] font-black hover:bg-teal-400 hover:text-white transition-all shadow-xl flex items-center gap-3 group whitespace-nowrap"
                                     >

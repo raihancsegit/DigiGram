@@ -13,6 +13,7 @@ import { layout } from '@/lib/theme';
 import { paths } from '@/lib/constants/paths';
 import { toBnDigits } from '@/lib/utils/format';
 import PortalLoginModal from '@/components/modals/PortalLoginModal';
+import WardHouseholdManager from '@/components/sections/ward/WardHouseholdManager';
 
 export default function VillagePortalClient({ ctx, ward, village }) {
     const { district, upazila, union, volunteers = [] } = ctx || {};
@@ -126,7 +127,7 @@ export default function VillagePortalClient({ ctx, ward, village }) {
                         {union.name}
                     </Link>
                     <span className="text-slate-300">/</span>
-                    <Link href={paths.wardPortal(ward.id)} className="text-sm font-bold text-slate-500 hover:text-teal-600 transition-colors">
+                    <Link href={paths.wardPortal(ctx.union.slug, ward.slug || ward.id)} className="text-sm font-bold text-slate-500 hover:text-teal-600 transition-colors">
                         {ward.name}
                     </Link>
                     <span className="text-slate-300">/</span>
@@ -247,6 +248,15 @@ export default function VillagePortalClient({ ctx, ward, village }) {
                                     </div>
                                 ))}
                             </div>
+                        </div>
+
+                        {/* Village Households */}
+                        <div className="space-y-6">
+                            <WardHouseholdManager 
+                                wardId={ward.id} 
+                                assignedVillage={village}
+                                volunteerMode={user?.role === 'volunteer'} 
+                            />
                         </div>
 
                         {/* Village Market */}
@@ -434,7 +444,7 @@ export default function VillagePortalClient({ ctx, ward, village }) {
 
                         {/* Back Links to Ward and Union */}
                         <div className="space-y-4">
-                            <Link href={paths.wardPortal(ward.id)} className="flex items-center gap-4 p-5 rounded-[24px] bg-teal-50 border border-teal-100 hover:bg-teal-100 hover:border-teal-200 transition-all group">
+                            <Link href={paths.wardPortal(ctx.union.slug, ward.slug || ward.id)} className="flex items-center gap-4 p-5 rounded-[24px] bg-teal-50 border border-teal-100 hover:bg-teal-100 hover:border-teal-200 transition-all group">
                                 <div className="w-12 h-12 rounded-2xl bg-white border border-teal-100 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
                                     <ArrowLeft size={20} className="text-teal-600" />
                                 </div>

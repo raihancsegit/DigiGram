@@ -6,7 +6,7 @@ import { layout } from '@/lib/theme';
 export default function PageShell({ children, className = '' }) {
     return (
         <main
-            className={['dg-page-canvas mx-auto min-h-screen font-bengali relative', className].filter(Boolean).join(' ')}
+            className={['dg-page-canvas mx-auto min-h-screen font-bengali relative w-full', className].filter(Boolean).join(' ')}
             style={{ maxWidth: layout.maxWidthPx }}
         >
             {children}

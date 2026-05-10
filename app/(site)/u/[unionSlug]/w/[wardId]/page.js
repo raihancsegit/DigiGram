@@ -15,7 +15,7 @@ export default async function WardPortalPage({ params }) {
 
     if (locationData) {
         const wards = await getWardsWithDetailsByUnion(locationData.id);
-        const matchedWard = wards.find(w => w.id === wardId);
+        const matchedWard = wards.find(w => w.id === wardId || w.slug === wardId);
         if (!matchedWard) notFound();
 
         // Construct dynamic context from DB using recursive parent fetching
@@ -36,7 +36,7 @@ export default async function WardPortalPage({ params }) {
         ctx = findUnionBySlug(unionSlug);
         if (!ctx) notFound();
 
-        ward = ctx.union.wards?.find((w) => w.id === wardId);
+        ward = ctx.union.wards?.find((w) => w.id === wardId || w.slug === wardId);
         if (!ward) notFound();
     }
 
