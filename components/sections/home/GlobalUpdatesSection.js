@@ -71,8 +71,8 @@ function DataCard({ item, type }) {
                         </div>
                     )}
                 </div>
-                <div className="p-6">
-                    <h3 className="text-lg font-black text-slate-900 leading-tight line-clamp-2 mb-3">{title}</h3>
+                <div className="p-5 md:p-6">
+                    <h3 className="text-base md:text-lg font-black text-slate-900 leading-tight line-clamp-2 mb-2 md:mb-3">{title}</h3>
                     <p className="text-sm text-slate-500 leading-6 line-clamp-3">{description}</p>
                     <div className="mt-5 flex items-center justify-between gap-4 text-[11px] uppercase tracking-[0.18em] text-slate-400 font-black">
                         <span className="inline-flex items-center gap-2">
@@ -149,14 +149,14 @@ export default function GlobalUpdatesSection() {
     const isLoading = newsLoading || lostLoading;
 
     return (
-        <section className="py-20 bg-slate-50 overflow-hidden">
+        <section className="py-10 md:py-20 bg-slate-50 overflow-hidden">
             <div className="max-w-7xl mx-auto px-4">
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
                     <div>
                         <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-teal-500/10 text-teal-700 text-[10px] font-black uppercase tracking-[0.28em] border border-teal-200/70 mb-4">
                             <Bookmark size={16} /> গ্লোবাল আপডেট
                         </div>
-                        <h2 className="text-4xl md:text-5xl font-black text-slate-900 leading-tight">
+                        <h2 className="text-2xl sm:text-3xl md:text-5xl font-black text-slate-900 leading-tight">
                             সর্বশেষ সংবাদ ও গুরুত্বপূর্ণ ঘোষণা
                         </h2>
                         <p className="mt-4 max-w-2xl text-slate-500">
@@ -178,11 +178,11 @@ export default function GlobalUpdatesSection() {
 
                 <div className="space-y-16">
                     <div className="rounded-[32px] border border-slate-200 bg-white shadow-sm overflow-hidden">
-                        <div className="px-8 py-8 border-b border-slate-200 bg-slate-50">
+                        <div className="px-6 py-6 md:px-8 md:py-8 border-b border-slate-200 bg-slate-50">
                             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                                 <div>
-                                    <h3 className="text-2xl font-black text-slate-900">গ্লোবাল সংবাদ ও গুরুত্বপূর্ণ ঘোষণা</h3>
-                                    <p className="mt-2 text-sm text-slate-500">সমস্ত ইউনিয়নের গ্লোবাল প্রকাশিত সংবাদগুলো এখানে দেখুন।</p>
+                                    <h3 className="text-xl md:text-2xl font-black text-slate-900">গ্লোবাল সংবাদ ও গুরুত্বপূর্ণ ঘোষণা</h3>
+                                    <p className="mt-1 text-xs sm:text-sm text-slate-500">সমস্ত ইউনিয়নের গ্লোবাল প্রকাশিত সংবাদগুলো এখানে দেখুন।</p>
                                 </div>
                                 <span className="inline-flex items-center gap-2 px-4 py-3 rounded-full bg-slate-900 text-white text-xs font-black uppercase tracking-[0.2em]">
                                     <Calendar size={14} /> পেজ: {newsPage}
@@ -195,7 +195,7 @@ export default function GlobalUpdatesSection() {
                                 <Loader2 className="animate-spin text-teal-600" size={32} />
                             </div>
                         ) : (
-                            <div className="p-8">
+                            <div className="p-4 sm:p-8">
                                 {newsItems.length === 0 ? (
                                     <div className="rounded-[32px] bg-slate-50 border border-slate-200 p-12 text-center text-slate-500">
                                         <AlertCircle size={32} className="mx-auto mb-4 text-slate-400" />
@@ -221,11 +221,11 @@ export default function GlobalUpdatesSection() {
                     </div>
 
                     <div className="rounded-[32px] border border-slate-200 bg-white shadow-sm overflow-hidden">
-                        <div className="px-8 py-8 border-b border-slate-200 bg-slate-50">
+                        <div className="px-6 py-6 md:px-8 md:py-8 border-b border-slate-200 bg-slate-50">
                             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                                 <div>
-                                    <h3 className="text-2xl font-black text-slate-900">হারানো ও প্রাপ্তি সংবাদ</h3>
-                                    <p className="mt-2 text-sm text-slate-500">শুধু গ্লোবাল হারানো/প্রাপ্তি পোস্ট দেখুন।</p>
+                                    <h3 className="text-xl md:text-2xl font-black text-slate-900">হারানো ও প্রাপ্তি সংবাদ</h3>
+                                    <p className="mt-1 text-xs sm:text-sm text-slate-500">শুধু গ্লোবাল হারানো/প্রাপ্তি পোস্ট দেখুন।</p>
                                 </div>
                                 <span className="inline-flex items-center gap-2 px-4 py-3 rounded-full bg-slate-900 text-white text-xs font-black uppercase tracking-[0.2em]">
                                     <Calendar size={14} /> পেজ: {lostPage}
@@ -238,7 +238,7 @@ export default function GlobalUpdatesSection() {
                                 <Loader2 className="animate-spin text-amber-600" size={32} />
                             </div>
                         ) : (
-                            <div className="p-8">
+                            <div className="p-4 sm:p-8">
                                 {lostItems.length === 0 ? (
                                     <div className="rounded-[32px] bg-slate-50 border border-slate-200 p-12 text-center text-slate-500">
                                         <AlertCircle size={32} className="mx-auto mb-4 text-slate-400" />

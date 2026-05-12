@@ -167,7 +167,7 @@ export default function HouseholdLockerManager({ household, onUpdate, onClose })
                 
                 {/* Left Column: Family Tree & Info */}
                 <div className={`lg:col-span-1 xl:col-span-3 space-y-6 flex-col ${isLockerExpanded ? 'hidden' : 'flex'}`}>
-                    <div className="p-4 sm:p-8 rounded-[32px] bg-slate-50 border border-slate-100 shadow-sm flex flex-col flex-1 h-full">
+                    <div className="p-4 sm:p-8 rounded-[24px] md:rounded-[32px] bg-slate-50 border border-slate-100 shadow-sm flex flex-col flex-1 h-full">
                         
                         {/* Header & Toggle */}
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-8 pb-8 border-b border-slate-200">
@@ -176,7 +176,7 @@ export default function HouseholdLockerManager({ household, onUpdate, onClose })
                                     <Home size={28} />
                                 </div>
                                 <div>
-                                    <h3 className="text-2xl font-black text-slate-800 tracking-tight">{household.owner_name} এর পরিবার</h3>
+                                    <h3 className="text-xl md:text-2xl font-black text-slate-800 tracking-tight">{household.owner_name} এর পরিবার</h3>
                                     <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">প্রোফাইল আইডি: {household.qr_code_id}</p>
                                 </div>
                             </div>
@@ -451,7 +451,7 @@ export default function HouseholdLockerManager({ household, onUpdate, onClose })
                     )}
 
                     {/* Digital Locker Content Area */}
-                    <div className="p-8 rounded-[32px] bg-white border border-slate-100 shadow-sm flex-1 flex flex-col relative overflow-hidden">
+                    <div className="p-5 md:p-8 rounded-[24px] md:rounded-[32px] bg-white border border-slate-100 shadow-sm flex-1 flex flex-col relative overflow-hidden">
                         
                         {/* Lock Screen */}
                         {!isLockerUnlocked && (
@@ -505,7 +505,7 @@ export default function HouseholdLockerManager({ household, onUpdate, onClose })
                                     <Unlock size={24} />
                                 </div>
                                 <div>
-                                    <h3 className="text-xl font-black text-slate-800">ডিজিটাল লকার</h3>
+                                    <h3 className="text-lg md:text-xl font-black text-slate-800">ডিজিটাল লকার</h3>
                                     <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-0.5">গৃহীত সকল ডকুমেন্টস</p>
                                 </div>
                             </div>

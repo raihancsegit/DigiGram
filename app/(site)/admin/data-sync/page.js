@@ -14,11 +14,11 @@ export default function DataSyncPage() {
     const [loading, setLoading] = useState(true);
     const [syncingId, setSyncingId] = useState(null);
     const [errorMsg, setErrorMsg] = useState(null);
-
-    // Filters
     const [filterUnion, setFilterUnion] = useState('');
     const [filterWard, setFilterWard] = useState('');
     const [filterVillage, setFilterVillage] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
 
     useEffect(() => {
         loadVillages();
@@ -100,6 +100,17 @@ export default function DataSyncPage() {
             return true;
         });
     }, [villages, filterUnion, filterWard, filterVillage]);
+
+    // Reset page on filter change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [filterUnion, filterWard, filterVillage]);
+
+    const totalPages = Math.ceil(filteredVillages.length / itemsPerPage);
+    const paginatedVillages = useMemo(() => {
+        const start = (currentPage - 1) * itemsPerPage;
+        return filteredVillages.slice(start, start + itemsPerPage);
+    }, [filteredVillages, currentPage]);
 
     if (loading) {
         return (
@@ -232,7 +243,7 @@ export default function DataSyncPage() {
                                         কোনো গ্রাম পাওয়া যায়নি
                                     </td>
                                 </tr>
-                            ) : filteredVillages.map((village) => {
+                            ) : paginatedVillages.map((village) => {
                                 const isVerified = village.survey_status === 'verified';
                                 const realStats = village.real_stats || {};
                                 return (
@@ -299,6 +310,59 @@ export default function DataSyncPage() {
                     </table>
                 </div>
             </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-2 mt-8">
+                    <button 
+                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        disabled={currentPage === 1}
+                        className="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 font-bold text-sm disabled:opacity-50 hover:bg-slate-50 transition-all"
+                    >
+                        পূর্ববর্তী
+                    </button>
+                    
+                    <div className="flex items-center gap-1">
+                        {[...Array(totalPages)].map((_, i) => {
+                            const page = i + 1;
+                            // Show first, last, and pages around current
+                            if (
+                                page === 1 || 
+                                page === totalPages || 
+                                (page >= currentPage - 1 && page <= currentPage + 1)
+                            ) {
+                                return (
+                                    <button
+                                        key={page}
+                                        onClick={() => setCurrentPage(page)}
+                                        className={`w-10 h-10 rounded-xl font-black text-sm transition-all ${
+                                            currentPage === page 
+                                            ? 'bg-teal-500 text-white shadow-lg shadow-teal-500/30' 
+                                            : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                                        }`}
+                                    >
+                                        {toBnDigits(page.toString())}
+                                    </button>
+                                );
+                            } else if (
+                                page === currentPage - 2 || 
+                                page === currentPage + 2
+                            ) {
+                                return <span key={page} className="text-slate-400 font-bold px-1">...</span>;
+                            }
+                            return null;
+                        })}
+                    </div>
+
+                    <button 
+                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                        disabled={currentPage === totalPages}
+                        className="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 font-bold text-sm disabled:opacity-50 hover:bg-slate-50 transition-all"
+                    >
+                        পরবর্তী
+                    </button>
+                </div>
+            )}
         </div>
     );
 }

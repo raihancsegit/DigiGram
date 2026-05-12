@@ -214,7 +214,7 @@ export default function HouseholdEntryForm({ wardId, villageId, initialData, onS
     }
 
     return (
-        <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-2xl max-h-[95vh] flex flex-col relative overflow-hidden">
+        <div className="bg-white rounded-[24px] md:rounded-[40px] shadow-2xl w-full max-w-2xl max-h-[95vh] flex flex-col relative overflow-hidden">
             <button 
                 onClick={onCancel}
                 className="absolute top-6 right-6 w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-rose-50 hover:text-rose-500 transition-colors z-20"
@@ -223,19 +223,19 @@ export default function HouseholdEntryForm({ wardId, villageId, initialData, onS
             </button>
 
             {/* HEADER - Fixed at top */}
-            <div className="p-6 md:p-8 pb-4 shrink-0 bg-white z-10 border-b border-slate-50 relative">
+            <div className="p-5 md:p-8 pb-3 md:pb-4 shrink-0 bg-white z-10 border-b border-slate-50 relative">
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-teal-600 text-white flex items-center justify-center shadow-lg shadow-teal-200">
-                            {step === 1 && <Home size={24} />}
-                            {step === 2 && <User size={24} />}
-                            {step === 3 && <Shield size={24} />}
+                        <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-teal-600 text-white flex items-center justify-center shadow-lg shadow-teal-200">
+                            {step === 1 && <Home size={20} className="md:w-6 md:h-6" />}
+                            {step === 2 && <User size={20} className="md:w-6 md:h-6" />}
+                            {step === 3 && <Shield size={20} className="md:w-6 md:h-6" />}
                         </div>
                         <div>
-                            <h3 className="text-xl font-black text-slate-800 tracking-tight">
+                            <h3 className="text-lg md:text-xl font-black text-slate-800 tracking-tight">
                                 {step === 1 ? 'বাড়ির তথ্য' : step === 2 ? 'সদস্যদের তথ্য' : 'নিরাপত্তা সেটআপ'}
                             </h3>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+                            <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
                                 ধাপ {toBnDigits(step.toString())} / ৩
                             </p>
                         </div>
@@ -264,7 +264,7 @@ export default function HouseholdEntryForm({ wardId, villageId, initialData, onS
             </div>
 
             {/* BODY - Scrollable */}
-            <div className="p-6 md:p-8 py-4 overflow-y-auto custom-scrollbar flex-1 relative z-0">
+            <div className="p-5 md:p-8 py-4 overflow-y-auto custom-scrollbar flex-1 relative z-0">
                 {step === 1 && (
                     <motion.div initial={{opacity:0, x:20}} animate={{opacity:1, x:0}} className="space-y-6">
                         <div>
@@ -523,7 +523,7 @@ export default function HouseholdEntryForm({ wardId, villageId, initialData, onS
             </div>
 
             {/* FOOTER - Fixed at bottom */}
-            <div className="p-6 md:p-8 pt-4 shrink-0 bg-white z-10 border-t border-slate-50">
+            <div className="p-5 md:p-8 pt-4 shrink-0 bg-white z-10 border-t border-slate-50">
                 {step === 1 && (
                     <button 
                         onClick={handleSaveHouse}

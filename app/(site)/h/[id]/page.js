@@ -153,7 +153,7 @@ export default function HouseholdPublicProfile() {
     return (
         <div className="min-h-screen bg-slate-50 pb-20">
             {/* Top Bar */}
-            <div className="bg-white px-6 py-5 border-b border-slate-100 flex items-center justify-between sticky top-0 z-30">
+            <div className="bg-white px-4 md:px-6 py-4 md:py-5 border-b border-slate-100 flex items-center justify-between sticky top-0 z-30">
                 <button onClick={() => router.back()} className="p-2 text-slate-400 hover:text-slate-600 transition-colors">
                     <ArrowLeft size={24} />
                 </button>
@@ -164,12 +164,12 @@ export default function HouseholdPublicProfile() {
                 <div className="w-10" />
             </div>
 
-            <main className="max-w-md mx-auto px-6 py-8 space-y-6">
+            <main className="max-w-md mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6">
                 {/* House Info Card */}
                 <motion.div 
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-white rounded-[40px] p-8 border border-slate-100 shadow-sm relative overflow-hidden"
+                    className="bg-white rounded-[32px] md:rounded-[40px] p-6 md:p-8 border border-slate-100 shadow-sm relative overflow-hidden"
                 >
                     <div className="absolute top-0 right-0 p-8 opacity-5">
                         <Home size={120} />
@@ -178,27 +178,27 @@ export default function HouseholdPublicProfile() {
                         <div className="inline-flex items-center gap-2 px-3 py-1 bg-teal-50 text-teal-600 rounded-lg text-[10px] font-black uppercase tracking-widest mb-4">
                             <ShieldCheck size={12} /> ভেরিফাইড হাউসহোল্ড
                         </div>
-                        <h1 className="text-3xl font-black text-slate-800 mb-2 leading-tight">
+                        <h1 className="text-2xl md:text-3xl font-black text-slate-800 mb-2 leading-tight">
                             {data.owner_name} <br /> 
-                            <span className="text-slate-400 text-lg">এর বাড়ি</span>
+                            <span className="text-slate-400 text-base md:text-lg">এর বাড়ি</span>
                         </h1>
                         <p className="text-sm font-bold text-slate-400 flex items-center gap-2 mb-8">
                             <MapPin size={14} /> 
                             {data.village?.bn_name || data.village?.name}, {toBnDigits(data.house_no || '')}
                         </p>
 
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="p-5 rounded-3xl bg-slate-50 border border-slate-100">
-                                <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                        <div className="grid grid-cols-2 gap-3 md:gap-4">
+                            <div className="p-4 md:p-5 rounded-2xl md:rounded-3xl bg-slate-50 border border-slate-100">
+                                <div className="flex items-center gap-2 text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 md:mb-2">
                                     <Users size={12} /> সদস্য
                                 </div>
-                                <p className="text-2xl font-black text-slate-800">{toBnDigits((data.stats?.total_members || 0).toString())}</p>
+                                <p className="text-xl md:text-2xl font-black text-slate-800">{toBnDigits((data.stats?.total_members || 0).toString())}</p>
                             </div>
-                            <div className="p-5 rounded-3xl bg-slate-50 border border-slate-100">
-                                <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                            <div className="p-4 md:p-5 rounded-2xl md:rounded-3xl bg-slate-50 border border-slate-100">
+                                <div className="flex items-center gap-2 text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 md:mb-2">
                                     <ShieldCheck size={12} /> ভোটার
                                 </div>
-                                <p className="text-2xl font-black text-slate-800">{toBnDigits((data.stats?.voters || 0).toString())}</p>
+                                <p className="text-xl md:text-2xl font-black text-slate-800">{toBnDigits((data.stats?.voters || 0).toString())}</p>
                             </div>
                         </div>
 
@@ -236,7 +236,7 @@ export default function HouseholdPublicProfile() {
                     <motion.div 
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        className="bg-white rounded-[40px] p-8 border-2 border-teal-500/20 shadow-xl shadow-teal-900/5"
+                        className="bg-white rounded-[32px] md:rounded-[40px] p-6 md:p-8 border-2 border-teal-500/20 shadow-xl shadow-teal-900/5"
                     >
                         <div className="flex items-center justify-between mb-8">
                             <div>
@@ -265,8 +265,8 @@ export default function HouseholdPublicProfile() {
                                                 <FileText size={20} />
                                             </div>
                                             <div>
-                                                <p className="text-sm font-black text-slate-800 truncate max-w-[150px]">{doc.title}</p>
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase">{(doc.file_size / 1024).toFixed(1)} KB · {doc.type}</p>
+                                                <p className="text-xs md:text-sm font-black text-slate-800 truncate max-w-[120px] sm:max-w-[150px]">{doc.title}</p>
+                                                <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase">{(doc.file_size / 1024).toFixed(1)} KB · {doc.type}</p>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

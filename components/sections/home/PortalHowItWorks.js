@@ -30,7 +30,7 @@ const steps = [
 
 export default function PortalHowItWorks() {
     return (
-        <section className="dg-section-x py-20 bg-white">
+        <section className="dg-section-x py-10 md:py-20 bg-white">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="text-center mb-16">
                     <motion.div
@@ -42,10 +42,10 @@ export default function PortalHowItWorks() {
                         <Zap size={14} className="fill-current" />
             ডিজিগ্র্যাম পোর্টাল
                     </motion.div>
-                    <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-slate-800 tracking-tight mb-4">
+                    <h2 className="text-2xl sm:text-4xl md:text-5xl font-black text-slate-800 tracking-tight mb-4">
                         কিভাবে কাজ করে?
                     </h2>
-                    <p className="text-base sm:text-lg text-slate-500 max-w-2xl mx-auto font-medium">
+                    <p className="text-sm sm:text-lg text-slate-500 max-w-2xl mx-auto font-medium">
                         আপনার এরিয়া সিলেক্ট করার সাথে সাথেই পুরো অ্যাপটি আপনার ইউনিয়নের পোর্টালে রূপান্তর হবে।
                     </p>
                 </div>
@@ -89,7 +89,7 @@ export default function PortalHowItWorks() {
                     initial={{ opacity: 0 }}
                     whileInView={{ opacity: 1 }}
                     viewport={{ once: true }}
-                    className="mt-20 p-8 rounded-[40px] bg-gradient-to-br from-slate-900 to-teal-900 text-white text-center relative overflow-hidden group"
+                    className="mt-12 md:mt-20 p-6 md:p-8 rounded-[32px] md:rounded-[40px] bg-gradient-to-br from-slate-900 to-teal-900 text-white text-center relative overflow-hidden group"
                 >
                     <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10" />
                     <div className="relative z-10">

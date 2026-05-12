@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useDispatch, useSelector } from 'react-redux';
@@ -9,11 +9,14 @@ import {
     MapPin, Home, Sparkles, ArrowUpRight, ArrowRight as LucideArrowRight,
     Users, UserCheck, ShieldCheck, School, GraduationCap, 
     BookOpen, Phone, UserCircle, CheckCircle2, LogIn, ChevronLeft, ChevronRight, Building2, Droplets,
-    Activity, BellRing, Navigation, Calendar
+    Activity, BellRing, Navigation, Calendar, 
+    Search, Mic, MicOff, Send, Loader2, SearchX, ArrowRight
 } from 'lucide-react';
+import { AnimatePresence } from 'framer-motion';
 import { applyLocationSnapshot, openModal } from '@/lib/store/features/locationSlice';
 import { SERVICE_CATEGORIES } from '@/lib/constants/serviceCategories';
 import { paths } from '@/lib/constants/paths';
+import { searchLocations } from '@/lib/services/hierarchyService';
 import { layout } from '@/lib/theme';
 import UnionNewsSection from './UnionNewsSection';
 import { parseBnInt, toBnDigits } from '@/lib/utils/format';
@@ -146,6 +149,80 @@ export default function UnionPortalClient({ ctx, activeServices = [], chairman =
         }, { population: 0, voters: 0, maleVoters: 0, femaleVoters: 0, schools: 0, mosques: 0, madrassas: 0, orphanages: 0, bloodDonors: 0 });
     }, [mergedWards]);
 
+    // Search Logic for Portals
+    const [searchQuery, setSearchQuery] = useState('');
+    const [searchResults, setSearchResults] = useState([]);
+    const [isSearching, setIsSearching] = useState(false);
+    const [isListening, setIsListening] = useState(false);
+    const searchRef = useRef(null);
+    const recognitionRef = useRef(null);
+
+    useEffect(() => {
+        if (!searchQuery || searchQuery.trim().length < 1) {
+            setSearchResults([]);
+            return;
+        }
+
+        const delayDebounceFn = setTimeout(async () => {
+            setIsSearching(true);
+            try {
+                const locationResults = await searchLocations(searchQuery);
+                
+                const queryLower = searchQuery.toLowerCase();
+                const serviceResults = SERVICE_CATEGORIES.filter(s => 
+                    s.title.toLowerCase().includes(queryLower) || 
+                    s.subtitle.toLowerCase().includes(queryLower) ||
+                    (s.id && s.id.includes(queryLower))
+                ).map(s => ({ ...s, type: 'service' }));
+
+                const combined = [...serviceResults, ...locationResults];
+                setSearchResults(combined.slice(0, 8));
+            } catch (error) {
+                console.error("Search failed:", error);
+            } finally {
+                setIsSearching(false);
+            }
+        }, 300);
+
+        return () => clearTimeout(delayDebounceFn);
+    }, [searchQuery]);
+
+    const startVoiceSearch = () => {
+        if (typeof window === 'undefined') return;
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) return alert('ব্রাউজার সাপোর্ট করে না');
+
+        if (isListening) {
+            recognitionRef.current?.stop();
+            return;
+        }
+
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'bn-BD';
+        recognition.onstart = () => setIsListening(true);
+        recognition.onresult = (event) => setSearchQuery(event.results[0][0].transcript);
+        recognition.onerror = () => setIsListening(false);
+        recognition.onend = () => setIsListening(false);
+        recognitionRef.current = recognition;
+        recognition.start();
+    };
+
+    const getResultPath = (item) => {
+        if (item.type === 'service') return `${paths.service(item.id)}?u=${encodeURIComponent(union.slug)}`;
+        if (item.type === 'union') return paths.unionPortal(item.slug);
+        if (item.type === 'ward') return paths.wardPortal(item.union_slug, item.slug || item.id);
+        if (item.type === 'village') return paths.villagePortal(item.union_slug, item.ward_slug, item.slug || item.id);
+        return '#';
+    };
+
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (searchRef.current && !searchRef.current.contains(e.target)) setSearchResults([]);
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
     const allStats = [
         { label: 'মোট ওয়াড', value: toBnDigits(mergedWards.length.toString()), icon: MapPin, color: 'text-teal-600', shadow: 'hover:shadow-teal-500/20', bg: 'bg-teal-50' },
         { label: 'মোট গ্রাম', value: toBnDigits(allVillages.length.toString()), icon: MapPin, color: 'text-sky-600', shadow: 'hover:shadow-sky-500/20', bg: 'bg-sky-50' },
@@ -163,10 +240,13 @@ export default function UnionPortalClient({ ctx, activeServices = [], chairman =
     return (
         <div className="bg-slate-50 min-h-screen">
             {/* Edge-to-Edge Hero Background Area */}
-            <div className="relative pt-4 md:pt-10 pb-20 md:pb-40 px-3 md:px-6 bg-slate-900 overflow-hidden border-b border-slate-800 rounded-b-[32px] md:rounded-b-[80px]">
-                <div className="absolute inset-0 opacity-40">
-                    <div className="absolute top-0 right-0 w-96 h-96 bg-teal-500 rounded-full blur-[120px] translate-x-1/3 -translate-y-1/4" />
-                    <div className="absolute bottom-0 left-0 w-96 h-96 bg-sky-500 rounded-full blur-[120px] -translate-x-1/3 translate-y-1/4" />
+            <div className="relative pt-4 md:pt-10 pb-12 md:pb-40 px-3 md:px-6 bg-slate-900 border-b border-slate-800 rounded-b-[24px] md:rounded-b-[80px]">
+                {/* Background Blobs - Wrapped to prevent overflow */}
+                <div className="absolute inset-0 overflow-hidden rounded-b-[24px] md:rounded-b-[80px] pointer-events-none">
+                    <div className="absolute inset-0 opacity-40">
+                        <div className="absolute top-0 right-0 w-96 h-96 bg-teal-500 rounded-full blur-[120px] translate-x-1/3 -translate-y-1/4" />
+                        <div className="absolute bottom-0 left-0 w-96 h-96 bg-sky-500 rounded-full blur-[120px] -translate-x-1/3 translate-y-1/4" />
+                    </div>
                 </div>
                 
                 <div className="max-w-[1200px] mx-auto relative z-10">
@@ -209,13 +289,17 @@ export default function UnionPortalClient({ ctx, activeServices = [], chairman =
                                         {district.name} · {upazila.name}
                                     </span>
                                 </motion.div>
-                                <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tight leading-[1.1] mb-6">
+                                <h1 className="text-3xl sm:text-5xl md:text-6xl font-black tracking-tight leading-[1.1] mb-6">
                                     {union.name} <span className="text-teal-400">ইউনিয়ন</span>
                                 </h1>
                                 <div className="flex flex-wrap gap-3">
                                     <div className="inline-flex items-center gap-2 rounded-2xl bg-white/10 px-4 py-2 text-xs font-bold backdrop-blur-md border border-white/5 shadow-lg shadow-black/20">
                                         <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                                         স্মার্ট পোর্টাল একটিভ
+                                    </div>
+                                    <div className="inline-flex items-center gap-2 rounded-2xl bg-white/10 px-4 py-2 text-xs font-bold backdrop-blur-md border border-white/5 shadow-lg shadow-black/20 text-teal-400">
+                                        <Sparkles size={14} />
+                                        u/{union.slug}
                                     </div>
                                     <div className="inline-flex items-center gap-2 rounded-2xl bg-teal-500/20 text-teal-100 px-4 py-2 text-xs font-bold border border-teal-500/20 shadow-lg shadow-black/20">
                                         <MapPin size={14} className="text-teal-400" />
@@ -261,15 +345,99 @@ export default function UnionPortalClient({ ctx, activeServices = [], chairman =
                                     animate={{ opacity: 1, scale: 1 }}
                                     transition={{ delay: i * 0.03 + 0.4 }}
                                     key={s.label} 
-                                    className={`flex flex-col items-center text-center p-3 sm:p-6 rounded-[24px] sm:rounded-[32px] bg-white/[0.08] backdrop-blur-xl border border-white/5 hover:bg-white/[0.15] hover:border-white/15 hover:-translate-y-1 transition-all duration-300 group`}
+                                    className={`flex flex-col items-center text-center p-2 sm:p-6 rounded-[20px] sm:rounded-[32px] bg-white/[0.08] backdrop-blur-xl border border-white/5 hover:bg-white/[0.15] hover:border-white/15 hover:-translate-y-1 transition-all duration-300 group`}
                                 >
-                                    <div className={`w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl ${s.bg} flex items-center justify-center mb-3 sm:mb-4 shadow-lg shadow-black/20 group-hover:scale-110 transition-transform duration-500`}>
-                                        <s.icon className={`${s.color} w-[18px] h-[18px] sm:w-[22px] sm:h-[22px]`} />
+                                    <div className={`w-8 h-8 sm:w-14 sm:h-14 rounded-lg sm:rounded-2xl ${s.bg} flex items-center justify-center mb-2 sm:mb-4 shadow-lg shadow-black/20 group-hover:scale-110 transition-transform duration-500`}>
+                                        <s.icon className={`${s.color} w-[14px] h-[14px] sm:w-[22px] sm:h-[22px]`} />
                                     </div>
-                                    <p className="text-[8px] sm:text-[10px] font-black text-white/40 uppercase tracking-[0.1em] sm:tracking-[0.15em] mb-1 leading-tight group-hover:text-teal-400 transition-colors">{s.label}</p>
-                                    <p className="text-xs sm:text-lg font-black text-white tracking-tight leading-none">{s.value}</p>
+                                    <p className="text-[7px] sm:text-[10px] font-black text-white/40 uppercase tracking-[0.05em] sm:tracking-[0.15em] mb-1 leading-tight group-hover:text-teal-400 transition-colors">{s.label}</p>
+                                    <p className="text-[10px] sm:text-lg font-black text-white tracking-tight leading-none">{s.value}</p>
                                 </motion.div>
                             ))}
+                        </div>
+
+                        {/* Search Bar - Integrated Below Stats */}
+                        <div className="mt-12 max-w-3xl relative group z-50" ref={searchRef}>
+                            <div className="absolute -inset-1 bg-gradient-to-r from-teal-500 to-rose-500 rounded-[32px] blur opacity-10 group-focus-within:opacity-30 transition duration-500" />
+                            <div className="relative flex items-center bg-white/10 border border-white/10 backdrop-blur-2xl rounded-[30px] p-2">
+                                <div className="pl-6 pr-4">
+                                    <Search size={22} className="text-slate-400" />
+                                </div>
+                                <input
+                                    type="text"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    placeholder="আপনার কি প্রয়োজন? (সেবা, নম্বর...)"
+                                    className="flex-1 bg-transparent py-3 sm:py-4 text-white placeholder:text-slate-500 outline-none font-bold text-sm sm:text-lg"
+                                />
+                                <div className="flex items-center gap-2 mr-2">
+                                    <button 
+                                        onClick={startVoiceSearch}
+                                        className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${
+                                            isListening ? 'bg-rose-500 text-white animate-pulse' : 'bg-white/5 text-teal-400 hover:bg-white/10'
+                                        }`}
+                                    >
+                                        {isListening ? <MicOff size={20} /> : <Mic size={20} />}
+                                    </button>
+                                    <button className="hidden sm:flex items-center gap-2 bg-white text-slate-900 px-8 py-4 rounded-[24px] font-black text-sm hover:bg-teal-400 hover:text-white transition-all shadow-lg active:scale-95">
+                                        খুঁজুন
+                                        <Send size={18} />
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Search Results Dropdown */}
+                            <AnimatePresence>
+                                {(searchQuery.length > 0 || isSearching) && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: 10 }}
+                                        className="absolute top-full left-0 right-0 mt-4 p-4 rounded-[32px] bg-slate-900/95 backdrop-blur-2xl border border-white/10 shadow-2xl z-[100] max-h-[400px] overflow-y-auto"
+                                    >
+                                        {isSearching ? (
+                                            <div className="py-12 flex flex-col items-center justify-center text-teal-500">
+                                                <Loader2 className="animate-spin mb-4" size={32} />
+                                                <p className="text-xs font-black uppercase tracking-[0.2em] opacity-60">খুঁজছি...</p>
+                                            </div>
+                                        ) : searchResults.length > 0 ? (
+                                            <div className="grid gap-2">
+                                                {searchResults.map((item, idx) => (
+                                                    <Link
+                                                        key={item.id || idx}
+                                                        href={getResultPath(item)}
+                                                        className="flex items-center gap-4 p-4 rounded-2xl hover:bg-white/5 transition-all group"
+                                                    >
+                                                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 border transition-all group-hover:scale-110 ${
+                                                            item.type === 'service' ? 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20' :
+                                                            item.type === 'union' ? 'bg-teal-500/10 text-teal-500 border-teal-500/20' :
+                                                            item.type === 'ward' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
+                                                            'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                                                        }`}>
+                                                            {item.icon ? <item.icon size={24} /> : <MapPin size={24} />}
+                                                        </div>
+                                                        <div className="text-left">
+                                                            <p className="text-white font-black text-sm">{item.title || item.name || item.name_bn}</p>
+                                                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
+                                                                {item.type === 'service' ? (item.subtitle || 'ডিজিটাল সেবা') : 
+                                                                 item.type === 'union' ? `${item.upazila_name || ''} উপজেলা` :
+                                                                 item.type === 'ward' ? `${item.union_name || ''} ইউনিয়ন` :
+                                                                 `${item.ward_name || ''}, ${item.union_name || ''}`}
+                                                            </p>
+                                                        </div>
+                                                        <ArrowRight size={16} className="ml-auto text-slate-700 group-hover:text-white transition-colors" />
+                                                    </Link>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="py-6 text-center">
+                                                <SearchX className="mx-auto text-slate-700 mb-2" size={40} />
+                                                <p className="text-slate-400 font-bold text-sm">দুঃখিত, আপনার খোঁজা তথ্যটি পাওয়া যায়নি</p>
+                                            </div>
+                                        )}
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </div>
                     </motion.section>
                 </div>
@@ -285,11 +453,11 @@ export default function UnionPortalClient({ ctx, activeServices = [], chairman =
                         <div className="rounded-[32px] bg-white border border-slate-200/60 shadow-sm overflow-hidden">
                             <div className="px-6 py-5 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
                                 <div>
-                                    <h2 className="text-xl font-black text-slate-800 flex items-center gap-2">
-                                        <ShieldCheck className="text-teal-600" />
+                                    <h2 className="text-lg sm:text-xl font-black text-slate-800 flex items-center gap-2">
+                                        <ShieldCheck className="text-teal-600" size={20} />
                                         ইউনিয়নের ওয়াডসমূহ
                                     </h2>
-                                    <p className="mt-1 text-xs text-slate-500 font-bold">ওয়ার্ডভিত্তিক তথ্য ও সেবা কেন্দ্র</p>
+                                    <p className="mt-1 text-[10px] sm:text-xs text-slate-500 font-bold">ওয়ার্ডভিত্তিক তথ্য ও সেবা কেন্দ্র</p>
                                 </div>
                                 <span className="text-[10px] font-black text-white bg-slate-900 px-4 py-2 rounded-full uppercase tracking-wider">
                                     {totalWards} টি ওয়াড
@@ -310,13 +478,13 @@ export default function UnionPortalClient({ ctx, activeServices = [], chairman =
                                                 className="block cursor-pointer border border-slate-100 rounded-[24px] overflow-hidden group hover:border-teal-300 hover:shadow-xl transition-all duration-300 bg-white"
                                             >
                                                 <div className="flex items-center justify-between p-5 bg-gradient-to-r from-slate-50 to-white relative overflow-hidden gap-4">
-                                                    <div className="flex items-center gap-4 relative z-10">
-                                                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center text-white font-black text-lg shadow-lg shadow-teal-200 shrink-0 group-hover:scale-110 transition-transform">
+                                                    <div className="flex items-center gap-3 relative z-10">
+                                                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center text-white font-black text-base sm:text-lg shadow-lg shadow-teal-200 shrink-0 group-hover:scale-110 transition-transform">
                                                             {wardPage * WARDS_PER_PAGE + idx + 1}
                                                         </div>
-                                                        <div className="flex items-baseline gap-2">
-                                                            <h3 className="font-black text-slate-800 text-lg group-hover:text-teal-700 transition-colors leading-tight">{ward.name}</h3>
-                                                            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">{ward.villages?.length || 0} টি গ্রাম</span>
+                                                        <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-2">
+                                                            <h3 className="font-black text-slate-800 text-base sm:text-lg group-hover:text-teal-700 transition-colors leading-tight">{ward.name}</h3>
+                                                            <span className="text-[9px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-widest">{ward.villages?.length || 0} টি গ্রাম</span>
                                                         </div>
                                                     </div>
 
@@ -342,7 +510,7 @@ export default function UnionPortalClient({ ctx, activeServices = [], chairman =
                                                     </div>
                                                 </div>
                                                 
-                                                <div className="px-5 py-5 border-t border-slate-50 bg-slate-50/30 grid grid-cols-2 sm:grid-cols-4 gap-y-4 gap-x-6">
+                                                <div className="px-4 py-4 sm:px-5 sm:py-5 border-t border-slate-50 bg-slate-50/30 grid grid-cols-2 sm:grid-cols-4 gap-y-4 gap-x-4 sm:gap-x-6">
                                                     {/* Row 1: Demographics */}
                                                     <div className="flex items-center gap-2.5">
                                                         <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0 shadow-sm border border-blue-100/50">
@@ -596,7 +764,7 @@ export default function UnionPortalClient({ ctx, activeServices = [], chairman =
                     <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
                         <div>
                             <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-teal-600 mb-2">ইউনিয়ন সেবাসমূহ</p>
-                            <h2 className="text-3xl sm:text-4xl font-black text-slate-800 tracking-tight">প্রয়োজনীয় ডিজিটাল সেবা</h2>
+                            <h2 className="text-2xl sm:text-4xl font-black text-slate-800 tracking-tight">প্রয়োজনীয় ডিজিটাল সেবা</h2>
                         </div>
                     </div>
 

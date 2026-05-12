@@ -6,15 +6,16 @@ import { MapPin, Home, Users, UserCheck, User, ArrowRight, Building2, Globe } fr
 import { adminService } from '@/lib/services/adminService';
 
 const STAT_CARDS = [
-    { key: 'upazilas', label: 'উপজেলা', info: 'সংযুক্ত উপজেলা সংখ্যা', icon: MapPin, color: 'text-cyan-600', bg: 'bg-cyan-50', bar: 'bg-cyan-400' },
-    { key: 'unions', label: 'ইউনিয়ন', info: 'ডিজিটাল ইউনিয়ন নেটওয়ার্ক', icon: Globe, color: 'text-teal-600', bg: 'bg-teal-50', bar: 'bg-teal-400' },
-    { key: 'wards', label: 'ওয়ার্ড', info: 'আধুনিক ওয়ার্ড সংযোগ', icon: Building2, color: 'text-sky-600', bg: 'bg-sky-50', bar: 'bg-sky-400' },
-    { key: 'villages', label: 'গ্রাম', info: 'গ্রামীণ এলাকায় সেবা', icon: Home, color: 'text-emerald-600', bg: 'bg-emerald-50', bar: 'bg-emerald-400' },
-    { key: 'population', label: 'জনসংখ্যা', info: 'রেজিস্টারকৃত মোট মানুষ', icon: Users, color: 'text-violet-600', bg: 'bg-violet-50', bar: 'bg-violet-400' },
-    { key: 'voters', label: 'মোট ভোটার', info: 'নিবন্ধিত ভোটার সংখ্যা', icon: UserCheck, color: 'text-indigo-600', bg: 'bg-indigo-50', bar: 'bg-indigo-400' },
-    { key: 'maleVoters', label: 'পুরুষ ভোটার', info: 'পুরুষ ভোটারের সংখ্যা', icon: User, color: 'text-blue-600', bg: 'bg-blue-50', bar: 'bg-blue-400' },
-    { key: 'femaleVoters', label: 'মহিলা ভোটার', info: 'মহিলা ভোটারের সংখ্যা', icon: User, color: 'text-fuchsia-600', bg: 'bg-fuchsia-50', bar: 'bg-fuchsia-400' },
-    { key: 'homes', label: 'বাড়ি', info: 'ঘর/বাড়ির সংখ্যা', icon: Home, color: 'text-orange-600', bg: 'bg-orange-50', bar: 'bg-orange-400' }
+    { key: 'upazilas', label: 'উপজেলা', info: 'সিস্টেমে সংযুক্ত উপজেলা', icon: MapPin, gradient: 'from-cyan-500 to-blue-600', bg: 'bg-cyan-500/10', color: 'text-cyan-500' },
+    { key: 'unions', label: 'ইউনিয়ন', info: 'ডিজিটাল ইউনিয়ন নেটওয়ার্ক', icon: Globe, gradient: 'from-teal-500 to-emerald-600', bg: 'bg-teal-500/10', color: 'text-teal-500' },
+    { key: 'wards', label: 'ওয়ার্ড', info: 'আধুনিক ওয়ার্ড সংযোগ', icon: Building2, gradient: 'from-sky-500 to-indigo-600', bg: 'bg-sky-500/10', color: 'text-sky-500' },
+    { key: 'villages', label: 'গ্রাম', info: 'স্মার্ট গ্রামীণ নেটওয়ার্ক', icon: Home, gradient: 'from-emerald-500 to-green-600', bg: 'bg-emerald-500/10', color: 'text-emerald-500' },
+    { key: 'verifiedVillages', label: 'সার্ভে সম্পন্ন', info: 'যাচাইকৃত গ্রাম সংখ্যা', icon: UserCheck, gradient: 'from-amber-500 to-orange-600', bg: 'bg-amber-500/10', color: 'text-amber-500' },
+    { key: 'population', label: 'জনসংখ্যা', info: 'রেজিস্টারকৃত মোট মানুষ', icon: Users, gradient: 'from-violet-500 to-purple-600', bg: 'bg-violet-500/10', color: 'text-violet-500' },
+    { key: 'households', label: 'পরিবার', info: 'নিবন্ধিত মোট পরিবার', icon: Home, gradient: 'from-rose-500 to-pink-600', bg: 'bg-rose-500/10', color: 'text-rose-500' },
+    { key: 'voters', label: 'মোট ভোটার', info: 'নিবন্ধিত ভোটার সংখ্যা', icon: UserCheck, gradient: 'from-indigo-500 to-blue-700', bg: 'bg-indigo-500/10', color: 'text-indigo-500' },
+    { key: 'volunteers', label: 'ভলান্টিয়ার', info: 'সক্রিয় মাঠকর্মী সংখ্যা', icon: Users, gradient: 'from-teal-400 to-cyan-600', bg: 'bg-teal-400/10', color: 'text-teal-400' },
+    { key: 'users', label: 'মোট ইউজার', info: 'প্লাটফর্মে সক্রিয় ইউজার', icon: User, gradient: 'from-slate-600 to-slate-800', bg: 'bg-slate-600/10', color: 'text-slate-600' }
 ];
 
 const toBnDigits = (value) => {
@@ -82,15 +83,10 @@ export default function HomeImpactSection() {
                 ]);
 
                 setSummary({
-                    upazilas: globalStats.upazilas,
-                    unions: globalStats.unions,
-                    wards: globalStats.wards,
-                    villages: globalStats.villages,
-                    population: locationStats.population || 45000,
-                    voters: locationStats.voters || 28500,
-                    maleVoters: locationStats.maleVoters || 14200,
-                    femaleVoters: locationStats.femaleVoters || 14300,
-                    homes: locationStats.homes || 9500
+                    ...globalStats,
+                    population: locationStats.population || 0,
+                    voters: locationStats.voters || 0,
+                    homes: locationStats.homes || 0
                 });
             } catch (error) {
                 console.error('Home impact summary load failed:', error);
@@ -103,45 +99,71 @@ export default function HomeImpactSection() {
     }, []);
 
     return (
-        <section className="dg-section-x py-16">
+        <section className="dg-section-x py-8 md:py-16">
             <div className="max-w-6xl mx-auto px-4">
                 <div className="flex flex-col gap-3 mb-8">
                     <p className="text-xs font-black uppercase tracking-[0.32em] text-teal-600">গ্রামীণ ড্যাশবোর্ড</p>
-                    <h2 className="text-2xl sm:text-3xl font-black text-slate-900">সর্বশেষ স্ট্যাটাস কার্ড</h2>
+                    <h2 className="text-xl sm:text-3xl font-black text-slate-900">সর্বশেষ স্ট্যাটাস কার্ড</h2>
                     <p className="max-w-2xl text-sm text-slate-500">ইউনিয়ন, ওয়ার্ড, গ্রাম ও মোট জনসংখ্যা সহ সব তথ্য ছোট, স্পষ্ট এবং দ্রুত বোঝার মতো কার্ডে।</p>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
                     {STAT_CARDS.map((card, index) => {
                         const Icon = card.icon;
                         return (
                             <motion.div
                                 key={card.key}
-                                initial={{ opacity: 0, y: 18 }}
-                                whileInView={{ opacity: 1, y: 0 }}
+                                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                                whileInView={{ opacity: 1, scale: 1, y: 0 }}
                                 viewport={{ once: true }}
-                                transition={{ delay: index * 0.05, duration: 0.35 }}
-                                className="group overflow-hidden rounded-3xl border border-slate-200 bg-white/95 p-4 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-lg"
+                                transition={{ 
+                                    delay: index * 0.04, 
+                                    type: 'spring',
+                                    stiffness: 260,
+                                    damping: 20
+                                }}
+                                className="group relative overflow-hidden rounded-[32px] border border-slate-200/60 bg-white/70 backdrop-blur-xl p-6 shadow-xl shadow-slate-200/20 transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl hover:shadow-teal-500/10"
                             >
-                                <div className="flex items-center justify-between gap-3">
-                                    <div className={`flex h-11 w-11 items-center justify-center rounded-2xl ${card.bg}`}>
-                                        <Icon className={card.color} size={20} />
+                                {/* Decorative Gradient Background */}
+                                <div className={`absolute -right-8 -top-8 h-32 w-32 rounded-full opacity-0 blur-3xl transition-opacity duration-500 group-hover:opacity-20 bg-gradient-to-br ${card.gradient}`} />
+
+                                <div className="flex items-center justify-between relative z-10">
+                                    <div className={`flex h-14 w-14 items-center justify-center rounded-2xl transition-all duration-500 group-hover:scale-110 group-hover:rotate-6 ${card.bg}`}>
+                                        <Icon className={card.color} size={28} />
                                     </div>
-                                    <div className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
-                                        ++
+                                    <div className="flex flex-col items-end">
+                                        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 text-[10px] font-black uppercase tracking-widest border border-emerald-500/10">
+                                            <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
+                                            LIVE
+                                        </div>
                                     </div>
                                 </div>
 
-                                <div className="mt-4">
-                                    <p className="text-3xl font-black text-slate-900 tracking-tight">
-                                        {loading ? '০' : <CountUp value={summary[card.key] || 0} />}
-                                    </p>
-                                    <p className="mt-1 text-sm font-semibold text-slate-700">{card.label}</p>
-                                    <p className="mt-2 text-xs text-slate-500 leading-relaxed">{card.info}</p>
+                                <div className="mt-8 relative z-10">
+                                    <div className="flex items-baseline gap-1">
+                                        <h3 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tighter">
+                                            {loading ? '০' : <CountUp value={summary[card.key] || 0} />}
+                                        </h3>
+                                        <span className="text-xl font-bold text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity duration-500">+</span>
+                                    </div>
+                                    <p className="mt-1 text-base font-black text-slate-800 tracking-tight">{card.label}</p>
+                                    <p className="mt-2 text-xs font-bold text-slate-400 leading-relaxed uppercase tracking-widest">{card.info}</p>
                                 </div>
 
-                                <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100">
-                                    <div className={`${card.bar} h-1.5 rounded-full`} style={{ width: '52%' }} />
+                                {/* Progress Bar / Accent Line */}
+                                <div className="mt-6 h-1.5 w-full overflow-hidden rounded-full bg-slate-100/50">
+                                    <motion.div 
+                                        initial={{ width: 0 }}
+                                        whileInView={{ width: '65%' }}
+                                        transition={{ delay: index * 0.1 + 0.3, duration: 1 }}
+                                        className={`h-full rounded-full bg-gradient-to-r ${card.gradient}`} 
+                                    />
+                                </div>
+                                
+                                {/* Bottom Action (Hidden but ready) */}
+                                <div className="mt-4 flex items-center justify-between opacity-0 translate-y-4 transition-all duration-500 group-hover:opacity-100 group-hover:translate-y-0">
+                                    <span className="text-[10px] font-black text-teal-600 uppercase tracking-widest">বিস্তারিত দেখুন</span>
+                                    <ArrowRight size={14} className="text-teal-600" />
                                 </div>
                             </motion.div>
                         );
