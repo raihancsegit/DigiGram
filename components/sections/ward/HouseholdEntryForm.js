@@ -11,6 +11,7 @@ import {
 import { householdService } from '@/lib/services/householdService';
 import { getVillageFullContext } from '@/lib/services/hierarchyService';
 import { toBnDigits } from '@/lib/utils/format';
+import { notificationService } from '@/lib/services/notificationService';
 
 const inputStyles = "w-full px-5 py-4 rounded-[20px] bg-slate-50 border border-slate-100 focus:bg-white focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 outline-none transition-all font-bold text-slate-700 text-sm";
 const labelStyles = "text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1 mb-1.5 block";
@@ -190,6 +191,31 @@ export default function HouseholdEntryForm({ wardId, villageId, initialData, onS
 
             // Sync one final time to be safe
             await householdService.syncHouseholdStats(householdId);
+            // Trigger notifications for higher authorities
+            if (!isEditMode) {
+                const vName = hierarchy?.village?.name || 'গ্রাম';
+                const owner = houseForm.owner_name;
+                
+                // 1. Notify Ward Member
+                await notificationService.createNotification({
+                    title: 'নতুন খানা যোগ করা হয়েছে',
+                    message: `${vName} গ্রামে ${owner}-এর নতুন খানা তথ্য সফলভাবে যুক্ত করা হয়েছে।`,
+                    role: 'ward_member',
+                    scope_id: wardId,
+                    type: 'success',
+                    link: `/u/${hierarchy?.ctx?.union?.slug}/w/${hierarchy?.ward?.slug || wardId}`
+                });
+
+                // 2. Notify Union Chairman
+                await notificationService.createNotification({
+                    title: 'ইউনিয়নে নতুন খানা নিবন্ধিত',
+                    message: `${vName} গ্রামে একটি নতুন খানা তথ্য যুক্ত করা হয়েছে।`,
+                    role: 'chairman',
+                    scope_id: hierarchy?.ctx?.union?.slug,
+                    type: 'info'
+                });
+            }
+
             onSuccess();
         } catch (err) {
             console.error("Supabase Error (Residents/Locker):", err?.message || JSON.stringify(err, null, 2), err);

@@ -14,6 +14,7 @@ export default function BottomNav() {
     const navItems = [
         { href: paths.home, icon: Home, label: 'হোম' },
         { href: paths.area, icon: MapPin, label: 'এলাকা' },
+        { href: '#search', icon: Search, label: 'সার্চ', isSearchTrigger: true },
         { href: paths.service('more'), icon: Grid, label: 'সেবা' },
         { href: paths.login, icon: User, label: 'প্রোফাইল' },
     ];
@@ -32,6 +33,12 @@ export default function BottomNav() {
                         <Link
                             key={item.href}
                             href={item.href}
+                            onClick={(e) => {
+                                if (item.isSearchTrigger) {
+                                    e.preventDefault();
+                                    window.dispatchEvent(new CustomEvent('open-global-search'));
+                                }
+                            }}
                             className={`${navBtn} ${active ? 'text-teal-400' : 'text-slate-400'}`}
                             aria-label={item.label}
                         >

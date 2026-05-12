@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useSelector, useDispatch } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Sparkles, Send, ArrowRight, Mic, MicOff, ShieldCheck, MapPin, Globe, Home, Loader2, SearchX } from 'lucide-react';
-import { FEATURED_FOR_HERO } from '@/lib/constants/serviceCategories';
+import { FEATURED_FOR_HERO, SERVICE_CATEGORIES } from '@/lib/constants/serviceCategories';
 import { paths } from '@/lib/constants/paths';
 import { openModal } from '@/lib/store/features/locationSlice';
 
@@ -73,32 +73,57 @@ export default function HomeHeroSection() {
     // Voice Search
     const startVoiceSearch = () => {
         if (typeof window === 'undefined') return;
+
+        // Check if HTTPS (SpeechRecognition requires it on mobile)
+        if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+            alert("ভয়েস সার্চ শুধুমাত্র সিকিউর (HTTPS) কানেকশনে কাজ করে। অনুগ্রহ করে আপনার সাইটের URL চেক করুন।");
+            return;
+        }
+
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SpeechRecognition) {
             alert('আপনার ব্রাউজারটি ভয়েস সার্চ সাপোর্ট করে না। অনুগ্রহ করে ক্রোম ব্রাউজার ব্যবহার করুন।');
             return;
         }
 
-        if (isListening) {
-            recognitionRef.current?.stop();
-            return;
+        try {
+            if (isListening) {
+                recognitionRef.current?.stop();
+                setIsListening(false);
+                return;
+            }
+
+            const recognition = new SpeechRecognition();
+            recognition.lang = 'bn-BD';
+            recognition.interimResults = true;
+            recognition.continuous = false;
+            recognition.maxAlternatives = 1;
+
+            recognition.onstart = () => setIsListening(true);
+            recognition.onend = () => setIsListening(false);
+            
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                setSearchQuery(transcript);
+                if (event.results[0].isFinal) {
+                    recognition.stop();
+                }
+            };
+
+            recognition.onerror = (event) => {
+                console.error("Voice search error:", event.error);
+                setIsListening(false);
+                if (event.error === 'not-allowed') {
+                    alert("মাইক্রোফোন ব্যবহারের অনুমতি পাওয়া যায়নি। ব্রাউজার সেটিংস থেকে অনুমতি দিন।");
+                }
+            };
+
+            recognitionRef.current = recognition;
+            recognition.start();
+        } catch (err) {
+            console.error("Failed to start voice recognition:", err);
+            setIsListening(false);
         }
-
-        const recognition = new SpeechRecognition();
-        recognition.lang = 'bn-BD';
-        recognition.interimResults = false;
-        recognition.maxAlternatives = 1;
-
-        recognition.onstart = () => setIsListening(true);
-        recognition.onresult = (event) => {
-            const transcript = event.results[0][0].transcript;
-            setSearchQuery(transcript);
-        };
-        recognition.onerror = () => setIsListening(false);
-        recognition.onend = () => setIsListening(false);
-
-        recognitionRef.current = recognition;
-        recognition.start();
     };
 
     const getResultPath = (item) => {
@@ -223,9 +248,12 @@ export default function HomeHeroSection() {
                                 <div className="flex items-center gap-2 mr-2">
                                     <button 
                                         onClick={startVoiceSearch}
-                                        className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${
-                                            isListening ? 'bg-rose-500 text-white animate-pulse' : 'bg-white/5 text-teal-400 hover:bg-white/10'
+                                        className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all shadow-lg ${
+                                            isListening 
+                                            ? 'bg-rose-500 text-white animate-pulse ring-4 ring-rose-500/20' 
+                                            : 'bg-teal-500/10 text-teal-400 border border-teal-500/30 hover:bg-teal-500 hover:text-white'
                                         }`}
+                                        title={isListening ? 'শুনছি...' : 'ভয়েস সার্চ'}
                                     >
                                         {isListening ? <MicOff size={20} /> : <Mic size={20} />}
                                     </button>
@@ -288,8 +316,23 @@ export default function HomeHeroSection() {
                                     </motion.div>
                                 )}
                             </AnimatePresence>
+                        {/* Quick Services Grid for Mobile */}
+                        <div className="mt-8 grid grid-cols-2 sm:grid-cols-3 gap-3 lg:hidden">
+                            {floatingCards.slice(0, 4).map((card, i) => (
+                                <Link
+                                    key={card.id}
+                                    href={card.href}
+                                    className="flex flex-col items-center justify-center p-4 rounded-[24px] bg-white/5 border border-white/5 active:bg-white/10 active:scale-95 transition-all"
+                                >
+                                    <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${card.gradient} text-white flex items-center justify-center mb-3 shadow-lg`}>
+                                        <card.icon size={20} />
+                                    </div>
+                                    <span className="text-[11px] font-black text-white text-center leading-tight">{card.title}</span>
+                                </Link>
+                            ))}
                         </div>
                     </div>
+                </div>
 
 
                     <div className="hidden lg:block flex-1 w-full relative">

@@ -21,6 +21,7 @@ import { authService } from '@/lib/services/authService';
 import { supabase } from '@/lib/utils/supabase';
 import { toBnDigits, parseBnInt } from '@/lib/utils/format';
 import { paths } from '@/lib/constants/paths';
+import NotificationBell from '@/components/ui/NotificationBell';
 
 export default function WardMemberDashboard() {
     const { user, isAuthenticated } = useSelector((state) => state.auth);
@@ -243,6 +244,10 @@ export default function WardMemberDashboard() {
                             <Settings size={18} />
                             <span className="hidden xs:inline">সেটিংস</span>
                         </Link>
+                        <NotificationBell 
+                            role={user?.role} 
+                            scopeId={user?.access_scope_id} 
+                        />
                         <button 
                             onClick={async () => {
                                 await dispatch(performLogout());

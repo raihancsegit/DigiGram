@@ -23,6 +23,7 @@ import LostFoundManager from '@/components/sections/admin/LostFoundManager';
 import NewsManager from '@/components/sections/admin/NewsManager';
 import DonationManager from '@/components/sections/admin/DonationManager';
 import MarketManagement from '@/components/sections/admin/market/MarketManagement';
+import NotificationBell from '@/components/ui/NotificationBell';
 import { toBnDigits, parseBnInt } from '@/lib/utils/format';
 import UnionNewsForm from '@/components/sections/union/UnionNewsForm';
 import UnionManagementSection from '@/components/sections/union/UnionManagementSection';
@@ -190,6 +191,10 @@ export default function ChairmanDashboard() {
                             <Settings size={18} />
                             <span className="hidden xs:inline">সেটিংস</span>
                         </Link>
+                        <NotificationBell 
+                            role={user?.role} 
+                            scopeId={user?.access_scope_id} 
+                        />
                         <button 
                             onClick={async () => {
                                 await dispatch(performLogout());

@@ -19,6 +19,7 @@ import { HEADER_QUICK_LINKS } from '@/lib/constants/serviceCategories';
 import { paths } from '@/lib/constants/paths';
 import NewsTicker from '@/components/layout/NewsTicker';
 import { SERVICE_CATEGORIES } from '@/lib/constants/serviceCategories';
+import NotificationBell from '@/components/ui/NotificationBell';
 
 export default function Header() {
     const pathname = usePathname();
@@ -112,6 +113,12 @@ export default function Header() {
         router.push('/login');
     };
 
+    useEffect(() => {
+        const handleOpenSearch = () => setIsSearchOpen(true);
+        window.addEventListener('open-global-search', handleOpenSearch);
+        return () => window.removeEventListener('open-global-search', handleOpenSearch);
+    }, []);
+
     // Global Search Logic
     useEffect(() => {
         const handleKeyDown = (e) => {
@@ -171,36 +178,66 @@ export default function Header() {
 
     // Voice Search Implementation
     const startVoiceSearch = () => {
+        if (typeof window === 'undefined') return;
+
+        // Check if HTTPS (SpeechRecognition requires it on mobile)
+        if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+            alert("ভয়েস সার্চ শুধুমাত্র সিকিউর (HTTPS) কানেকশনে কাজ করে। অনুগ্রহ করে আপনার সাইটের URL চেক করুন।");
+            return;
+        }
+
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SpeechRecognition) {
             alert("আপনার ব্রাউজারে ভয়েস সার্চ সাপোর্ট করে না। অনুগ্রহ করে ক্রোম বা এজ ব্রাউজার ব্যবহার করুন।");
             return;
         }
 
-        if (isListening) {
-            recognitionRef.current?.stop();
+        try {
+            if (isListening) {
+                recognitionRef.current?.stop();
+                setIsListening(false);
+                return;
+            }
+
+            const recognition = new SpeechRecognition();
+            recognition.lang = 'bn-BD';
+            recognition.interimResults = true; // Show results as user speaks
+            recognition.continuous = false; // Stop after first sentence for search
+            recognition.maxAlternatives = 1;
+
+            recognition.onstart = () => {
+                setIsListening(true);
+                // Visual feedback via a toast or status could be added here
+            };
+
+            recognition.onend = () => {
+                setIsListening(false);
+            };
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                setSearchQuery(transcript);
+                
+                // If final result, stop listening
+                if (event.results[0].isFinal) {
+                    recognition.stop();
+                }
+            };
+
+            recognition.onerror = (event) => {
+                console.error("Voice search error:", event.error);
+                setIsListening(false);
+                if (event.error === 'not-allowed') {
+                    alert("মাইক্রোফোন ব্যবহারের অনুমতি পাওয়া যায়নি। ব্রাউজার সেটিংস থেকে অনুমতি দিন।");
+                }
+            };
+
+            recognitionRef.current = recognition;
+            recognition.start();
+        } catch (err) {
+            console.error("Failed to start voice recognition:", err);
             setIsListening(false);
-            return;
         }
-
-        const recognition = new SpeechRecognition();
-        recognition.lang = 'bn-BD';
-        recognition.interimResults = false;
-        recognition.maxAlternatives = 1;
-
-        recognition.onstart = () => setIsListening(true);
-        recognition.onend = () => setIsListening(false);
-        recognition.onresult = (event) => {
-            const transcript = event.results[0][0].transcript;
-            setSearchQuery(transcript);
-        };
-        recognition.onerror = (event) => {
-            console.error("Voice search error:", event.error);
-            setIsListening(false);
-        };
-
-        recognitionRef.current = recognition;
-        recognition.start();
     };
 
     const getResultPath = (item) => {
@@ -352,7 +389,7 @@ export default function Header() {
 
                             {/* Advanced Location Picker - Split Logic */}
                             {mounted && (
-                                <div className={`flex items-center rounded-full border transition-all h-10 md:h-12 overflow-hidden shadow-sm w-fit min-w-[140px] md:min-w-[180px] ${
+                                <div className={`flex items-center rounded-full border transition-all h-9 sm:h-12 overflow-hidden shadow-sm w-fit min-w-[110px] sm:min-w-[180px] ${
                                     isScrolled 
                                     ? 'bg-white/5 border-white/10' 
                                     : 'bg-white border-slate-200'
@@ -366,22 +403,22 @@ export default function Header() {
                                                 dispatch(openModal());
                                             }
                                         }}
-                                        className={`flex items-center gap-2 md:gap-2.5 px-3 md:px-5 h-full transition-all hover:bg-slate-50/50 min-w-0 group/loc-text ${
+                                        className={`flex items-center gap-1.5 sm:gap-2.5 px-2 sm:px-5 h-full transition-all hover:bg-slate-50/50 min-w-0 group/loc-text ${
                                             isScrolled ? 'hover:bg-white/5' : ''
                                         }`}
                                     >
-                                        <div className={`p-1 md:p-1.5 rounded-full transition-all shrink-0 ${
+                                        <div className={`p-1 sm:p-1.5 rounded-full transition-all shrink-0 ${
                                             isScrolled 
                                             ? 'bg-teal-500/20 text-teal-400 group-hover/loc-text:bg-teal-500 group-hover/loc-text:text-white' 
                                             : 'bg-slate-100 text-slate-500 group-hover/loc-text:bg-teal-500 group-hover/loc-text:text-white'
                                         }`}>
-                                            <MapPin size={12} className="md:w-3.5 md:h-3.5" />
+                                            <MapPin size={10} className="sm:w-3.5 sm:h-3.5" />
                                         </div>
                                         <div className="flex flex-col items-start min-w-0 leading-tight">
-                                            <span className={`hidden md:block text-[8px] font-black uppercase tracking-[0.15em] opacity-60 ${isScrolled ? 'text-teal-400' : 'text-slate-500'}`}>
+                                            <span className={`hidden sm:block text-[8px] font-black uppercase tracking-[0.15em] opacity-60 ${isScrolled ? 'text-teal-400' : 'text-slate-500'}`}>
                                                 {selected.ward ? `${selected.ward} নং ওয়ার্ড` : 'আপনার অবস্থান'}
                                             </span>
-                                            <span className={`text-[11px] md:text-sm font-black truncate tracking-tight ${isScrolled ? 'text-white' : 'text-slate-900'}`}>
+                                            <span className={`text-[10px] sm:text-sm font-black truncate tracking-tight ${isScrolled ? 'text-white' : 'text-slate-900'}`}>
                                                 {selected.union || 'নির্বাচন'}
                                             </span>
                                         </div>
@@ -390,14 +427,14 @@ export default function Header() {
                                     {/* Right Part: Modal Trigger */}
                                     <button
                                         onClick={() => dispatch(openModal())}
-                                        className={`w-8 md:w-10 h-full border-l flex items-center justify-center transition-all hover:bg-teal-500 hover:text-white group/arrow ${
+                                        className={`w-7 sm:w-10 h-full border-l flex items-center justify-center transition-all hover:bg-teal-500 hover:text-white group/arrow ${
                                             isScrolled 
                                             ? 'border-white/10 text-teal-400' 
                                             : 'border-slate-100 text-slate-400'
                                         }`}
                                         title="লোকেশন পরিবর্তন করুন"
                                     >
-                                        <ChevronDown size={12} className="transition-transform group-hover/arrow:rotate-180" />
+                                        <ChevronDown size={10} className="transition-transform group-hover/arrow:rotate-180" />
                                     </button>
                                 </div>
                             )}
@@ -448,15 +485,15 @@ export default function Header() {
                             {/* Search Button */}
                             <button 
                                 onClick={() => setIsSearchOpen(!isSearchOpen)}
-                                className={`flex w-11 h-11 sm:w-12 sm:h-12 rounded-2xl transition-all items-center justify-center active:scale-90 group ${
+                                className={`flex w-9 h-9 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl transition-all items-center justify-center active:scale-90 group ${
                                     isSearchOpen
                                     ? 'bg-teal-500 text-white shadow-lg shadow-teal-500/20'
                                     : isScrolled 
                                         ? 'bg-white/10 border border-white/10 text-white hover:bg-teal-500' 
-                                        : 'bg-white border border-slate-200 text-slate-400 shadow-sm hover:border-teal-400 hover:text-teal-600'
+                                        : 'bg-white border border-slate-200 text-slate-500 shadow-sm hover:border-teal-400 hover:text-teal-600'
                                 }`}
                             >
-                                {isSearchOpen ? <X size={20} strokeWidth={2.5} /> : <Search size={20} strokeWidth={2.5} className="group-hover:scale-110 transition-transform" />}
+                                {isSearchOpen ? <X size={18} strokeWidth={2.5} /> : <Search size={18} strokeWidth={2.5} className="group-hover:scale-110 transition-transform" />}
                             </button>
 
                             {/* Profile Wrapper */}

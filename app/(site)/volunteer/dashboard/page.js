@@ -17,6 +17,7 @@ import { householdService } from '@/lib/services/householdService';
 import { wardService } from '@/lib/services/wardService';
 import { toBnDigits } from '@/lib/utils/format';
 import { paths } from '@/lib/constants/paths';
+import NotificationBell from '@/components/ui/NotificationBell';
 
 export default function VolunteerDashboard() {
     const { user } = useSelector((state) => state.auth);
@@ -117,6 +118,11 @@ export default function VolunteerDashboard() {
                                 <MapPin size={14} className="text-teal-400" />
                                 {villageData?.ward?.name_bn} · {villageData?.ctx?.union?.name}
                             </div>
+                        <div className="flex items-center gap-3">
+                            <NotificationBell 
+                                role={user?.role} 
+                                scopeId={user?.access_scope_id} 
+                            />
                             {villageData?.ctx?.union?.slug && villageData?.ward?.id && villageData?.village?.id && (
                                 <Link 
                                     href={paths.villagePortal(villageData.ctx.union.slug, villageData.ward.slug || villageData.ward.id, villageData.village.slug || villageData.village.id)}
@@ -125,6 +131,17 @@ export default function VolunteerDashboard() {
                                     গ্রামের পোর্টালে যান <MoveUpRight size={14} className="text-teal-600" />
                                 </Link>
                             )}
+                            <button 
+                                onClick={() => {
+                                    localStorage.clear();
+                                    window.location.href = '/login';
+                                }}
+                                className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-500 flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all shadow-lg"
+                                title="লগআউট"
+                            >
+                                <LogOut size={18} />
+                            </button>
+                        </div>
                         </motion.div>
                     </div>
                 </div>
