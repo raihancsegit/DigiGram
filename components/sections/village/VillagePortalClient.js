@@ -168,14 +168,25 @@ export default function VillagePortalClient({ ctx, ward, village }) {
         return () => clearTimeout(delayDebounceFn);
     }, [searchQuery]);
 
-    const startVoiceSearch = () => {
+    const startVoiceSearch = async () => {
         if (typeof window === 'undefined') return;
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SpeechRecognition) return alert('ব্রাউজার সাপোর্ট করে না');
+        if (!SpeechRecognition) return alert('আপনার ব্রাউজারে ভয়েস সার্চ সাপোর্ট করে না।');
 
         if (isListening) {
             recognitionRef.current?.stop();
             return;
+        }
+
+        // PWA permission workaround
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                stream.getTracks().forEach(track => track.stop());
+            } catch (err) {
+                console.error("Microphone permission error:", err);
+                return alert("মাইক্রোফোন ব্যবহারের অনুমতি পাওয়া যায়নি। ডিভাইস বা অ্যাপ সেটিংসে গিয়ে 'Microphone' পারমিশন চালু করুন।");
+            }
         }
 
         const recognition = new SpeechRecognition();
@@ -708,7 +719,7 @@ export default function VillagePortalClient({ ctx, ward, village }) {
                                             <p className="text-[10px] text-slate-400 font-bold">ভলান্টিয়ার দ্বারা তথ্য যাচাইকৃত</p>
                                         </div>
                                     </div>
-                                    <p className="text-xs text-slate-500 leading-relaxed italic">"এই গ্রামের তথ্যগুলো নিয়মিত ডিজিটাল ভলান্টিয়ারদের মাধ্যমে আপডেট করা হয়। যেকোনো গরমিল পেলে আমাদের জানান।"</p>
+                                    <p className="text-xs text-slate-500 leading-relaxed italic">&quot;এই গ্রামের তথ্যগুলো নিয়মিত ডিজিটাল ভলান্টিয়ারদের মাধ্যমে আপডেট করা হয়। যেকোনো গরমিল পেলে আমাদের জানান।&quot;</p>
                                 </div>
                             </div>
                         </div>

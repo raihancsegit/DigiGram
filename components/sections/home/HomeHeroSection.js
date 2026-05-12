@@ -71,7 +71,7 @@ export default function HomeHeroSection() {
     }, [searchQuery]);
 
     // Voice Search
-    const startVoiceSearch = () => {
+    const startVoiceSearch = async () => {
         if (typeof window === 'undefined') return;
 
         // Check if HTTPS (SpeechRecognition requires it on mobile)
@@ -91,6 +91,19 @@ export default function HomeHeroSection() {
                 recognitionRef.current?.stop();
                 setIsListening(false);
                 return;
+            }
+
+            // PWA / Mobile permission workaround: explicitly request audio permission first
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    // Stop tracks immediately so SpeechRecognition can grab the mic lock smoothly
+                    stream.getTracks().forEach(track => track.stop());
+                } catch (permErr) {
+                    console.error("Microphone permission error:", permErr);
+                    alert("মাইক্রোফোন ব্যবহারের অনুমতি পাওয়া যায়নি। অনুগ্রহ করে আপনার ডিভাইস বা অ্যাপ সেটিংসে গিয়ে 'Microphone' পারমিশন চালু করুন।");
+                    return;
+                }
             }
 
             const recognition = new SpeechRecognition();
@@ -114,7 +127,7 @@ export default function HomeHeroSection() {
                 console.error("Voice search error:", event.error);
                 setIsListening(false);
                 if (event.error === 'not-allowed') {
-                    alert("মাইক্রোফোন ব্যবহারের অনুমতি পাওয়া যায়নি। ব্রাউজার সেটিংস থেকে অনুমতি দিন।");
+                    alert("মাইক্রোফোন ব্যবহারের অনুমতি পাওয়া যায়নি। অনুগ্রহ করে আপনার ডিভাইস বা অ্যাপ সেটিংসে গিয়ে 'Microphone' পারমিশন চালু করুন।");
                 }
             };
 

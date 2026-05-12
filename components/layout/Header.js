@@ -177,7 +177,7 @@ export default function Header() {
     }, [searchQuery]);
 
     // Voice Search Implementation
-    const startVoiceSearch = () => {
+    const startVoiceSearch = async () => {
         if (typeof window === 'undefined') return;
 
         // Check if HTTPS (SpeechRecognition requires it on mobile)
@@ -199,6 +199,18 @@ export default function Header() {
                 return;
             }
 
+            // PWA / Mobile permission workaround: explicitly request audio permission first
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    stream.getTracks().forEach(track => track.stop());
+                } catch (permErr) {
+                    console.error("Microphone permission error:", permErr);
+                    alert("মাইক্রোফোন ব্যবহারের অনুমতি পাওয়া যায়নি। অনুগ্রহ করে আপনার ডিভাইস বা অ্যাপ সেটিংসে গিয়ে 'Microphone' পারমিশন চালু করুন।");
+                    return;
+                }
+            }
+
             const recognition = new SpeechRecognition();
             recognition.lang = 'bn-BD';
             recognition.interimResults = true; // Show results as user speaks
@@ -207,7 +219,6 @@ export default function Header() {
 
             recognition.onstart = () => {
                 setIsListening(true);
-                // Visual feedback via a toast or status could be added here
             };
 
             recognition.onend = () => {
@@ -228,7 +239,7 @@ export default function Header() {
                 console.error("Voice search error:", event.error);
                 setIsListening(false);
                 if (event.error === 'not-allowed') {
-                    alert("মাইক্রোফোন ব্যবহারের অনুমতি পাওয়া যায়নি। ব্রাউজার সেটিংস থেকে অনুমতি দিন।");
+                    alert("মাইক্রোফোন ব্যবহারের অনুমতি পাওয়া যায়নি। অনুগ্রহ করে আপনার ডিভাইস বা অ্যাপ সেটিংসে গিয়ে 'Microphone' পারমিশন চালু করুন।");
                 }
             };
 

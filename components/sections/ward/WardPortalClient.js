@@ -69,14 +69,25 @@ export default function WardPortalClient({ ctx, ward: initialWard }) {
         return () => clearTimeout(delayDebounceFn);
     }, [searchQuery]);
 
-    const startVoiceSearch = () => {
+    const startVoiceSearch = async () => {
         if (typeof window === 'undefined') return;
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SpeechRecognition) return alert('ব্রাউজার সাপোর্ট করে না');
+        if (!SpeechRecognition) return alert('আপনার ব্রাউজারে ভয়েস সার্চ সাপোর্ট করে না।');
 
         if (isListening) {
             recognitionRef.current?.stop();
             return;
+        }
+
+        // PWA permission workaround
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                stream.getTracks().forEach(track => track.stop());
+            } catch (err) {
+                console.error("Microphone permission error:", err);
+                return alert("মাইক্রোফোন ব্যবহারের অনুমতি পাওয়া যায়নি। ডিভাইস বা অ্যাপ সেটিংসে গিয়ে 'Microphone' পারমিশন চালু করুন।");
+            }
         }
 
         const recognition = new SpeechRecognition();
