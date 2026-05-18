@@ -8,12 +8,13 @@ import {
     ExternalLink, Edit3, Trash2, Loader2,
     Filter, GraduationCap, Landmark, 
     Home, Building2, LayoutGrid, LayoutList,
-    Activity
+    Activity, Copy, Globe2, Power
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as hierarchyService from '@/lib/services/hierarchyService';
 import { adminService } from '@/lib/services/adminService';
 import { institutionService } from '@/lib/services/institutionService';
+import { INSTITUTION_PROFILES, INSTITUTION_PROFILE_OPTIONS } from '@/lib/constants/institutionProfiles';
 import ModalPortal from '@/components/common/ModalPortal';
 import { Save, X as CloseIcon } from 'lucide-react';
 
@@ -28,16 +29,24 @@ const TYPE_ICONS = {
 export default function InstitutionManagementPage() {
     const [institutions, setInstitutions] = useState([]);
     const [unions, setUnions] = useState([]);
+    const [wards, setWards] = useState([]);
+    const [villages, setVillages] = useState([]);
     const [loading, setLoading] = useState(true);
     const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
     const [searchQuery, setSearchQuery] = useState('');
     const [showAddModal, setShowAddModal] = useState(false);
+    const [editingInstitution, setEditingInstitution] = useState(null);
     const [formData, setFormData] = useState({
         name: '',
         type: 'mosque',
+        category: 'mosque',
         location_id: '',
+        ward_id: '',
+        village_location_id: '',
         village: '',
-        subdomain: ''
+        subdomain: '',
+        custom_domain: '',
+        portal_features: INSTITUTION_PROFILES.mosque.features
     });
 
     useEffect(() => {
@@ -64,14 +73,157 @@ export default function InstitutionManagementPage() {
     const handleAdd = async (e) => {
         e.preventDefault();
         try {
-            await institutionService.addInstitution(formData);
+            const created = await institutionService.addInstitution(formData);
             setShowAddModal(false);
-            setFormData({ name: '', type: 'mosque', location_id: '', village: '', subdomain: '' });
+            setFormData({
+                name: '',
+                type: 'mosque',
+                category: 'mosque',
+                location_id: '',
+                ward_id: '',
+                village_location_id: '',
+                village: '',
+                subdomain: '',
+                custom_domain: '',
+                portal_features: INSTITUTION_PROFILES.mosque.features
+            });
             loadData();
-            alert('প্রতিষ্ঠান যোগ করা হয়েছে।');
+            alert(`প্রতিষ্ঠান তৈরি হয়েছে। Website: http://${created.subdomain}.localhost:3000`);
         } catch (err) {
             alert('সংরক্ষণ করতে সমস্যা হয়েছে।');
         }
+    };
+
+    const openEditModal = async (institution) => {
+        const unionId = institution.location_id || '';
+        const loadedWards = unionId ? await hierarchyService.getChildLocationsByType(unionId, 'ward') : [];
+        const villageLocation = institution.village_location_id
+            ? await hierarchyService.getLocationPath(institution.village_location_id)
+            : null;
+        const inferredWard = villageLocation?.parent_id
+            ? loadedWards.find((ward) => ward.id === villageLocation.parent_id)
+            : null;
+        const loadedVillages = inferredWard
+            ? await hierarchyService.getChildLocationsByType(inferredWard.id, 'village')
+            : [];
+
+        setWards(loadedWards);
+        setVillages(loadedVillages);
+        setFormData({
+            name: institution.name || '',
+            type: institution.type || 'school',
+            category: institution.category || institution.type || 'school',
+            location_id: unionId,
+            ward_id: inferredWard?.id || '',
+            village_location_id: institution.village_location_id || '',
+            village: institution.village || '',
+            subdomain: institution.subdomain || '',
+            custom_domain: institution.custom_domain || '',
+            portal_features: institution.portal_features || INSTITUTION_PROFILES[institution.category]?.features || []
+        });
+        setEditingInstitution(institution);
+        setShowAddModal(true);
+    };
+
+    const handleSave = async (e) => {
+        e.preventDefault();
+        try {
+            if (editingInstitution) {
+                await institutionService.updateInstitution(editingInstitution.id, formData);
+                alert('প্রতিষ্ঠান আপডেট হয়েছে।');
+            } else {
+                const created = await institutionService.addInstitution(formData);
+                alert(`প্রতিষ্ঠান তৈরি হয়েছে। Website: http://${created.subdomain}.localhost:3000`);
+            }
+
+            setShowAddModal(false);
+            setEditingInstitution(null);
+            setFormData({
+                name: '',
+                type: 'mosque',
+                category: 'mosque',
+                location_id: '',
+                ward_id: '',
+                village_location_id: '',
+                village: '',
+                subdomain: '',
+                custom_domain: '',
+                portal_features: INSTITUTION_PROFILES.mosque.features
+            });
+            loadData();
+        } catch (err) {
+            alert(editingInstitution ? 'আপডেট করতে সমস্যা হয়েছে।' : 'সংরক্ষণ করতে সমস্যা হয়েছে।');
+        }
+    };
+
+    const handleDelete = async (institution) => {
+        const confirmed = window.confirm(`"${institution.name}" মুছে ফেলতে চান? এই প্রতিষ্ঠানের website ও portal data-ও মুছে যেতে পারে।`);
+        if (!confirmed) return;
+
+        try {
+            await institutionService.deleteInstitution(institution.id);
+            setInstitutions((current) => current.filter((item) => item.id !== institution.id));
+        } catch (err) {
+            alert('প্রতিষ্ঠান মুছতে সমস্যা হয়েছে।');
+        }
+    };
+
+    const toggleWebsiteStatus = async (institution) => {
+        try {
+            const nextStatus = institution.website_status === 'paused' ? 'active' : 'paused';
+            const updated = await institutionService.updateWebsiteStatus(institution.id, nextStatus);
+            setInstitutions((current) => current.map((item) => item.id === institution.id ? updated : item));
+        } catch (err) {
+            alert('Website status বদলাতে সমস্যা হয়েছে।');
+        }
+    };
+
+    const handleDuplicate = async (institution) => {
+        try {
+            const duplicated = await institutionService.duplicateInstitution(institution);
+            setInstitutions((current) => [...current, duplicated]);
+        } catch (err) {
+            alert('Duplicate করতে সমস্যা হয়েছে। একই subdomain থাকলে পরে rename করতে হবে।');
+        }
+    };
+
+    const suggestSubdomain = (name) => name
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .slice(0, 40);
+
+    const handleUnionChange = async (unionId) => {
+        setFormData((current) => ({
+            ...current,
+            location_id: unionId,
+            ward_id: '',
+            village_location_id: '',
+            village: ''
+        }));
+        setVillages([]);
+        setWards(unionId ? await hierarchyService.getChildLocationsByType(unionId, 'ward') : []);
+    };
+
+    const handleWardChange = async (wardId) => {
+        setFormData((current) => ({
+            ...current,
+            ward_id: wardId,
+            village_location_id: '',
+            village: ''
+        }));
+        setVillages(wardId ? await hierarchyService.getChildLocationsByType(wardId, 'village') : []);
+    };
+
+    const handleVillageChange = (villageId) => {
+        const village = villages.find((item) => item.id === villageId);
+        setFormData((current) => ({
+            ...current,
+            village_location_id: villageId,
+            village: village?.name_bn || ''
+        }));
     };
 
     const filteredInst = institutions.filter(inst => 
@@ -163,10 +315,16 @@ export default function InstitutionManagementPage() {
                                             <Icon size={32} />
                                         </div>
                                         <div className="flex gap-2">
-                                            <button className="p-2.5 rounded-xl bg-slate-50 text-slate-400 hover:text-teal-600 hover:bg-teal-50 transition-all" title="এডিট">
+                                            <button onClick={() => toggleWebsiteStatus(inst)} className={`p-2.5 rounded-xl transition-all ${inst.website_status === 'paused' ? 'bg-amber-50 text-amber-600 hover:bg-amber-100' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'}`} title={inst.website_status === 'paused' ? 'চালু করুন' : 'Pause করুন'}>
+                                                <Power size={18} />
+                                            </button>
+                                            <button onClick={() => handleDuplicate(inst)} className="p-2.5 rounded-xl bg-slate-50 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all" title="Duplicate">
+                                                <Copy size={18} />
+                                            </button>
+                                            <button onClick={() => openEditModal(inst)} className="p-2.5 rounded-xl bg-slate-50 text-slate-400 hover:text-teal-600 hover:bg-teal-50 transition-all" title="এডিট">
                                                 <Edit3 size={18} />
                                             </button>
-                                            <button className="p-2.5 rounded-xl bg-slate-50 text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all" title="মুছুন">
+                                            <button onClick={() => handleDelete(inst)} className="p-2.5 rounded-xl bg-slate-50 text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all" title="মুছুন">
                                                 <Trash2 size={18} />
                                             </button>
                                         </div>
@@ -191,14 +349,29 @@ export default function InstitutionManagementPage() {
                                                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">সাবডোমেইন</span>
                                                 <span className="text-sm font-black text-slate-700">{inst.subdomain || '---'}</span>
                                             </div>
-                                            <a 
-                                                href={inst.custom_domain ? `https://${inst.custom_domain}` : `http://${inst.subdomain}.localhost:3000`} 
-                                                target="_blank"
-                                                className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-black shadow-lg shadow-slate-900/10 hover:bg-teal-600 transition-all active:scale-95"
-                                            >
-                                                ভিজিট
-                                                <ExternalLink size={14} />
-                                            </a>
+                                            <div className="flex gap-2">
+                                                <a 
+                                                    href={inst.custom_domain ? `https://${inst.custom_domain}` : `http://${inst.subdomain}.localhost:3000`} 
+                                                    target="_blank"
+                                                    className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-black shadow-lg shadow-slate-900/10 hover:bg-teal-600 transition-all active:scale-95"
+                                                >
+                                                    Website
+                                                    <ExternalLink size={14} />
+                                                </a>
+                                                <a
+                                                    href={inst.type === 'mosque' ? `/m/${inst.id}/admin` : `/school/${inst.id}/admin`}
+                                                    className="flex items-center gap-2 bg-teal-50 text-teal-700 px-4 py-2 rounded-xl text-xs font-black hover:bg-teal-100 transition-all"
+                                                >
+                                                    Portal
+                                                </a>
+                                                <a
+                                                    href={inst.type === 'mosque' ? `/m/${inst.id}/admin` : `/school/${inst.id}/admin`}
+                                                    className="flex items-center gap-2 bg-indigo-50 text-indigo-700 px-4 py-2 rounded-xl text-xs font-black hover:bg-indigo-100 transition-all"
+                                                >
+                                                    <Globe2 size={14} />
+                                                    Settings
+                                                </a>
+                                            </div>
                                         </div>
                                     </div>
                                 </motion.div>
@@ -237,8 +410,10 @@ export default function InstitutionManagementPage() {
                                         <span className="text-sm font-bold text-slate-400">{inst.subdomain}.localhost:3000</span>
                                     </td>
                                     <td className="px-8 py-6 text-right space-x-2">
-                                        <button className="p-2 text-slate-400 hover:text-teal-600 transition-colors"><Edit3 size={18} /></button>
-                                        <button className="p-2 text-slate-400 hover:text-rose-600 transition-colors"><Trash2 size={18} /></button>
+                                        <button onClick={() => toggleWebsiteStatus(inst)} className={`p-2 transition-colors ${inst.website_status === 'paused' ? 'text-amber-500 hover:text-amber-700' : 'text-emerald-500 hover:text-emerald-700'}`}><Power size={18} /></button>
+                                        <button onClick={() => handleDuplicate(inst)} className="p-2 text-slate-400 hover:text-indigo-600 transition-colors"><Copy size={18} /></button>
+                                        <button onClick={() => openEditModal(inst)} className="p-2 text-slate-400 hover:text-teal-600 transition-colors"><Edit3 size={18} /></button>
+                                        <button onClick={() => handleDelete(inst)} className="p-2 text-slate-400 hover:text-rose-600 transition-colors"><Trash2 size={18} /></button>
                                     </td>
                                 </tr>
                             ))}
@@ -251,7 +426,10 @@ export default function InstitutionManagementPage() {
             <ModalPortal isOpen={showAddModal} onClose={() => setShowAddModal(false)}>
                 <div className="bg-white rounded-[40px] p-10 max-w-2xl w-full mx-4 border border-slate-100 shadow-2xl relative overflow-hidden">
                     <div className="absolute top-0 right-0 p-6">
-                        <button onClick={() => setShowAddModal(false)} className="p-3 rounded-2xl hover:bg-slate-100 transition-colors">
+                        <button onClick={() => {
+                            setShowAddModal(false);
+                            setEditingInstitution(null);
+                        }} className="p-3 rounded-2xl hover:bg-slate-100 transition-colors">
                             <CloseIcon size={24} className="text-slate-400" />
                         </button>
                     </div>
@@ -261,19 +439,26 @@ export default function InstitutionManagementPage() {
                             <School size={32} />
                         </div>
                         <div>
-                            <h3 className="text-2xl font-black text-slate-800">নতুন প্রতিষ্ঠান যোগ করুন</h3>
-                            <p className="text-sm font-bold text-slate-400 mt-1">সব তথ্য নির্ভুলভাবে প্রদান করুন</p>
+                            <h3 className="text-2xl font-black text-slate-800">{editingInstitution ? 'প্রতিষ্ঠান এডিট করুন' : 'নতুন প্রতিষ্ঠান যোগ করুন'}</h3>
+                            <p className="text-sm font-bold text-slate-400 mt-1">{editingInstitution ? 'আগের তথ্য পরিবর্তন করে সেভ করুন' : 'সব তথ্য নির্ভুলভাবে প্রদান করুন'}</p>
                         </div>
                     </div>
 
-                    <form onSubmit={handleAdd} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <form onSubmit={handleSave} className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
                             <label className="text-[10px] font-black text-slate-500 uppercase ml-1">প্রতিষ্ঠানের নাম</label>
                             <input 
                                 required
                                 type="text" 
                                 value={formData.name}
-                                onChange={e => setFormData({...formData, name: e.target.value})}
+                                onChange={e => {
+                                    const name = e.target.value;
+                                    setFormData((current) => ({
+                                        ...current,
+                                        name,
+                                        subdomain: current.subdomain || suggestSubdomain(name)
+                                    }));
+                                }}
                                 placeholder="যেমন: নওহাটা হাই স্কুল"
                                 className="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:bg-white focus:border-teal-500 transition-all outline-none font-bold shadow-inner"
                             />
@@ -284,7 +469,7 @@ export default function InstitutionManagementPage() {
                             <select 
                                 required
                                 value={formData.location_id}
-                                onChange={e => setFormData({...formData, location_id: e.target.value})}
+                                onChange={e => handleUnionChange(e.target.value)}
                                 className="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:bg-white focus:border-teal-500 transition-all outline-none font-bold"
                             >
                                 <option value="">ইউনিয়ন নির্বাচন করুন</option>
@@ -295,30 +480,62 @@ export default function InstitutionManagementPage() {
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-500 uppercase ml-1">ধরণ</label>
+                            <label className="text-[10px] font-black text-slate-500 uppercase ml-1">ওয়ার্ড</label>
                             <select 
                                 required
-                                value={formData.type}
-                                onChange={e => setFormData({...formData, type: e.target.value})}
+                                value={formData.ward_id}
+                                onChange={e => handleWardChange(e.target.value)}
                                 className="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:bg-white focus:border-teal-500 transition-all outline-none font-bold"
                             >
-                                <option value="mosque">মসজিদ</option>
-                                <option value="school">স্কুল</option>
-                                <option value="college">কলেজ</option>
-                                <option value="madrasa">মাদ্রাসা</option>
+                                <option value="">ওয়ার্ড নির্বাচন করুন</option>
+                                {wards.map((ward) => (
+                                    <option key={ward.id} value={ward.id}>{ward.name_bn}</option>
+                                ))}
                             </select>
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-500 uppercase ml-1">গ্রাম</label>
-                            <input 
+                            <label className="text-[10px] font-black text-slate-500 uppercase ml-1">ধরণ</label>
+                            <select 
                                 required
-                                type="text" 
-                                value={formData.village}
-                                onChange={e => setFormData({...formData, village: e.target.value})}
-                                placeholder="যেমন: নওহাটা"
-                                className="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:bg-white focus:border-teal-500 transition-all outline-none font-bold shadow-inner"
-                            />
+                                value={formData.category}
+                                onChange={e => {
+                                    const profile = INSTITUTION_PROFILES[e.target.value];
+                                    setFormData({
+                                        ...formData,
+                                        type: profile.type,
+                                        category: e.target.value,
+                                        portal_features: profile.features
+                                    });
+                                }}
+                                className="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:bg-white focus:border-teal-500 transition-all outline-none font-bold"
+                            >
+                                {INSTITUTION_PROFILE_OPTIONS.map((option) => (
+                                    <option key={option.value} value={option.value}>{option.label}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black text-slate-500 uppercase ml-1">চালু ফিচার</label>
+                            <div className="rounded-2xl bg-slate-50 border border-slate-100 px-4 py-3 text-sm font-bold text-slate-600">
+                                {(formData.portal_features || []).join(', ')}
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black text-slate-500 uppercase ml-1">গ্রাম</label>
+                            <select 
+                                required
+                                value={formData.village_location_id}
+                                onChange={e => handleVillageChange(e.target.value)}
+                                className="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:bg-white focus:border-teal-500 transition-all outline-none font-bold"
+                            >
+                                <option value="">গ্রাম নির্বাচন করুন</option>
+                                {villages.map((village) => (
+                                    <option key={village.id} value={village.id}>{village.name_bn}</option>
+                                ))}
+                            </select>
                         </div>
 
                         <div className="space-y-2 md:col-span-2">
@@ -336,9 +553,21 @@ export default function InstitutionManagementPage() {
                             </div>
                         </div>
 
+                        <div className="space-y-2 md:col-span-2">
+                            <label className="text-[10px] font-black text-slate-500 uppercase ml-1">নিজস্ব ডোমেইন (ঐচ্ছিক)</label>
+                            <input 
+                                type="text" 
+                                value={formData.custom_domain}
+                                onChange={e => setFormData({...formData, custom_domain: e.target.value.trim().toLowerCase()})}
+                                placeholder="যেমন: schoolname.edu.bd"
+                                className="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:bg-white focus:border-teal-500 transition-all outline-none font-bold shadow-inner"
+                            />
+                            <p className="text-xs font-bold text-slate-400">ডোমেইন না থাকলে subdomain দিয়েই website চলবে। পরে custom domain যুক্ত করা যাবে।</p>
+                        </div>
+
                         <button type="submit" className="md:col-span-2 w-full py-5 rounded-2xl bg-slate-900 text-white font-black text-sm hover:bg-teal-600 transition-all shadow-2xl shadow-slate-200 active:scale-[0.98] mt-4 flex items-center justify-center gap-3">
                             <Save size={20} />
-                            প্রতিষ্ঠান তৈরি করুন
+                            {editingInstitution ? 'প্রতিষ্ঠান আপডেট করুন' : 'প্রতিষ্ঠান তৈরি করুন'}
                         </button>
                     </form>
                 </div>

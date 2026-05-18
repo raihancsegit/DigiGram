@@ -21,6 +21,7 @@ import { layout } from '@/lib/theme';
 import PowerWatchSection from '../community/PowerWatchSection';
 import { parseBnInt, toBnDigits } from '@/lib/utils/format';
 import PortalLoginModal from '@/components/modals/PortalLoginModal';
+import toast from 'react-hot-toast';
 
 export default function WardPortalClient({ ctx, ward: initialWard }) {
     const dispatch = useDispatch();
@@ -72,7 +73,7 @@ export default function WardPortalClient({ ctx, ward: initialWard }) {
     const startVoiceSearch = async () => {
         if (typeof window === 'undefined') return;
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SpeechRecognition) return alert('আপনার ব্রাউজারে ভয়েস সার্চ সাপোর্ট করে না।');
+        if (!SpeechRecognition) return toast.error('আপনার ব্রাউজারে ভয়েস সার্চ সাপোর্ট করে না।');
 
         if (isListening) {
             recognitionRef.current?.stop();
@@ -86,7 +87,7 @@ export default function WardPortalClient({ ctx, ward: initialWard }) {
                 stream.getTracks().forEach(track => track.stop());
             } catch (err) {
                 console.error("Microphone permission error:", err);
-                return alert("মাইক্রোফোন ব্যবহারের অনুমতি পাওয়া যায়নি। ডিভাইস বা অ্যাপ সেটিংসে গিয়ে 'Microphone' পারমিশন চালু করুন।");
+                return toast.error("মাইক্রোফোন ব্যবহারের অনুমতি পাওয়া যায়নি। ডিভাইস বা অ্যাপ সেটিংসে গিয়ে 'Microphone' পারমিশন চালু করুন।");
             }
         }
 
@@ -122,9 +123,30 @@ export default function WardPortalClient({ ctx, ward: initialWard }) {
         const dynamic = dynamicWardData[key];
         
         const villagesSource = dynamic?.villages || initialWard.villages || [];
-        const normalizedVillages = villagesSource.map(v => 
-            typeof v === 'string' ? { name: v, population: '0', voters: '0', maleVoters: '0', femaleVoters: '0', schools: '0', mosques: '0', madrassas: '0' } : v
-        );
+        const normalizedVillages = villagesSource.map(v => {
+            if (typeof v === 'string') return { name: v, population: '0', voters: '0', maleVoters: '0', femaleVoters: '0', schools: '0', mosques: '0', madrassas: '0', blood_donors: '0' };
+            
+            // If the village object already has normalized stats from hierarchyService, use them
+            // Otherwise, apply same logic as hierarchyService
+            const isVerified = v.survey_status === 'verified';
+                const s = isVerified ? (v.real_stats || {}) : (v.stats || {});
+                
+                return {
+                    ...v,
+                    population: s.total_members || s.population || v.population || '0',
+                    voters: s.voters || v.voters || '0',
+                    maleVoters: s.male_voters || s.maleVoters || s.males || v.maleVoters || '0',
+                    femaleVoters: s.female_voters || s.femaleVoters || s.females || v.femaleVoters || '0',
+                    schools: s.schools || v.schools || '0',
+                    mosques: s.mosques || v.mosques || '0',
+                    madrassas: s.madrassas || v.madrassas || '0',
+                    blood_donors: s.blood_donors || s.bloodDonors || v.blood_donors || '0',
+                    blood_groups: s.blood_groups || s.bloodGroups || v.blood_groups || {},
+                    total_houses: s.total_houses || s.totalHouses || v.total_houses || v.total_estimated_houses || '0',
+                    birth_registered: s.birth_registered || s.birthRegistered || v.birth_registered || '0',
+                    voter_eligible: s.voter_eligible || s.voterEligible || v.voter_eligible || '0'
+                };
+        });
 
         if (!dynamic) return { ...initialWard, villages: normalizedVillages };
 
@@ -147,11 +169,16 @@ export default function WardPortalClient({ ctx, ward: initialWard }) {
         user?.role === 'ward_member' && 
         user?.access_scope_id === ward.id;
 
-    // Aggregate institutional stats for this ward
     const wardStats = useMemo(() => {
         const villages = ward.villages || [];
         return villages.reduce((acc, v) => {
             const getCount = (val) => Array.isArray(val) ? val.length : parseBnInt(val || '0');
+            
+            const vBloodGroups = v.blood_groups || {};
+            for (const [bg, count] of Object.entries(vBloodGroups)) {
+                acc.blood_groups[bg] = (acc.blood_groups[bg] || 0) + count;
+            }
+
             return {
                 population: acc.population + parseBnInt(v.population || '0'),
                 voters: acc.voters + parseBnInt(v.voters || '0'),
@@ -161,8 +188,13 @@ export default function WardPortalClient({ ctx, ward: initialWard }) {
                 orphanages: acc.orphanages + getCount(v.orphanages),
                 maleVoters: acc.maleVoters + parseBnInt(v.maleVoters || '0'),
                 femaleVoters: acc.femaleVoters + parseBnInt(v.femaleVoters || '0'),
+                blood_donors: acc.blood_donors + parseBnInt(v.blood_donors || '0'),
+                total_houses: acc.total_houses + parseBnInt(v.total_houses || v.total_estimated_houses || '0'),
+                birth_registered: acc.birth_registered + parseBnInt(v.birth_registered || '0'),
+                voter_eligible: acc.voter_eligible + parseBnInt(v.voter_eligible || '0'),
+                blood_groups: acc.blood_groups
             };
-        }, { population: 0, voters: 0, schools: 0, mosques: 0, madrassas: 0, orphanages: 0, maleVoters: 0, femaleVoters: 0 });
+        }, { population: 0, voters: 0, schools: 0, mosques: 0, madrassas: 0, orphanages: 0, maleVoters: 0, femaleVoters: 0, blood_donors: 0, total_houses: 0, birth_registered: 0, voter_eligible: 0, blood_groups: {} });
     }, [ward.villages]);
 
     // Ward-specific news from Redux
@@ -187,7 +219,10 @@ export default function WardPortalClient({ ctx, ward: initialWard }) {
 
     const statsList = [
         { label: 'মোট গ্রাম', value: toBnDigits((ward.villages?.length || 0).toString()), icon: MapPin, color: 'text-teal-400', bg: 'bg-teal-500/10' },
-        { label: 'রক্তদাতা', value: toBnDigits((ward.bloodDonors?.length || 0).toString()), icon: Droplets, color: 'text-rose-400', bg: 'bg-rose-500/10' },
+        { label: 'মোট বাড়ি', value: toBnDigits(wardStats.total_houses.toString()), icon: Home, color: 'text-amber-400', bg: 'bg-amber-500/10' },
+        { label: 'রক্তদাতা', value: toBnDigits((wardStats.blood_donors || ward.bloodDonors?.length || 0).toString()), icon: Droplets, color: 'text-rose-400', bg: 'bg-rose-500/10' },
+        { label: 'জন্ম নিবন্ধন', value: toBnDigits(wardStats.birth_registered.toString()), icon: ShieldCheck, color: 'text-teal-400', bg: 'bg-teal-500/10' },
+        { label: 'ভোটার যোগ্য', value: toBnDigits(wardStats.voter_eligible.toString()), icon: UserCheck, color: 'text-amber-400', bg: 'bg-amber-500/10' },
         { label: 'জনসংখ্যা', value: toBnDigits((wardStats.population || parseBnInt(ward.population || '0')).toString()), icon: Users, color: 'text-blue-400', bg: 'bg-blue-500/10' },
         { label: 'মোট ভোটার', value: toBnDigits((wardStats.voters || parseBnInt(ward.voters || '0')).toString()), icon: UserCheck, color: 'text-sky-400', bg: 'bg-sky-500/10' },
         { label: 'পুরুষ ভোটার', value: toBnDigits(wardStats.maleVoters.toString()), icon: UserCircle, color: 'text-indigo-400', bg: 'bg-indigo-500/10' },
@@ -558,6 +593,23 @@ export default function WardPortalClient({ ctx, ward: initialWard }) {
                                     {toBnDigits((ward.bloodDonors?.length || 0).toString())} জন
                                 </span>
                             </div>
+                            
+                            {/* Blood Group Breakdown */}
+                            {wardStats.blood_groups && Object.keys(wardStats.blood_groups).length > 0 && (
+                                <div className="px-6 pt-5 pb-2">
+                                    <div className="flex flex-wrap gap-2">
+                                        {Object.entries(wardStats.blood_groups).map(([group, count]) => (
+                                            <div key={group} className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-rose-50 border border-rose-100">
+                                                <span className="text-sm font-black text-rose-600">{group}</span>
+                                                <span className="text-xs font-bold text-rose-500 bg-white px-2 py-0.5 rounded-md shadow-sm">
+                                                    {toBnDigits(count.toString())} জন
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="p-0 overflow-x-auto">
                                 <table className="w-full text-left border-collapse">
                                     <thead>

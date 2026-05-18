@@ -14,6 +14,7 @@ import { wardService } from '@/lib/services/wardService';
 import { createVillageAction, updateVillageAction, deleteVillageAction, updateWardStatsAction } from '@/lib/actions/wardActions';
 import { parseBnInt, toBnDigits } from '@/lib/utils/format';
 import ModalPortal from '@/components/common/ModalPortal';
+import toast from 'react-hot-toast';
 
 import BloodGroupManagement from './BloodGroupManagement';
 import VolunteerManagement from './VolunteerManagement';
@@ -104,10 +105,9 @@ export default function WardManagementSection({ user = {}, wardInfo, villages: i
         });
 
         if (!result.success) {
-            alert("আপডেট করতে সমস্যা হয়েছে: " + result.error);
+            toast.error("আপডেট করতে সমস্যা হয়েছে: " + result.error);
         } else {
-            setSuccess(true);
-            setTimeout(() => setSuccess(false), 3000);
+            toast.success("তথ্য সফলভাবে আপডেট হয়েছে!");
         }
         setLoading(false);
     };
@@ -160,9 +160,9 @@ export default function WardManagementSection({ user = {}, wardInfo, villages: i
             // Trigger ward stats update to sync totals to DB
             setTimeout(() => handleSave(), 500); 
             
-            alert(editingIndex !== null ? "গ্রামের তথ্য আপডেট হয়েছে।" : "নতুন গ্রাম যোগ হয়েছে।");
+            toast.success(editingIndex !== null ? "গ্রামের তথ্য আপডেট হয়েছে।" : "নতুন গ্রাম যোগ হয়েছে।");
         } catch (err) {
-            alert("সমস্যা হয়েছে: " + err.message);
+            toast.error("সমস্যা হয়েছে: " + err.message);
         } finally {
             setLoading(false);
         }
@@ -176,9 +176,9 @@ export default function WardManagementSection({ user = {}, wardInfo, villages: i
             if (!result.success) throw new Error(result.error);
             await loadVillages();
             setTimeout(() => handleSave(), 500);
-            alert("গ্রামটি সফলভাবে ডিলিট করা হয়েছে।");
+            toast.success("গ্রামটি সফলভাবে ডিলিট করা হয়েছে।");
         } catch (err) {
-            alert("ডিলিট করতে সমস্যা হয়েছে: " + err.message);
+            toast.error("ডিলিট করতে সমস্যা হয়েছে: " + err.message);
         } finally {
             setLoading(false);
         }
@@ -225,22 +225,7 @@ export default function WardManagementSection({ user = {}, wardInfo, villages: i
                 )}
             </div>
 
-            {/* Success Toast Overlay */}
-            <AnimatePresence>
-                {success && (
-                    <ModalPortal>
-                        <motion.div 
-                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                            className="fixed bottom-10 right-10 z-[100] bg-emerald-600 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 font-black"
-                        >
-                            <CheckCircle2 size={24} />
-                            তথ্য সফলভাবে আপডেট হয়েছে!
-                        </motion.div>
-                    </ModalPortal>
-                )}
-            </AnimatePresence>
+            {/* Success Toast handled by react-hot-toast */}
 
             {activeTab === 'stats' ? (
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">

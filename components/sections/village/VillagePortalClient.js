@@ -28,11 +28,15 @@ export default function VillagePortalClient({ ctx, ward, village }) {
     
     const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
     
+    // Choice Logic: Real vs Manual
+    const isVerified = village.survey_status === 'verified';
+    const stats = isVerified ? (village.real_stats || {}) : (village.stats || {});
+    
     // Normalize village data from DB
     const isObj = typeof village === 'object';
     const vName = isObj ? (village.name_bn || village.name) : village;
-    const vPop = isObj && village.stats ? toBnDigits(village.stats.population || '0') : '---';
-    const vVoters = isObj && village.stats ? toBnDigits(village.stats.voters || '0') : '---';
+    const vPop = toBnDigits(stats.total_members || stats.population || '0');
+    const vVoters = toBnDigits(stats.voters || '0');
     
     // Get Ward dynamic data for member & blood donors
     const wardKey = `${union.slug}-${ward.id}`;
@@ -54,13 +58,11 @@ export default function VillagePortalClient({ ctx, ward, village }) {
         user?.role === 'volunteer' && 
         user?.access_scope_id === village.id;
 
-    // Mock Village News
+    // Dynamic Institutions from DB
+    // stats is already defined above as either real_stats or fallback stats
     const villageNews = dynamicNews.filter(
         (n) => n.wardId === ward.id && n.unionId === union.slug
-    ).slice(0, 3); // Showing generic ward news for this mock, limited to 3
-
-    // Dynamic Institutions from DB
-    const stats = village.stats || {};
+    ).slice(0, 3);
     const institutions = [
         {
             type: 'mosque',
@@ -121,13 +123,16 @@ export default function VillagePortalClient({ ctx, ward, village }) {
     // Village Stats Grid Logic (Replicating Union portal's "Perfect" design)
     const allStats = [
         { label: 'জনসংখ্যা', value: vPop, icon: Users, color: 'text-blue-400', bg: 'bg-blue-500/10' },
+        { label: 'মোট বাড়ি', value: toBnDigits((stats.total_houses || stats.totalHouses || village.total_estimated_houses || '০').toString()), icon: Home, color: 'text-amber-400', bg: 'bg-amber-500/10' },
         { label: 'মোট ভোটার', value: vVoters, icon: UserCheck, color: 'text-teal-400', bg: 'bg-teal-500/10' },
-        { label: 'পুরুষ ভোটার', value: isObj && stats.maleVoters ? toBnDigits(stats.maleVoters) : '০', icon: UserCircle, color: 'text-sky-400', bg: 'bg-sky-500/10' },
-        { label: 'মহিলা ভোটার', value: isObj && stats.femaleVoters ? toBnDigits(stats.femaleVoters) : '০', icon: UserCircle, color: 'text-rose-400', bg: 'bg-rose-500/10' },
-        { label: 'রক্তদাতা', value: toBnDigits(villageBloodDonors.length), icon: Droplets, color: 'text-red-400', bg: 'bg-red-500/10' },
-        { label: 'মসজিদ', value: isObj && stats.mosques ? toBnDigits(Array.isArray(stats.mosques) ? stats.mosques.length : stats.mosques) : '০', icon: Building2, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-        { label: 'স্কুল', value: isObj && stats.schools ? toBnDigits(Array.isArray(stats.schools) ? stats.schools.length : stats.schools) : '০', icon: School, color: 'text-orange-400', bg: 'bg-orange-500/10' },
-        { label: 'মাদরাসা', value: isObj && stats.madrassas ? toBnDigits(Array.isArray(stats.madrassas) ? stats.madrassas.length : stats.madrassas) : '০', icon: BookOpen, color: 'text-indigo-400', bg: 'bg-indigo-500/10' },
+        { label: 'পুরুষ ভোটার', value: toBnDigits((stats.male_voters || stats.maleVoters || stats.males || 0).toString()), icon: UserCircle, color: 'text-sky-400', bg: 'bg-sky-500/10' },
+        { label: 'মহিলা ভোটার', value: toBnDigits((stats.female_voters || stats.femaleVoters || stats.females || 0).toString()), icon: UserCircle, color: 'text-rose-400', bg: 'bg-rose-500/10' },
+        { label: 'রক্তদাতা', value: toBnDigits((stats.blood_donors || stats.bloodDonors || villageBloodDonors.length || 0).toString()), icon: Droplets, color: 'text-red-400', bg: 'bg-red-500/10' },
+        { label: 'জন্ম নিবন্ধন', value: toBnDigits((stats.birth_registered || stats.birthRegistered || 0).toString()), icon: ShieldCheck, color: 'text-teal-400', bg: 'bg-teal-500/10' },
+        { label: 'ভোটার যোগ্য', value: toBnDigits((stats.voter_eligible || stats.voterEligible || 0).toString()), icon: UserCheck, color: 'text-amber-400', bg: 'bg-amber-500/10' },
+        { label: 'মসজিদ', value: toBnDigits(Array.isArray(stats.mosques) ? stats.mosques.length : (stats.mosques || 0)), icon: Building2, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
+        { label: 'স্কুল', value: toBnDigits(Array.isArray(stats.schools) ? stats.schools.length : (stats.schools || 0)), icon: School, color: 'text-orange-400', bg: 'bg-orange-500/10' },
+        { label: 'মাদরাসা', value: toBnDigits(Array.isArray(stats.madrassas) ? stats.madrassas.length : (stats.madrassas || 0)), icon: BookOpen, color: 'text-indigo-400', bg: 'bg-indigo-500/10' },
     ];
 
     // Search Logic for Portals
@@ -533,14 +538,7 @@ export default function VillagePortalClient({ ctx, ward, village }) {
                             </div>
                         </div>
 
-                        {/* Village Households */}
-                        <div className="space-y-6">
-                            <WardHouseholdManager 
-                                wardId={ward.id} 
-                                assignedVillage={village}
-                                volunteerMode={user?.role === 'volunteer'} 
-                            />
-                        </div>
+
 
                         {/* Village Market */}
                         <div className="p-6 sm:p-8 rounded-[32px] bg-white border border-slate-200/60 shadow-sm overflow-hidden">
@@ -624,6 +622,20 @@ export default function VillagePortalClient({ ctx, ward, village }) {
                                 গ্রামের রক্তদাতা
                             </h2>
                             
+                            {/* Blood Group Breakdown */}
+                            {stats.blood_groups && Object.keys(stats.blood_groups).length > 0 && (
+                                <div className="flex flex-wrap gap-2 mb-6">
+                                    {Object.entries(stats.blood_groups).map(([group, count]) => (
+                                        <div key={group} className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-rose-50 border border-rose-100">
+                                            <span className="text-sm font-black text-rose-600">{group}</span>
+                                            <span className="text-xs font-bold text-rose-500 bg-white px-2 py-0.5 rounded-md shadow-sm">
+                                                {toBnDigits(count.toString())} জন
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
                             {villageBloodDonors.length === 0 ? (
                                 <div className="text-center py-12 rounded-2xl bg-rose-50/30 border-2 border-dashed border-rose-100">
                                     <Droplets className="mx-auto text-rose-200 mb-3" size={40} />
@@ -726,6 +738,8 @@ export default function VillagePortalClient({ ctx, ward, village }) {
 
                     </div>
 
+
+
                     {/* Right Sidebar */}
                     <div className="lg:col-span-4 space-y-6">
                         
@@ -817,7 +831,19 @@ export default function VillagePortalClient({ ctx, ward, village }) {
                             </Link>
                         </div>
                     </div>
+
+                    {/* Village Households - Full Width Section */}
+                    <div className="lg:col-span-12 mt-12">
+                        <WardHouseholdManager 
+                            wardId={ward.id} 
+                            assignedVillage={village}
+                            volunteerMode={user?.role === 'volunteer'} 
+                        />
+                    </div>
                 </div>
+
+
+
                 </div>
             </div>
         <PortalLoginModal 

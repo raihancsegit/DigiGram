@@ -15,6 +15,7 @@ import { performLogout, login } from '@/lib/store/features/authSlice';
 import WardNewsForm from '@/components/sections/ward/WardNewsForm';
 import WardManagementSection from '@/components/sections/ward/WardManagementSection';
 import WardHouseholdManager from '@/components/sections/ward/WardHouseholdManager';
+import WardServiceRequestManager from '@/components/sections/ward/WardServiceRequestManager';
 import { wardService } from '@/lib/services/wardService';
 import { getActiveServices } from '@/lib/services/hierarchyService';
 import { authService } from '@/lib/services/authService';
@@ -27,7 +28,7 @@ export default function WardMemberDashboard() {
     const { user, isAuthenticated } = useSelector((state) => state.auth);
     const dispatch = useDispatch();
     const router = useRouter();
-    const [activeTab, setActiveTab] = useState('news'); // 'news', 'management', or 'households'
+    const [activeTab, setActiveTab] = useState('news'); // 'news', 'services', 'requests', 'management', or 'households'
     const [wardInfo, setWardInfo] = useState(null);
     const [newsList, setNewsList] = useState([]);
     const [villages, setVillages] = useState([]);
@@ -423,6 +424,13 @@ export default function WardMemberDashboard() {
                             ডিজিটাল সেবাসমূহ
                         </button>
                         <button 
+                            onClick={() => setActiveTab('requests')}
+                            className={`flex items-center gap-2 px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${activeTab === 'requests' ? 'bg-white text-teal-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        >
+                            <Newspaper size={16} className="sm:w-[18px] sm:h-[18px]" />
+                            আবেদনসমূহ
+                        </button>
+                        <button 
                             onClick={() => setActiveTab('households')}
                             className={`flex items-center gap-2 px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${activeTab === 'households' ? 'bg-white text-teal-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                         >
@@ -557,6 +565,17 @@ export default function WardMemberDashboard() {
                                         })
                                     )}
                                 </div>
+                            </div>
+                        </motion.div>
+                    ) : activeTab === 'requests' ? (
+                        <motion.div 
+                            key="requests"
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: 20 }}
+                        >
+                            <div className="bg-white rounded-[40px] p-6 md:p-10 border border-slate-200 shadow-sm">
+                                <WardServiceRequestManager wardId={user.access_scope_id} />
                             </div>
                         </motion.div>
                     ) : activeTab === 'management' ? (

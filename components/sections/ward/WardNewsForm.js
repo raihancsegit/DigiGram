@@ -7,6 +7,7 @@ import { Send, Image as ImageIcon, MessageSquare, Info, Layout, Loader2 } from '
 import { wardService } from '@/lib/services/wardService';
 import { compressImage } from '@/lib/utils/imageUtils';
 import { supabase } from '@/lib/utils/supabase';
+import toast from 'react-hot-toast';
 
 const CATEGORIES = ['নোটিশ', 'কৃষি', 'স্বাস্থ্য', 'উন্নয়ন', 'অন্যান্য'];
 
@@ -58,7 +59,7 @@ export default function WardNewsForm({ user, onSuccess, wardId }) {
             setFormData({ ...formData, image: publicUrl });
         } catch (error) {
             console.error('Error uploading image:', error);
-            alert('ছবি আপলোড করতে সমস্যা হয়েছে।');
+            toast.error('ছবি আপলোড করতে সমস্যা হয়েছে।');
         } finally {
             setUploading(false);
         }
@@ -66,6 +67,7 @@ export default function WardNewsForm({ user, onSuccess, wardId }) {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        const loadingToast = toast.loading('খবর পাবলিশ হচ্ছে...');
         setLoading(true);
 
         try {
@@ -78,6 +80,7 @@ export default function WardNewsForm({ user, onSuccess, wardId }) {
                 location_id: wardId,
                 author_id: user.id
             });
+            toast.dismiss(loadingToast);
             if(onSuccess) onSuccess();
 
             setFormData({
@@ -87,10 +90,11 @@ export default function WardNewsForm({ user, onSuccess, wardId }) {
                 image: '',
                 category: CATEGORIES[0],
             });
-            alert('আপনার খবরটি সফলভাবে প্রকাশিত হয়েছে!');
+            toast.success('আপনার খবরটি সফলভাবে প্রকাশিত হয়েছে!');
         } catch (err) {
             console.error(err);
-            alert('খবর পাবলিশ করতে সমস্যা হয়েছে।');
+            toast.dismiss(loadingToast);
+            toast.error('খবর পাবলিশ করতে সমস্যা হয়েছে।');
         } finally {
             setLoading(false);
         }

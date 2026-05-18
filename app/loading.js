@@ -2,20 +2,20 @@ import { ShieldCheck } from 'lucide-react';
 
 export default function Loading() {
     return (
-        <div className="min-h-screen bg-white flex flex-col items-center justify-center p-4">
+        <div className="flex min-h-screen flex-col items-center justify-center bg-white p-4">
             <div className="relative">
-                <div className="w-20 h-20 rounded-full border-4 border-slate-100 border-t-teal-500 animate-spin shadow-xl" />
+                <div className="h-20 w-20 animate-spin rounded-full border-4 border-slate-100 border-t-teal-500 shadow-xl" />
                 <div className="absolute inset-0 flex items-center justify-center">
-                    <ShieldCheck className="text-teal-600 animate-pulse" size={32} />
+                    <ShieldCheck className="animate-pulse text-teal-600" size={32} />
                 </div>
             </div>
-            
+
             <div className="mt-8 text-center">
-                <h2 className="text-lg font-black text-slate-800 tracking-tight">লোড হচ্ছে...</h2>
-                <div className="flex items-center justify-center gap-1 mt-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <div className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <div className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+                <h2 className="text-lg font-black tracking-tight text-slate-800">লোড হচ্ছে...</h2>
+                <div className="mt-2 flex items-center justify-center gap-1">
+                    <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-teal-500" style={{ animationDelay: '0ms' }} />
+                    <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-teal-500" style={{ animationDelay: '150ms' }} />
+                    <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-teal-500" style={{ animationDelay: '300ms' }} />
                 </div>
             </div>
         </div>

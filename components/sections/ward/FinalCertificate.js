@@ -1,0 +1,69 @@
+import { toBnDigits } from '@/lib/utils/format';
+
+function formatDate(value) {
+    if (!value) return 'প্রযোজ্য নয়';
+    return toBnDigits(new Date(value).toLocaleDateString('bn-BD', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric'
+    }));
+}
+
+function Field({ label, value, className = '' }) {
+    return (
+        <div className={className}>
+            <p className="text-[10px] font-black uppercase tracking-widest opacity-60">{label}</p>
+            <p className="mt-1 text-sm font-black">{value || 'প্রযোজ্য নয়'}</p>
+        </div>
+    );
+}
+
+export default function FinalCertificate({ request, verificationUrl }) {
+    const isDeath = request.request_type === 'death_certificate';
+    const title = isDeath ? 'Death Registration Certificate' : 'Birth Registration Certificate';
+    const subtitle = isDeath ? 'মৃত্যু নিবন্ধন সনদ' : 'জন্ম নিবন্ধন সনদ';
+
+    return (
+        <article className={`relative mx-auto w-full max-w-4xl overflow-hidden border-[8px] border-double p-8 shadow-sm ${
+            isDeath ? 'border-slate-300 bg-slate-100 text-slate-700' : 'border-amber-200 bg-[#fbf8ef] text-slate-800'
+        }`}>
+            <header className="border-b border-current/15 pb-6 text-center">
+                <p className="text-xs font-bold">Government of the People&apos;s Republic of Bangladesh</p>
+                <p className="mt-1 text-[11px] font-bold">Office of the Birth and Death Registrar</p>
+                <h1 className="mt-4 text-2xl font-black">{title}</h1>
+                <p className="mt-1 text-sm font-bold">{subtitle}</p>
+                <p className="mt-3 text-[11px] font-bold">সনদ নং: {request.certificate_no}</p>
+            </header>
+
+            <section className="grid grid-cols-1 gap-5 pt-7 md:grid-cols-2">
+                <Field label={isDeath ? 'মৃত ব্যক্তির নাম' : 'নাম'} value={request.applicant_name} className="md:col-span-2" />
+                <Field label="জন্ম তারিখ" value={formatDate(request.applicant_dob)} />
+                {isDeath ? (
+                    <Field label="মৃত্যুর তারিখ" value={formatDate(request.death_date)} />
+                ) : (
+                    <Field label="জন্ম নিবন্ধন নম্বর" value={toBnDigits(request.applicant_birth_reg || 'প্রযোজ্য নয়')} />
+                )}
+                <Field label="লিঙ্গ" value={request.applicant_gender === 'Female' ? 'নারী' : 'পুরুষ'} />
+                {isDeath ? (
+                    <Field label="মৃত্যুর স্থান" value={request.place_of_death} />
+                ) : (
+                    <Field label="রক্তের গ্রুপ" value={request.blood_group || 'অজানা'} />
+                )}
+                <Field label="পিতার নাম" value={request.father_name} />
+                <Field label="মাতার নাম" value={request.mother_name} />
+                <Field label="ঠিকানা" value={request.applicant_address} className="md:col-span-2" />
+            </section>
+
+            <footer className="mt-10 grid grid-cols-1 gap-6 border-t border-current/15 pt-6 md:grid-cols-[1fr_auto]">
+                <div className="text-[11px] font-bold">
+                    <p>ইস্যুর তারিখ: {formatDate(request.issued_at || request.updated_at)}</p>
+                    <p className="mt-8 w-44 border-t border-current/30 pt-2">রেজিস্ট্রারের স্বাক্ষর</p>
+                </div>
+                <div className="text-left md:text-right">
+                    <p className="text-[10px] font-black uppercase tracking-widest opacity-60">যাচাই লিংক</p>
+                    <p className="mt-1 max-w-xs break-all text-[11px] font-bold">{verificationUrl}</p>
+                </div>
+            </footer>
+        </article>
+    );
+}

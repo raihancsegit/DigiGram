@@ -4,7 +4,17 @@ import { useEffect } from 'react';
 
 export default function PWARegistration() {
   useEffect(() => {
-    if ('serviceWorker' in navigator && window.location.hostname !== 'localhost') {
+    const isLocalHost = window.location.hostname === 'localhost'
+      || window.location.hostname.endsWith('.localhost');
+
+    if ('serviceWorker' in navigator && isLocalHost) {
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        registrations.forEach((registration) => registration.unregister());
+      });
+      return;
+    }
+
+    if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker
           .register('/sw.js')

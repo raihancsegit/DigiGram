@@ -10,7 +10,7 @@ import {
     PlusCircle, Newspaper, LogOut, ShieldCheck, ArrowLeft, Settings, 
     MessageSquare, TrendingUp, Users, MapPin, CheckCircle2, UserCircle,
     ArrowUpRight, Sparkles, School, Building2, BookOpen, Phone, Search, HandHeart,
-    ChevronLeft, ChevronRight, ShoppingBag, FileText
+    ChevronLeft, ChevronRight, ShoppingBag, FileText, Banknote, ClipboardCheck
 } from 'lucide-react';
 import { performLogout, login } from '@/lib/store/features/authSlice';
 import { wardService } from '@/lib/services/wardService';
@@ -28,6 +28,9 @@ import { toBnDigits, parseBnInt } from '@/lib/utils/format';
 import UnionNewsForm from '@/components/sections/union/UnionNewsForm';
 import UnionManagementSection from '@/components/sections/union/UnionManagementSection';
 import UnionServiceManager from '@/components/sections/union/UnionServiceManager';
+import UnionTaxDashboard from '@/components/sections/union/UnionTaxDashboard';
+import UnionCitizenQualityDashboard from '@/components/sections/union/UnionCitizenQualityDashboard';
+import UnionSmsOutbox from '@/components/sections/union/UnionSmsOutbox';
 import { unionService } from '@/lib/services/unionService';
 
 export default function ChairmanDashboard() {
@@ -281,6 +284,30 @@ export default function ChairmanDashboard() {
                         </button>
 
                         <button 
+                            onClick={() => setActiveTab('tax')}
+                            className={`flex items-center gap-2 px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${activeTab === 'tax' ? 'bg-white text-teal-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        >
+                            <Banknote size={16} className="sm:w-[18px] sm:h-[18px]" />
+                            কর
+                        </button>
+
+                        <button 
+                            onClick={() => setActiveTab('citizen-quality')}
+                            className={`flex items-center gap-2 px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${activeTab === 'citizen-quality' ? 'bg-white text-teal-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        >
+                            <ClipboardCheck size={16} className="sm:w-[18px] sm:h-[18px]" />
+                            নাগরিক মান
+                        </button>
+
+                        <button 
+                            onClick={() => setActiveTab('sms-outbox')}
+                            className={`flex items-center gap-2 px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${activeTab === 'sms-outbox' ? 'bg-white text-teal-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        >
+                            <MessageSquare size={16} className="sm:w-[18px] sm:h-[18px]" />
+                            SMS
+                        </button>
+
+                        <button 
                             onClick={() => setActiveTab('market')}
                             className={`flex items-center gap-2 px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${activeTab === 'market' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                         >
@@ -392,6 +419,24 @@ export default function ChairmanDashboard() {
                     ) : activeTab === 'market' ? (
                         <motion.div key="market" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
                             <MarketManagement />
+                        </motion.div>
+                    ) : activeTab === 'tax' ? (
+                        <motion.div key="tax" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
+                            <div className="bg-white rounded-[40px] p-6 md:p-12 border border-slate-200 shadow-sm">
+                                <UnionTaxDashboard unionId={user.access_scope_id} />
+                            </div>
+                        </motion.div>
+                    ) : activeTab === 'citizen-quality' ? (
+                        <motion.div key="citizen-quality" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
+                            <div className="bg-white rounded-[40px] p-6 md:p-12 border border-slate-200 shadow-sm">
+                                <UnionCitizenQualityDashboard unionId={user.access_scope_id} />
+                            </div>
+                        </motion.div>
+                    ) : activeTab === 'sms-outbox' ? (
+                        <motion.div key="sms-outbox" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
+                            <div className="bg-white rounded-[40px] p-6 md:p-12 border border-slate-200 shadow-sm">
+                                <UnionSmsOutbox unionId={user.access_scope_id} />
+                            </div>
                         </motion.div>
                     ) : activeTab === 'management' ? (
                         <motion.div key="management" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>

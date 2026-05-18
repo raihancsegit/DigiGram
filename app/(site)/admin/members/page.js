@@ -17,6 +17,7 @@ export default function UserManagementPage() {
     
     // Static / Helper Data
     const [unions, setUnions] = useState([]);
+    const [villages, setVillages] = useState([]);
     const [wards, setWards] = useState([]);
     const [institutions, setInstitutions] = useState([]);
     
@@ -94,11 +95,13 @@ export default function UserManagementPage() {
 
     const loadInitialData = async () => {
         try {
-            const [unionsData, instsData] = await Promise.all([
+            const [unionsData, villagesData, instsData] = await Promise.all([
                 adminService.getLocations('union', 1, 100),
+                adminService.getLocations('village', 1, 1000),
                 adminService.getAllInstitutions()
             ]);
             setUnions(unionsData.data);
+            setVillages(villagesData.data);
             setInstitutions(instsData);
         } catch (err) {
             console.error("Error loading helper data:", err);
@@ -524,7 +527,8 @@ export default function UserManagementPage() {
                                                 {(isEditModalOpen ? editUser.role : newUser.role) !== 'super_admin' && (isEditModalOpen ? editUser.role : newUser.role) !== 'student' && (
                                                     <div className="space-y-1.5">
                                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
-                                                            {['chairman', 'volunteer'].includes(isEditModalOpen ? editUser.role : newUser.role) ? 'ইউনিয়ন সিলেক্ট করুন' : 
+                                                            {(isEditModalOpen ? editUser.role : newUser.role) === 'chairman' ? 'ইউনিয়ন সিলেক্ট করুন' :
+                                                             (isEditModalOpen ? editUser.role : newUser.role) === 'volunteer' ? 'গ্রাম সিলেক্ট করুন' :
                                                              ['ward_member'].includes(isEditModalOpen ? editUser.role : newUser.role) ? 'ওয়ার্ড সিলেক্ট করুন (Union > Ward)' : 
                                                              'প্রতিষ্ঠান সিলেক্ট করুন'}
                                                         </label>
@@ -535,8 +539,10 @@ export default function UserManagementPage() {
                                                                 onChange={(e) => isEditModalOpen ? setEditUser({...editUser, access_scope_id: e.target.value}) : setNewUser({...newUser, access_scope_id: e.target.value})}
                                                             >
                                                                 <option value="">নির্বাচন করুন</option>
-                                                                {['chairman', 'volunteer'].includes(isEditModalOpen ? editUser.role : newUser.role) ? (
+                                                                {(isEditModalOpen ? editUser.role : newUser.role) === 'chairman' ? (
                                                                     unions.map(u => <option key={u.id} value={u.id}>{u.name_bn}</option>)
+                                                                ) : (isEditModalOpen ? editUser.role : newUser.role) === 'volunteer' ? (
+                                                                    villages.map(v => <option key={v.id} value={v.id}>{v.name_bn}</option>)
                                                                 ) : ['school_admin', 'mosque_admin', 'clinic_admin', 'institution_admin'].includes(isEditModalOpen ? editUser.role : newUser.role) ? (
                                                                     institutions.map(inst => <option key={inst.id} value={inst.id}>{inst.name} ({inst.type})</option>)
                                                                 ) : (
@@ -648,7 +654,7 @@ export default function UserManagementPage() {
                                 </div>
                                 <h2 className="text-2xl font-black text-slate-800 mb-2">আপনি কি নিশ্চিত?</h2>
                                 <p className="text-sm font-bold text-slate-400 leading-relaxed mb-10">
-                                    ইউজার <span className="text-slate-800 font-black">"{targetUser?.first_name} {targetUser?.last_name}"</span> কে ডিলিট করলে তার সকল এক্সেস এবং ডাটা মুছে যাবে।
+                                    ইউজার <span className="text-slate-800 font-black">&quot;{targetUser?.first_name} {targetUser?.last_name}&quot;</span> কে ডিলিট করলে তার সকল এক্সেস এবং ডাটা মুছে যাবে।
                                 </p>
                                 <div className="grid grid-cols-1 gap-3">
                                     <button 

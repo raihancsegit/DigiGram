@@ -61,14 +61,38 @@ export default function UnionPortalClient({ ctx, activeServices = [], chairman =
             
             // Normalize villages to objects if they are strings
             const villagesSource = dynamic?.villages || ward.villages || [];
-            const normalizedVillages = villagesSource.map(v => 
-                typeof v === 'string' ? { name: v, population: '0', voters: '0' } : v
-            );
+            const normalizedVillages = villagesSource.map(v => {
+                if (typeof v === 'string') return { name: v, population: '0', voters: '0', blood_donors: '0' };
+                
+                const isVerified = v.survey_status === 'verified';
+                const s = isVerified ? (v.real_stats || {}) : (v.stats || {});
+                
+                return {
+                    ...v,
+                    population: s.total_members || s.population || v.population || '0',
+                    voters: s.voters || v.voters || '0',
+                    maleVoters: s.male_voters || s.maleVoters || s.males || v.maleVoters || '0',
+                    femaleVoters: s.female_voters || s.femaleVoters || s.females || v.femaleVoters || '0',
+                    schools: s.schools || v.schools || '0',
+                    mosques: s.mosques || v.mosques || '0',
+                    madrassas: s.madrassas || v.madrassas || '0',
+                    blood_donors: s.blood_donors || s.bloodDonors || v.blood_donors || '0',
+                    blood_groups: s.blood_groups || s.bloodGroups || v.blood_groups || {},
+                    total_houses: s.total_houses || s.totalHouses || v.total_houses || v.total_estimated_houses || '0',
+                    birth_registered: s.birth_registered || s.birthRegistered || v.birth_registered || '0',
+                    voter_eligible: s.voter_eligible || s.voterEligible || v.voter_eligible || '0'
+                };
+            });
 
             // Per-ward stats aggregation
             const stats = normalizedVillages.reduce((acc, v) => {
                 const getCount = (val) => Array.isArray(val) ? val.length : parseBnInt(val || '0');
                 
+                const vBloodGroups = v.blood_groups || {};
+                for (const [bg, count] of Object.entries(vBloodGroups)) {
+                    acc.blood_groups[bg] = (acc.blood_groups[bg] || 0) + count;
+                }
+
                 return {
                     population: acc.population + parseBnInt(v.population || '0'),
                     voters: acc.voters + parseBnInt(v.voters || '0'),
@@ -77,6 +101,11 @@ export default function UnionPortalClient({ ctx, activeServices = [], chairman =
                     schools: acc.schools + getCount(v.schools),
                     mosques: acc.mosques + getCount(v.mosques),
                     madrassas: acc.madrassas + getCount(v.madrassas),
+                    bloodDonors: acc.bloodDonors + parseBnInt(v.blood_donors || '0'),
+                    total_houses: acc.total_houses + parseBnInt(v.total_houses || '0'),
+                    birth_registered: acc.birth_registered + parseBnInt(v.birth_registered || '0'),
+                    voter_eligible: acc.voter_eligible + parseBnInt(v.voter_eligible || '0'),
+                    blood_groups: acc.blood_groups
                 };
             }, { 
                 population: 0, 
@@ -85,7 +114,12 @@ export default function UnionPortalClient({ ctx, activeServices = [], chairman =
                 femaleVoters: 0, 
                 schools: 0, 
                 mosques: 0, 
-                madrassas: 0 
+                madrassas: 0,
+                bloodDonors: 0,
+                total_houses: 0,
+                birth_registered: 0,
+                voter_eligible: 0,
+                blood_groups: {}
             });
 
             if (!dynamic) return { ...ward, villages: normalizedVillages, stats, bloodDonorsCount: 0 };
@@ -100,7 +134,7 @@ export default function UnionPortalClient({ ctx, activeServices = [], chairman =
                 villages: normalizedVillages,
                 population: toBnDigits(stats.population.toString()),
                 voters: toBnDigits(stats.voters.toString()),
-                bloodDonorsCount: dynamic.bloodDonors?.length || 0,
+                bloodDonorsCount: stats.bloodDonors || (dynamic?.bloodDonors?.length || 0),
                 stats, // Included for card display
             };
         });
@@ -134,7 +168,12 @@ export default function UnionPortalClient({ ctx, activeServices = [], chairman =
 
     // Aggregate all granular stats for the whole union
     const aggregatedData = useMemo(() => {
-        return mergedWards.reduce((acc, w) => {
+        const result = mergedWards.reduce((acc, w) => {
+            const wBloodGroups = w.stats?.blood_groups || {};
+            for (const [bg, count] of Object.entries(wBloodGroups)) {
+                acc.blood_groups[bg] = (acc.blood_groups[bg] || 0) + count;
+            }
+
             return {
                 population: acc.population + (w.stats?.population || 0),
                 voters: acc.voters + (w.stats?.voters || 0),
@@ -144,9 +183,16 @@ export default function UnionPortalClient({ ctx, activeServices = [], chairman =
                 mosques: acc.mosques + (w.stats?.mosques || 0),
                 madrassas: acc.madrassas + (w.stats?.madrassas || 0),
                 orphanages: acc.orphanages + (w.stats?.orphanages || 0),
-                bloodDonors: acc.bloodDonors + (w.bloodDonorsCount || 0),
+                total_houses: acc.total_houses + (w.stats?.total_houses || 0),
+                birth_registered: acc.birth_registered + (w.stats?.birth_registered || 0),
+                voter_eligible: acc.voter_eligible + (w.stats?.voter_eligible || 0),
+                blood_groups: acc.blood_groups
             };
-        }, { population: 0, voters: 0, maleVoters: 0, femaleVoters: 0, schools: 0, mosques: 0, madrassas: 0, orphanages: 0, bloodDonors: 0 });
+        }, { population: 0, voters: 0, maleVoters: 0, femaleVoters: 0, schools: 0, mosques: 0, madrassas: 0, orphanages: 0, total_houses: 0, birth_registered: 0, voter_eligible: 0, blood_groups: {} });
+
+        // Calculate final bloodDonors count from summed blood_groups
+        const totalDonors = Object.values(result.blood_groups).reduce((sum, count) => sum + count, 0);
+        return { ...result, bloodDonors: totalDonors };
     }, [mergedWards]);
 
     // Search Logic for Portals
@@ -237,7 +283,10 @@ export default function UnionPortalClient({ ctx, activeServices = [], chairman =
     const allStats = [
         { label: 'মোট ওয়াড', value: toBnDigits(mergedWards.length.toString()), icon: MapPin, color: 'text-teal-600', shadow: 'hover:shadow-teal-500/20', bg: 'bg-teal-50' },
         { label: 'মোট গ্রাম', value: toBnDigits(allVillages.length.toString()), icon: MapPin, color: 'text-sky-600', shadow: 'hover:shadow-sky-500/20', bg: 'bg-sky-50' },
+        { label: 'মোট বাড়ি', value: toBnDigits(aggregatedData.total_houses.toString()), icon: Home, color: 'text-amber-600', shadow: 'hover:shadow-amber-500/20', bg: 'bg-amber-50' },
         { label: 'রক্তদাতা', value: toBnDigits(aggregatedData.bloodDonors.toString()), icon: Droplets, color: 'text-rose-600', shadow: 'hover:shadow-rose-500/20', bg: 'bg-rose-50' },
+        { label: 'জন্ম নিবন্ধন', value: toBnDigits(aggregatedData.birth_registered.toString()), icon: ShieldCheck, color: 'text-teal-600', shadow: 'hover:shadow-teal-500/20', bg: 'bg-teal-50' },
+        { label: 'ভোটার যোগ্য', value: toBnDigits(aggregatedData.voter_eligible.toString()), icon: UserCheck, color: 'text-amber-600', shadow: 'hover:shadow-amber-500/20', bg: 'bg-amber-50' },
         { label: 'জনসংখ্যা', value: aggregatedData.population > 0 ? toBnDigits(aggregatedData.population.toLocaleString()) : '৪৫,০০০+', icon: Users, color: 'text-blue-600', shadow: 'hover:shadow-blue-500/20', bg: 'bg-blue-50' },
         { label: 'মোট ভোটার', value: aggregatedData.voters > 0 ? toBnDigits(aggregatedData.voters.toLocaleString()) : '২৮,৫০০+', icon: UserCheck, color: 'text-indigo-600', shadow: 'hover:shadow-indigo-500/20', bg: 'bg-indigo-50' },
         { label: 'পুরুষ', value: toBnDigits(aggregatedData.maleVoters.toLocaleString()), icon: UserCircle, color: 'text-blue-500', shadow: 'hover:shadow-blue-500/10', bg: 'bg-blue-50/50' },
@@ -245,7 +294,6 @@ export default function UnionPortalClient({ ctx, activeServices = [], chairman =
         { label: 'স্কুল', value: toBnDigits(aggregatedData.schools.toString()), icon: School, color: 'text-orange-600', shadow: 'hover:shadow-orange-500/20', bg: 'bg-orange-50' },
         { label: 'মসজিদ', value: toBnDigits(aggregatedData.mosques.toString()), icon: Building2, color: 'text-emerald-600', shadow: 'hover:shadow-emerald-500/20', bg: 'bg-emerald-50' },
         { label: 'মাদ্রাসা', value: toBnDigits(aggregatedData.madrassas.toString()), icon: BookOpen, color: 'text-sky-600', shadow: 'hover:shadow-sky-500/20', bg: 'bg-sky-50' },
-        { label: 'এতিমখানা', value: toBnDigits(aggregatedData.orphanages.toString()), icon: Home, color: 'text-amber-600', shadow: 'hover:shadow-amber-500/20', bg: 'bg-amber-50' },
     ];
 
     return (
@@ -367,6 +415,7 @@ export default function UnionPortalClient({ ctx, activeServices = [], chairman =
                             ))}
                         </div>
 
+
                         {/* Search Bar - Integrated Below Stats */}
                         <div className="mt-12 max-w-3xl relative group z-50" ref={searchRef}>
                             <div className="absolute -inset-1 bg-gradient-to-r from-teal-500 to-rose-500 rounded-[32px] blur opacity-10 group-focus-within:opacity-30 transition duration-500" />
@@ -453,6 +502,7 @@ export default function UnionPortalClient({ ctx, activeServices = [], chairman =
                     </motion.section>
                 </div>
             </div>
+            
 
             {/* Main Content Area */}
             <div className="max-w-[1200px] mx-auto px-4 -mt-12 relative z-20 pb-20">
@@ -770,6 +820,66 @@ export default function UnionPortalClient({ ctx, activeServices = [], chairman =
                     />
                 </div>
 
+                {/* Blood Donor Section Moved Down - Now after News */}
+                <div className="max-w-[1200px] mx-auto px-4 mb-20">
+                    {aggregatedData.blood_groups && Object.keys(aggregatedData.blood_groups).length > 0 && (
+                        <motion.div 
+                            initial={{ opacity: 0, y: 20 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            className="p-8 rounded-[40px] bg-white border border-slate-200/60 shadow-xl shadow-slate-200/20 relative overflow-hidden group"
+                        >
+                            <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none group-hover:scale-110 transition-transform">
+                                <Droplets size={120} className="text-rose-600" />
+                            </div>
+                            
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 relative z-10">
+                                <div>
+                                    <h3 className="text-2xl font-black text-slate-800 flex items-center gap-3">
+                                        <div className="p-3 rounded-2xl bg-rose-50 text-rose-600 shadow-sm">
+                                            <Droplets size={24} />
+                                        </div>
+                                        ইউনিয়নের রক্তদাতা পরিসংখ্যান
+                                    </h3>
+                                    <p className="mt-2 text-slate-500 font-bold flex items-center gap-2">
+                                        সকল ওয়ার্ডের সম্মিলিত রক্তদাতার সংখ্যা: 
+                                        <span className="px-3 py-1 rounded-full bg-rose-600 text-white text-sm font-black">
+                                            {toBnDigits(aggregatedData.bloodDonors.toString())} জন
+                                        </span>
+                                    </p>
+                                </div>
+                                <Link 
+                                    href={`/services/blood-bank?u=${union.slug}`}
+                                    className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-slate-900 text-white text-sm font-black hover:bg-rose-600 transition-all active:scale-95 shadow-lg shadow-slate-200"
+                                >
+                                    রক্তদাতার তালিকা দেখুন
+                                    <LucideArrowRight size={18} />
+                                </Link>
+                            </div>
+
+                            <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-8 gap-4 relative z-10">
+                                {Object.entries(aggregatedData.blood_groups).map(([group, count], idx) => (
+                                    <motion.div 
+                                        key={group}
+                                        initial={{ opacity: 0, scale: 0.9 }}
+                                        whileInView={{ opacity: 1, scale: 1 }}
+                                        viewport={{ once: true }}
+                                        transition={{ delay: idx * 0.05 }}
+                                        className="flex flex-col items-center p-4 rounded-3xl bg-slate-50 border border-slate-100 hover:border-rose-200 hover:bg-rose-50 transition-all group/item"
+                                    >
+                                        <span className="text-xl font-black text-rose-600 mb-1 group-hover/item:scale-110 transition-transform">{group}</span>
+                                        <span className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">গ্রুপ</span>
+                                        <div className="w-full py-2 rounded-xl bg-white border border-slate-100 shadow-sm text-center">
+                                            <span className="text-lg font-black text-slate-800">{toBnDigits(count.toString())}</span>
+                                            <span className="text-[10px] font-bold text-slate-400 ml-1">জন</span>
+                                        </div>
+                                    </motion.div>
+                                ))}
+                            </div>
+                        </motion.div>
+                    )}
+                </div>
+
                 {/* Services Section */}
                 <div className="space-y-8">
                     <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
@@ -789,10 +899,16 @@ export default function UnionPortalClient({ ctx, activeServices = [], chairman =
                                     key={cat.id}
                                     whileHover={{ y: -5 }}
                                     className="h-full"
+                                    onClick={(e) => {
+                                        if (!isActiveFromDB) {
+                                            e.preventDefault();
+                                            alert(`${cat.title} সেবাটি বর্তমানে আপনার ইউনিয়নে সক্রিয় নেই। অনুগ্রহ করে ইউনিয়ন পরিষদের সাথে যোগাযোগ করুন।`);
+                                        }
+                                    }}
                                 >
                                     <Link
-                                        href={`${paths.service(cat.id === 'market' ? 'market' : cat.id)}?u=${encodeURIComponent(union.slug)}`}
-                                        className={`group relative flex h-full flex-col overflow-hidden rounded-[32px] bg-white border ${isActiveFromDB ? 'border-teal-400 shadow-teal-100 shadow-lg' : 'border-slate-200/60'} p-5 sm:p-6 transition-all duration-300`}
+                                        href={isActiveFromDB ? `${paths.service(cat.id === 'market' ? 'market' : cat.id)}?u=${encodeURIComponent(union.slug)}` : '#'}
+                                        className={`group relative flex h-full flex-col overflow-hidden rounded-[32px] bg-white border ${isActiveFromDB ? 'border-teal-400 shadow-teal-100 shadow-lg' : 'border-slate-200/60 opacity-60'} p-5 sm:p-6 transition-all duration-300`}
                                     >
                                         <div className={`absolute -right-10 -top-10 h-32 w-32 rounded-full bg-gradient-to-br ${cat.gradient} opacity-[0.08] blur-2xl group-hover:opacity-[0.15] transition-opacity`} />
                                         

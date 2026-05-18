@@ -1,18 +1,21 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { toast } from 'react-hot-toast';
+import Link from 'next/link';
 import { 
     Database, Trash2, Zap, ShieldAlert, CheckCircle2, 
     Loader2, Users, MapPin, Home, ArrowRight, Download, Upload,
-    RefreshCw, AlertTriangle
+    RefreshCw, AlertTriangle, GitBranch, FileWarning, ExternalLink
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { adminService } from '@/lib/services/adminService';
 
 export default function MaintenancePage() {
-    const [loading, setLoading] = useState(false);
+    const [loadingAction, setLoadingAction] = useState(null);
     const [stats, setStats] = useState(null);
-    const [status, setStatus] = useState({ type: '', message: '' });
+    const [audit, setAudit] = useState(null);
+    const [selection, setSelection] = useState({});
 
     useEffect(() => {
         loadStats();
@@ -21,9 +24,9 @@ export default function MaintenancePage() {
     const loadStats = async () => {
         try {
             const data = await adminService.getGlobalStats();
-            // Also get household stats
-            const { count: hCount } = await adminService.getGlobalLocationStats(); // This is a bit different, but let's use global stats for now
+            const auditData = await adminService.getMigrationAudit();
             setStats(data);
+            setAudit(auditData);
         } catch (err) {
             console.error(err);
         }
@@ -32,12 +35,20 @@ export default function MaintenancePage() {
     const handleAction = async (action) => {
         const confirmMsg = action === 'wipe' 
             ? 'আপনি কি নিশ্চিত যে আপনি সব টেস্ট ডাটা মুছে ফেলতে চান? এটি আর ফিরিয়ে আনা যাবে না!' 
-            : 'সিস্টেম এখন ৪টি ইউনিয়ন, ২৪টি ওয়ার্ড এবং ৪৮টি গ্রাম তৈরি করবে। এতে কিছুক্ষণ সময় লাগতে পারে। আপনি কি নিশ্চিত?';
+            : action === 'repair_migration_links'
+                ? 'নিরাপদ migration repair চালানো হবে। শুধু নিশ্চিতভাবে মেলানো data update হবে। চালাবেন?'
+                : 'সিস্টেম এখন ৪টি ইউনিয়ন, ২৪টি ওয়ার্ড এবং ৪৮টি গ্রাম তৈরি করবে। এতে কিছুক্ষণ সময় লাগতে পারে। আপনি কি নিশ্চিত?';
         
         if (!confirm(confirmMsg)) return;
 
-        setLoading(true);
-        setStatus({ type: 'info', message: action === 'seed' ? 'ডাটা জেনারেট হচ্ছে, অনুগ্রহ করে অপেক্ষা করুন...' : 'ডাটা পরিষ্কার করা হচ্ছে...' });
+        setLoadingAction(action);
+        const loadingToast = toast.loading(
+            action === 'seed'
+                ? 'ডাটা জেনারেট হচ্ছে, অনুগ্রহ করে অপেক্ষা করুন...'
+                : action === 'repair_migration_links'
+                    ? 'নিরাপদ repair চালানো হচ্ছে...'
+                    : 'ডাটা পরিষ্কার করা হচ্ছে...'
+        );
         
         try {
             const response = await fetch('/api/admin/maintenance', {
@@ -49,14 +60,65 @@ export default function MaintenancePage() {
             const result = await response.json();
             if (!response.ok) throw new Error(result.error);
 
-            setStatus({ type: 'success', message: result.message });
+            toast.success(result.message, { id: loadingToast });
             await loadStats();
         } catch (err) {
-            setStatus({ type: 'error', message: err.message });
+            toast.error(err.message || 'কোনো একটি সমস্যা হয়েছে', { id: loadingToast });
         } finally {
-            setLoading(false);
+            setLoadingAction(null);
         }
     };
+
+    const handleManualFix = async (action, payload, key) => {
+        setLoadingAction(key);
+        const loadingToast = toast.loading('আপডেট করা হচ্ছে...');
+
+        try {
+            const response = await fetch('/api/admin/maintenance', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action, ...payload })
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error);
+            toast.success(result.message, { id: loadingToast });
+            await loadStats();
+        } catch (err) {
+            toast.error(err.message || 'আপডেট করা যায়নি', { id: loadingToast });
+        } finally {
+            setLoadingAction(null);
+        }
+    };
+
+    const handleDocumentMigration = async (documentId, file) => {
+        if (!file) return;
+
+        const key = `document-${documentId}`;
+        setLoadingAction(key);
+        const loadingToast = toast.loading('নথি private locker-এ নেওয়া হচ্ছে...');
+
+        try {
+            const formData = new FormData();
+            formData.append('documentId', documentId);
+            formData.append('file', file);
+
+            const response = await fetch('/api/admin/migrate-household-document', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error);
+            toast.success(result.message, { id: loadingToast });
+            await loadStats();
+        } catch (err) {
+            toast.error(err.message || 'নথি migrate করা যায়নি', { id: loadingToast });
+        } finally {
+            setLoadingAction(null);
+        }
+    };
+
+    const profileOptions = audit?.options?.assignableProfiles || [];
+    const villageOptions = audit?.options?.locationVillages || [];
 
     return (
         <div className="max-w-6xl mx-auto space-y-8 pb-20">
@@ -74,25 +136,6 @@ export default function MaintenancePage() {
                 </div>
             </div>
 
-            {/* Status Alert */}
-            <AnimatePresence>
-                {status.message && (
-                    <motion.div 
-                        initial={{ opacity: 0, y: -20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className={`p-4 rounded-2xl flex items-center gap-3 border ${
-                            status.type === 'success' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
-                            status.type === 'error' ? 'bg-rose-50 border-rose-100 text-rose-700' :
-                            'bg-blue-50 border-blue-100 text-blue-700'
-                        }`}
-                    >
-                        {status.type === 'success' ? <CheckCircle2 size={20} /> : <ShieldAlert size={20} />}
-                        <p className="font-bold text-sm">{status.message}</p>
-                        <button onClick={() => setStatus({ type: '', message: '' })} className="ml-auto text-xs font-black uppercase">বন্ধ করুন</button>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-
             {/* Stats Overview */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <StatCard icon={<MapPin />} label="ইউনিয়ন" value={stats?.unions} color="indigo" />
@@ -100,6 +143,227 @@ export default function MaintenancePage() {
                 <StatCard icon={<Home />} label="গ্রাম" value={stats?.villages} color="blue" />
                 <StatCard icon={<Users />} label="ইউজার" value={stats?.users} color="amber" />
             </div>
+
+            <section className="bg-white rounded-[32px] p-8 border border-slate-200 shadow-sm">
+                <div className="flex items-start justify-between gap-4 mb-6">
+                    <div>
+                        <div className="flex items-center gap-2 text-teal-600 font-black text-xs uppercase tracking-widest mb-2">
+                            <GitBranch size={14} /> Migration Health
+                        </div>
+                        <h2 className="text-2xl font-black text-slate-800">নতুন data flow-তে যেগুলো এখনও বাকি</h2>
+                        <p className="text-sm font-bold text-slate-500 mt-2">
+                            সবগুলো শূন্য হলে household, locker, আর volunteer flow পুরোপুরি নতুন model-এ আছে।
+                        </p>
+                    </div>
+                    <button
+                        onClick={loadStats}
+                        className="shrink-0 p-3 rounded-2xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
+                        aria-label="Refresh migration audit"
+                    >
+                        <RefreshCw size={18} />
+                    </button>
+                </div>
+
+                <div className="mb-6 flex flex-wrap items-center gap-3">
+                    <button
+                        onClick={() => handleAction('repair_migration_links')}
+                        disabled={loadingAction !== null}
+                        className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-black text-white transition-colors hover:bg-teal-700 disabled:opacity-50"
+                    >
+                        {loadingAction === 'repair_migration_links' ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
+                        নিরাপদ repair চালান
+                    </button>
+                    <p className="text-xs font-bold text-slate-500">
+                        শুধু village mapping আর নিশ্চিত creator match ঠিক করবে; সন্দেহজনক data নিজে থেকে বদলাবে না।
+                    </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                    <AuditCard
+                        label="পুরনো volunteer row"
+                        value={audit?.legacyVolunteerRows}
+                        note="profiles table-এ migrate করার পর এগুলো আর নতুন flow-তে দরকার নেই"
+                    />
+                    <AuditCard
+                        label="গ্রাম mapping বাকি household"
+                        value={audit?.householdsMissingLocationVillage}
+                        note="volunteer village-scope security ঠিক রাখতে এগুলো map হওয়া দরকার"
+                    />
+                    <AuditCard
+                        label="পুরনো volunteer link-সহ household"
+                        value={audit?.householdsUsingLegacyVolunteer}
+                        note="এগুলোতে এখনও added_by_volunteer_id আছে"
+                    />
+                    <AuditCard
+                        label="creator profile link ছাড়া household"
+                        value={audit?.householdsMissingCreator}
+                        note="added_by_user_id না থাকলে audit trail অসম্পূর্ণ থাকে"
+                    />
+                    <AuditCard
+                        label="private path ছাড়া locker document"
+                        value={audit?.documentsMissingPrivatePath}
+                        note="এগুলো এখনও পুরনো public-file model-এ আছে"
+                    />
+                    <AuditCard
+                        label="village scope ছাড়া volunteer"
+                        value={audit?.volunteersWithoutVillageScope}
+                        note="volunteer-এর scope অবশ্যই নির্দিষ্ট village হওয়া উচিত"
+                    />
+                </div>
+
+                <div className="mt-8 grid grid-cols-1 xl:grid-cols-2 gap-4">
+                    <AuditDetailPanel
+                        title="গ্রাম mapping বাকি household"
+                        rows={audit?.details?.missingVillageHouseholds}
+                        emptyText="সব household-এ location village mapping আছে।"
+                        renderRow={(row) => (
+                            <HouseholdAuditRow
+                                key={row.id}
+                                row={row}
+                                subtitle={`${row.village?.bn_name || row.village?.name || 'গ্রাম অজানা'} | ${row.ward?.name_bn || 'ওয়ার্ড অজানা'}`}
+                            >
+                                <InlineSelect
+                                    value={selection[`village-${row.id}`] || ''}
+                                    onChange={(value) => setSelection((current) => ({ ...current, [`village-${row.id}`]: value }))}
+                                    options={villageOptions.filter((village) => village.parent_id === row.ward_id)}
+                                    getLabel={(item) => item.name_bn || item.name_en}
+                                    placeholder="গ্রাম বাছুন"
+                                />
+                                <InlineAction
+                                    label="সেট"
+                                    disabled={!selection[`village-${row.id}`] || loadingAction !== null}
+                                    loading={loadingAction === `village-${row.id}`}
+                                    onClick={() => handleManualFix(
+                                        'assign_household_location_village',
+                                        { householdId: row.id, villageId: selection[`village-${row.id}`] },
+                                        `village-${row.id}`
+                                    )}
+                                />
+                            </HouseholdAuditRow>
+                        )}
+                    />
+                    <AuditDetailPanel
+                        title="creator link ছাড়া household"
+                        rows={audit?.details?.missingCreatorHouseholds}
+                        emptyText="সব household-এ creator profile link আছে।"
+                        renderRow={(row) => (
+                            <HouseholdAuditRow
+                                key={row.id}
+                                row={row}
+                                subtitle={row.village?.bn_name || row.village?.name || 'গ্রাম অজানা'}
+                            >
+                                <InlineSelect
+                                    value={selection[`creator-${row.id}`] || ''}
+                                    onChange={(value) => setSelection((current) => ({ ...current, [`creator-${row.id}`]: value }))}
+                                    options={profileOptions}
+                                    getLabel={(item) => `${`${item.first_name || ''} ${item.last_name || ''}`.trim() || item.email || item.phone} (${item.role})`}
+                                    placeholder="creator বাছুন"
+                                />
+                                <InlineAction
+                                    label="লিংক"
+                                    disabled={!selection[`creator-${row.id}`] || loadingAction !== null}
+                                    loading={loadingAction === `creator-${row.id}`}
+                                    onClick={() => handleManualFix(
+                                        'assign_household_creator',
+                                        { householdId: row.id, profileId: selection[`creator-${row.id}`] },
+                                        `creator-${row.id}`
+                                    )}
+                                />
+                            </HouseholdAuditRow>
+                        )}
+                    />
+                    <AuditDetailPanel
+                        title="পুরনো volunteer link-সহ household"
+                        rows={audit?.details?.legacyLinkedHouseholds}
+                        emptyText="পুরনো volunteer link আর নেই।"
+                        renderRow={(row) => (
+                            <HouseholdAuditRow
+                                key={row.id}
+                                row={row}
+                                subtitle={`legacy id: ${row.added_by_volunteer_id}`}
+                            >
+                                <InlineSelect
+                                    value={selection[`legacy-${row.id}`] || ''}
+                                    onChange={(value) => setSelection((current) => ({ ...current, [`legacy-${row.id}`]: value }))}
+                                    options={profileOptions.filter((profile) => profile.role === 'volunteer')}
+                                    getLabel={(item) => `${`${item.first_name || ''} ${item.last_name || ''}`.trim() || item.email || item.phone}`}
+                                    placeholder="নতুন volunteer"
+                                />
+                                <InlineAction
+                                    label="লিংক"
+                                    disabled={!selection[`legacy-${row.id}`] || loadingAction !== null}
+                                    loading={loadingAction === `legacy-${row.id}`}
+                                    onClick={() => handleManualFix(
+                                        'assign_household_creator',
+                                        { householdId: row.id, profileId: selection[`legacy-${row.id}`] },
+                                        `legacy-${row.id}`
+                                    )}
+                                />
+                            </HouseholdAuditRow>
+                        )}
+                    />
+                    <AuditDetailPanel
+                        title="private path ছাড়া locker document"
+                        rows={audit?.details?.documentsMissingPrivatePath}
+                        emptyText="সব document private path-এ migrated।"
+                        renderRow={(row) => (
+                            <div key={row.id} className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
+                                <div className="min-w-0">
+                                    <p className="truncate text-sm font-black text-slate-700">{row.title || row.type || 'নথি'}</p>
+                                    <p className="truncate text-xs font-bold text-slate-400">
+                                        {row.household?.owner_name || 'household অজানা'} | {row.household?.house_no || 'নং নেই'}
+                                    </p>
+                                </div>
+                                <label className="shrink-0">
+                                    <input
+                                        type="file"
+                                        className="hidden"
+                                        disabled={loadingAction !== null}
+                                        onChange={(event) => handleDocumentMigration(row.id, event.target.files?.[0])}
+                                    />
+                                    <span className="inline-flex cursor-pointer items-center rounded-xl bg-slate-900 px-3 py-2 text-xs font-black text-white transition-colors hover:bg-teal-700">
+                                        {loadingAction === `document-${row.id}` ? <Loader2 size={14} className="animate-spin" /> : 're-upload'}
+                                    </span>
+                                </label>
+                            </div>
+                        )}
+                    />
+                    <AuditDetailPanel
+                        title="village scope ছাড়া volunteer"
+                        rows={audit?.details?.volunteersWithoutVillageScope}
+                        emptyText="সব volunteer নির্দিষ্ট village-এ assigned।"
+                        renderRow={(row) => (
+                            <div key={row.id} className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
+                                <p className="truncate text-sm font-black text-slate-700">
+                                    {`${row.first_name || ''} ${row.last_name || ''}`.trim() || row.email || row.phone || row.id}
+                                </p>
+                                <p className="text-xs font-bold text-slate-400">
+                                    {row.phone || row.email || 'যোগাযোগ নেই'} | {row.access_scope_id ? `scope: ${row.access_scope_id}` : 'scope দেওয়া নেই'}
+                                </p>
+                                <div className="mt-3 flex gap-2">
+                                    <InlineSelect
+                                        value={selection[`scope-${row.id}`] || ''}
+                                        onChange={(value) => setSelection((current) => ({ ...current, [`scope-${row.id}`]: value }))}
+                                        options={villageOptions}
+                                        getLabel={(item) => item.name_bn || item.name_en}
+                                        placeholder="গ্রাম বাছুন"
+                                    />
+                                    <InlineAction
+                                        label="assign"
+                                        disabled={!selection[`scope-${row.id}`] || loadingAction !== null}
+                                        loading={loadingAction === `scope-${row.id}`}
+                                        onClick={() => handleManualFix(
+                                            'assign_volunteer_scope',
+                                            { profileId: row.id, villageId: selection[`scope-${row.id}`] },
+                                            `scope-${row.id}`
+                                        )}
+                                    />
+                                </div>
+                            </div>
+                        )}
+                    />
+                </div>
+            </section>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Seed Tool */}
@@ -124,10 +388,10 @@ export default function MaintenancePage() {
 
                     <button 
                         onClick={() => handleAction('seed')}
-                        disabled={loading}
+                        disabled={loadingAction !== null}
                         className="w-full py-5 bg-indigo-600 text-white rounded-3xl font-black flex items-center justify-center gap-3 hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-200 disabled:opacity-50 disabled:grayscale"
                     >
-                        {loading ? <Loader2 className="animate-spin" /> : <Zap size={20} />}
+                        {loadingAction === 'seed' ? <Loader2 className="animate-spin" /> : <Zap size={20} />}
                         জেনারেট করুন (Seed)
                     </button>
                 </section>
@@ -158,10 +422,10 @@ export default function MaintenancePage() {
 
                     <button 
                         onClick={() => handleAction('wipe')}
-                        disabled={loading}
+                        disabled={loadingAction !== null}
                         className="w-full py-5 border-2 border-rose-200 text-rose-600 rounded-3xl font-black flex items-center justify-center gap-3 hover:bg-rose-600 hover:text-white transition-all disabled:opacity-50"
                     >
-                        {loading ? <Loader2 className="animate-spin" /> : <Trash2 size={20} />}
+                        {loadingAction === 'wipe' ? <Loader2 className="animate-spin" /> : <Trash2 size={20} />}
                         সব টেস্ট ডাটা মুছুন (Wipe)
                     </button>
                 </section>
@@ -227,5 +491,98 @@ function FeatureItem({ text }) {
             <CheckCircle2 size={16} className="text-emerald-500" />
             {text}
         </li>
+    );
+}
+
+function AuditCard({ label, value, note }) {
+    const count = value || 0;
+    const healthy = count === 0;
+
+    return (
+        <div className={`rounded-3xl border p-5 ${healthy ? 'border-emerald-100 bg-emerald-50/60' : 'border-amber-100 bg-amber-50/70'}`}>
+            <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-black text-slate-700">{label}</p>
+                {healthy ? (
+                    <CheckCircle2 size={18} className="text-emerald-600" />
+                ) : (
+                    <FileWarning size={18} className="text-amber-600" />
+                )}
+            </div>
+            <p className={`text-3xl font-black mt-4 ${healthy ? 'text-emerald-700' : 'text-amber-700'}`}>{count}</p>
+            <p className="text-xs font-bold text-slate-500 mt-3 leading-relaxed">{note}</p>
+        </div>
+    );
+}
+
+function AuditDetailPanel({ title, rows = [], emptyText, renderRow }) {
+    return (
+        <div className="rounded-3xl border border-slate-200 p-5">
+            <div className="mb-4 flex items-center justify-between gap-3">
+                <h3 className="text-sm font-black text-slate-800">{title}</h3>
+                <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-black text-slate-500">
+                    সর্বোচ্চ ১০টি
+                </span>
+            </div>
+            <div className="space-y-3">
+                {rows?.length ? rows.map(renderRow) : (
+                    <p className="rounded-2xl bg-emerald-50 px-4 py-3 text-xs font-bold text-emerald-700">
+                        {emptyText}
+                    </p>
+                )}
+            </div>
+        </div>
+    );
+}
+
+function HouseholdAuditRow({ row, subtitle, children }) {
+    return (
+        <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
+            <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                    <p className="truncate text-sm font-black text-slate-700">
+                        {row.owner_name || 'নাম নেই'} | {row.house_no || 'নং নেই'}
+                    </p>
+                    <p className="truncate text-xs font-bold text-slate-400">{subtitle}</p>
+                </div>
+                <Link
+                    href={`/h/${row.id}`}
+                    className="shrink-0 rounded-xl bg-white p-2 text-slate-500 shadow-sm transition-colors hover:text-teal-600"
+                    aria-label="Open household"
+                >
+                    <ExternalLink size={16} />
+                </Link>
+            </div>
+            {children && <div className="mt-3 flex gap-2">{children}</div>}
+        </div>
+    );
+}
+
+function InlineSelect({ value, onChange, options, getLabel, placeholder }) {
+    return (
+        <select
+            value={value}
+            onChange={(event) => onChange(event.target.value)}
+            className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 outline-none focus:border-teal-500"
+        >
+            <option value="">{placeholder}</option>
+            {options.map((option) => (
+                <option key={option.id} value={option.id}>
+                    {getLabel(option)}
+                </option>
+            ))}
+        </select>
+    );
+}
+
+function InlineAction({ label, disabled, loading, onClick }) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            disabled={disabled}
+            className="shrink-0 rounded-xl bg-slate-900 px-3 py-2 text-xs font-black text-white transition-colors hover:bg-teal-700 disabled:opacity-50"
+        >
+            {loading ? <Loader2 size={14} className="animate-spin" /> : label}
+        </button>
     );
 }

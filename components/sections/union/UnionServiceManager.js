@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
     FileText, CheckCircle, XCircle, Clock, Calendar, 
-    User, MapPin, Search, Loader2, Filter, ChevronRight
+    User, MapPin, Search, Loader2, Filter, ChevronRight, Save
 } from 'lucide-react';
 import { householdService } from '@/lib/services/householdService';
 import { toBnDigits } from '@/lib/utils/format';
@@ -16,11 +16,7 @@ export default function UnionServiceManager({ unionId }) {
     const [actionForm, setActionForm] = useState({ status: '', collection_date: '', feedback: '' });
     const [saving, setSaving] = useState(false);
 
-    useEffect(() => {
-        loadRequests();
-    }, [unionId]);
-
-    async function loadRequests() {
+    const loadRequests = useCallback(async () => {
         try {
             setLoading(true);
             const data = await householdService.getServiceRequestsByUnion(unionId);
@@ -30,7 +26,11 @@ export default function UnionServiceManager({ unionId }) {
         } finally {
             setLoading(false);
         }
-    }
+    }, [unionId]);
+
+    useEffect(() => {
+        loadRequests();
+    }, [loadRequests]);
 
     async function handleAction() {
         setSaving(true);
@@ -39,7 +39,8 @@ export default function UnionServiceManager({ unionId }) {
                 selectedRequest.id,
                 actionForm.status,
                 actionForm.collection_date,
-                actionForm.feedback
+                actionForm.feedback,
+                unionId
             );
             setSelectedRequest(null);
             await loadRequests();
@@ -51,6 +52,13 @@ export default function UnionServiceManager({ unionId }) {
     }
 
     if (loading) return <div className="p-20 text-center"><Loader2 className="animate-spin mx-auto text-teal-600" /></div>;
+
+    const getStatusMeta = (status) => ({
+        pending: { label: 'পেন্ডিং', className: 'bg-amber-50 text-amber-600' },
+        processing: { label: 'প্রক্রিয়াধীন', className: 'bg-blue-50 text-blue-600' },
+        ready: { label: 'প্রস্তুত', className: 'bg-emerald-50 text-emerald-600' },
+        rejected: { label: 'বাতিল', className: 'bg-rose-50 text-rose-600' }
+    }[status] || { label: 'পেন্ডিং', className: 'bg-amber-50 text-amber-600' });
 
     return (
         <div className="space-y-8">
@@ -65,7 +73,9 @@ export default function UnionServiceManager({ unionId }) {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {requests.map(req => (
+                {requests.map(req => {
+                    const currentStatus = getStatusMeta(req.status);
+                    return (
                     <motion.div 
                         key={req.id}
                         layoutId={req.id}
@@ -76,12 +86,12 @@ export default function UnionServiceManager({ unionId }) {
                             <div className="w-12 h-12 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center group-hover:bg-teal-600 group-hover:text-white transition-all">
                                 <FileText size={24} />
                             </div>
-                            <span className="px-3 py-1 rounded-lg bg-amber-50 text-amber-600 text-[10px] font-black uppercase tracking-widest">পেন্ডিং</span>
+                            <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${currentStatus.className}`}>{currentStatus.label}</span>
                         </div>
                         
                         <h4 className="text-xl font-black text-slate-800 mb-2">
-                            {req.service_type === 'birth_registration' ? 'জন্ম নিবন্ধন' : 
-                             req.service_type === 'death_certificate' ? 'মৃত্যু সনদ' : 'ইউটিলিটি সেবা'}
+                            {req.request_type === 'birth_registration' ? 'জন্ম নিবন্ধন' : 
+                             req.request_type === 'death_certificate' ? 'মৃত্যু সনদ' : 'ইউটিলিটি সেবা'}
                         </h4>
                         <div className="space-y-2 mb-6">
                             <p className="text-xs font-bold text-slate-500 flex items-center gap-2">
@@ -99,7 +109,8 @@ export default function UnionServiceManager({ unionId }) {
                             <ChevronRight size={18} className="text-slate-300 group-hover:translate-x-1 transition-transform" />
                         </div>
                     </motion.div>
-                ))}
+                    );
+                })}
                 
                 {requests.length === 0 && (
                     <div className="col-span-full py-20 text-center bg-slate-50 rounded-[40px] border-2 border-dashed border-slate-200">
@@ -136,29 +147,35 @@ export default function UnionServiceManager({ unionId }) {
                                 <div className="space-y-4">
                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">আবেদনের বিষয়</p>
                                     <div className="p-5 rounded-2xl bg-slate-50 border border-slate-100">
-                                        <p className="font-black text-slate-800">{selectedRequest.details?.subject_name}</p>
-                                        <p className="text-xs font-bold text-slate-500 italic">পিতা: {selectedRequest.details?.father_name}</p>
+                                        <p className="font-black text-slate-800">{selectedRequest.request_type === 'birth_registration' ? 'জন্ম নিবন্ধন' : selectedRequest.request_type === 'death_certificate' ? 'মৃত্যু সনদ' : selectedRequest.request_type}</p>
+                                        <p className="text-xs font-bold text-slate-500 italic">পিতা: {selectedRequest.father_name || 'প্রযোজ্য নয়'}</p>
                                     </div>
                                 </div>
                             </div>
 
                             <div className="space-y-6">
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <button 
-                                        onClick={() => setActionForm({...actionForm, status: 'Approved'})}
-                                        className={`py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${actionForm.status === 'Approved' ? 'bg-emerald-600 text-white shadow-xl' : 'bg-slate-100 text-slate-500 hover:bg-emerald-50'}`}
+                                        onClick={() => setActionForm({...actionForm, status: 'processing'})}
+                                        className={`py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${actionForm.status === 'processing' ? 'bg-amber-500 text-white shadow-xl' : 'bg-slate-100 text-slate-500 hover:bg-amber-50'}`}
+                                    >
+                                        <Clock size={18} /> প্রক্রিয়াধীন
+                                    </button>
+                                    <button 
+                                        onClick={() => setActionForm({...actionForm, status: 'ready'})}
+                                        className={`py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${actionForm.status === 'ready' ? 'bg-emerald-600 text-white shadow-xl' : 'bg-slate-100 text-slate-500 hover:bg-emerald-50'}`}
                                     >
                                         <CheckCircle size={18} /> অনুমোদন
                                     </button>
                                     <button 
-                                        onClick={() => setActionForm({...actionForm, status: 'Rejected'})}
-                                        className={`py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${actionForm.status === 'Rejected' ? 'bg-rose-600 text-white shadow-xl' : 'bg-slate-100 text-slate-500 hover:bg-rose-50'}`}
+                                        onClick={() => setActionForm({...actionForm, status: 'rejected'})}
+                                        className={`py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${actionForm.status === 'rejected' ? 'bg-rose-600 text-white shadow-xl' : 'bg-slate-100 text-slate-500 hover:bg-rose-50'}`}
                                     >
                                         <XCircle size={18} /> বাতিল করুন
                                     </button>
                                 </div>
 
-                                {actionForm.status === 'Approved' && (
+                                {actionForm.status === 'ready' && (
                                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-2">
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">সনদ সংগ্রহের তারিখ (Collection Date)</label>
                                         <input 

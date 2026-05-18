@@ -36,10 +36,17 @@ export default function ServiceRequestModal({ householdId, serviceType, onClose 
         try {
             await householdService.createServiceRequest({
                 household_id: householdId,
-                service_type: serviceType,
+                request_type: serviceType,
                 applicant_name: formData.applicant_name,
-                applicant_phone: formData.applicant_phone,
-                details: formData.details
+                contact_phone: formData.applicant_phone,
+                details: formData.details.request_note || null,
+                father_name: formData.details.father_name || null,
+                mother_name: formData.details.mother_name || null,
+                applicant_dob: formData.details.birth_date || null,
+                meta_data: {
+                    subject_name: formData.details.subject_name,
+                    source: 'public_household_profile'
+                }
             });
             setSuccess(true);
             setTimeout(() => onClose(), 2000);
@@ -57,7 +64,7 @@ export default function ServiceRequestModal({ householdId, serviceType, onClose 
                     <CheckCircle2 size={40} />
                 </div>
                 <h3 className="text-2xl font-black text-slate-800 mb-2">আবেদন সফল!</h3>
-                <p className="text-slate-500 font-bold">ইউনিয়ন থেকে শীঘ্রই আপনার সাথে যোগাযোগ করা হবে।</p>
+                <p className="text-slate-500 font-bold">আবেদন জমা হয়েছে। অবস্থা বদলালে আপনার মোবাইলে SMS যাবে।</p>
             </div>
         );
     }

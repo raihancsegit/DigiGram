@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { wardService } from '@/lib/services/wardService';
 import { adminService } from '@/lib/services/adminService';
 import { getVolunteersAction } from '@/lib/actions/wardActions';
+import toast from 'react-hot-toast';
 
 const inputStyles = "w-full p-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 outline-none transition-all font-bold text-slate-700 text-sm";
 
@@ -80,13 +81,13 @@ export default function VolunteerManagement({ villageId, villageName }) {
         try {
             // Using the actual 'volunteer' role defined in schema
             await adminService.assignRoleToUser(user.id, 'volunteer', villageId);
-            alert('সফলভাবে নিয়োগ দেওয়া হয়েছে।');
+            toast.success('সফলভাবে নিয়োগ দেওয়া হয়েছে।');
             setIsAdding(false);
             setSearchQuery('');
             setSearchResults([]);
             await loadVolunteers();
         } catch (err) {
-            alert('নিয়োগ দিতে সমস্যা হয়েছে: ' + err.message);
+            toast.error('নিয়োগ দিতে সমস্যা হয়েছে: ' + err.message);
         }
     };
 
@@ -111,12 +112,12 @@ export default function VolunteerManagement({ villageId, villageName }) {
                 access_scope_id: villageId
             });
 
-            alert('নতুন ভলান্টিয়ার তৈরি ও নিয়োগ সফল হয়েছে।');
+            toast.success('নতুন ভলান্টিয়ার তৈরি ও নিয়োগ সফল হয়েছে।');
             setIsAdding(false);
             setNewVolunteer({ name: '', phone: '', password: '' });
             await loadVolunteers();
         } catch (err) {
-            alert('নতুন ভলান্টিয়ার তৈরি করতে সমস্যা হয়েছে: ' + err.message);
+            toast.error('নতুন ভলান্টিয়ার তৈরি করতে সমস্যা হয়েছে: ' + err.message);
         } finally {
             setCreating(false);
         }
@@ -130,8 +131,9 @@ export default function VolunteerManagement({ villageId, villageName }) {
                 access_scope_id: null
             });
             setVolunteers(volunteers.filter(v => v.id !== volunteer.id));
+            toast.success('অব্যাহতি সফল হয়েছে।');
         } catch (err) {
-            alert('অব্যাহতি দিতে সমস্যা হয়েছে');
+            toast.error('অব্যাহতি দিতে সমস্যা হয়েছে');
         }
     };
 
@@ -167,12 +169,12 @@ export default function VolunteerManagement({ villageId, villageName }) {
             }
 
             await adminService.mutateUser(editingVolunteer.id, 'update_profile', updates);
-            alert('ভলান্টিয়ার তথ্য আপডেট হয়েছে।');
+            toast.success('ভলান্টিয়ার তথ্য আপডেট হয়েছে।');
             setEditingVolunteer(null);
             setEditForm({ name: '', phone: '', password: '' });
             await loadVolunteers();
         } catch (err) {
-            alert('ভলান্টিয়ার আপডেট করতে সমস্যা হয়েছে: ' + err.message);
+            toast.error('ভলান্টিয়ার আপডেট করতে সমস্যা হয়েছে: ' + err.message);
         } finally {
             setUpdating(false);
         }

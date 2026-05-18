@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
     Home, Users, MapPin, UserCheck, Plus, Search, 
     ChevronRight, ChevronLeft, Save, Trash2, Edit3, CheckCircle2, CheckCircle, AlertCircle, Loader2,
-    ArrowLeft, ArrowRight, Map as MapIcon, Info, Filter, X, Shield
+    ArrowLeft, ArrowRight, Map as MapIcon, Info, Filter, X, Shield, Hash
 } from 'lucide-react';
 import { householdService } from '@/lib/services/householdService';
 import { adminService } from '@/lib/services/adminService';
@@ -14,6 +14,7 @@ import { toBnDigits } from '@/lib/utils/format';
 import HouseholdEntryForm from './HouseholdEntryForm';
 import HouseholdLockerManager from './HouseholdLockerManager';
 import ModalPortal from '@/components/common/ModalPortal';
+import toast from 'react-hot-toast';
 
 const inputStyles = "w-full px-5 py-4 rounded-[20px] bg-slate-50 border border-slate-100 focus:bg-white focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 outline-none transition-all font-bold text-slate-700 text-sm";
 const labelStyles = "text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1 mb-1.5 block";
@@ -122,10 +123,9 @@ export default function WardHouseholdManager({ wardId, assignedVillage = null, v
             setShowVillageModal(false);
             setVillageForm({ bn_name: '', name: '', para_name: '', total_estimated_houses: '' });
             await loadInitialData();
-            alert("গ্রাম সফলভাবে যোগ করা হয়েছে।");
+            toast.success("গ্রাম সফলভাবে যোগ করা হয়েছে।");
         } catch (err) {
-            console.error(err);
-            alert("গ্রাম যোগ করতে সমস্যা হয়েছে।");
+            toast.error("গ্রাম যোগ করতে সমস্যা হয়েছে।");
         } finally {
             setSaving(false);
         }
@@ -160,8 +160,9 @@ export default function WardHouseholdManager({ wardId, assignedVillage = null, v
             setShowVolunteerModal(false);
             setVolunteerForm({ name: '', phone: '', assigned_village_id: '', password: '' });
             await loadInitialData();
+            toast.success("ভলান্টিয়ার নিয়োগ সম্পন্ন হয়েছে।");
         } catch (err) {
-            alert("ভলান্টিয়ার নিয়োগে সমস্যা হয়েছে");
+            toast.error("ভলান্টিয়ার নিয়োগে সমস্যা হয়েছে");
         } finally {
             setSaving(false);
         }
@@ -188,9 +189,9 @@ export default function WardHouseholdManager({ wardId, assignedVillage = null, v
                 };
             }, { total_members: 0, voters: 0, males: 0, females: 0, total_houses: 0 });
             setStats(newStats);
+            toast.success("বাড়িটি ডিলিট করা হয়েছে।");
         } catch (err) {
-            console.error(err);
-            alert('বাড়িটি ডিলিট করতে সমস্যা হয়েছে।');
+            toast.error('বাড়িটি ডিলিট করতে সমস্যা হয়েছে।');
         }
     };
 
@@ -211,8 +212,7 @@ export default function WardHouseholdManager({ wardId, assignedVillage = null, v
             });
             setShowHouseModal(true);
         } catch (err) {
-            console.error(err);
-            alert('বাড়ির তথ্য লোড করতে সমস্যা হয়েছে।');
+            toast.error('বাড়ির তথ্য লোড করতে সমস্যা হয়েছে।');
         }
     };
 
@@ -497,10 +497,17 @@ export default function WardHouseholdManager({ wardId, assignedVillage = null, v
 
                             <div className="space-y-6">
                                 {(() => {
-                                    const filtered = households.filter(h => 
-                                        h.owner_name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                                        h.house_no?.toLowerCase().includes(searchQuery.toLowerCase())
-                                    );
+                                    const filtered = households.filter(h => {
+                                        const query = searchQuery.toLowerCase();
+                                        const matchesOwner = h.owner_name?.toLowerCase().includes(query);
+                                        const matchesHouse = h.house_no?.toLowerCase().includes(query);
+                                        const matchesResidents = h.residents?.some(r => 
+                                            r.name?.toLowerCase().includes(query) || 
+                                            r.nid?.toLowerCase().includes(query) ||
+                                            r.id?.toString().toLowerCase().includes(query)
+                                        );
+                                        return matchesOwner || matchesHouse || matchesResidents;
+                                    });
                                     const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE) || 1;
                                     const currentHouses = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
@@ -522,75 +529,74 @@ export default function WardHouseholdManager({ wardId, assignedVillage = null, v
                                                             onClick={() => setSelectedHouseholdForLocker(house)} 
                                                             className="relative group cursor-pointer"
                                                         >
-                                                            {/* Tooltip */}
-                                                            <div className="absolute -top-[110px] left-1/2 -translate-x-1/2 w-48 bg-slate-900 text-white p-4 rounded-2xl opacity-0 group-hover:opacity-100 transition-all scale-95 group-hover:scale-100 pointer-events-none z-50 shadow-2xl origin-bottom">
-                                                                <p className="text-sm font-black mb-2 pb-2 border-b border-white/10 text-teal-400">{house.phone || 'মোবাইল নেই'}</p>
-                                                                <div className="space-y-1">
-                                                                    <p className="text-[10px] text-slate-300 flex justify-between font-bold"><span>ধরণ:</span> <span>{house.housing_type === 'Paka' ? 'পাকা' : house.housing_type === 'Semi-Paka' ? 'আধা-পাকা' : house.housing_type === 'Kacha' ? 'কাঁচা' : 'N/A'}</span></p>
-                                                                    <p className="text-[10px] text-slate-300 flex justify-between font-bold"><span>বিদ্যুৎ:</span> <span>{house.electricity_meter ? 'আছে' : 'নেই'}</span></p>
-                                                                    <p className="text-[10px] text-slate-300 flex justify-between font-bold"><span>ভোটার:</span> <span>{house.stats?.voters || 0} জন</span></p>
-                                                                </div>
-                                                                {/* Tooltip Triangle */}
-                                                                <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-slate-900 rotate-45"></div>
-                                                            </div>
-
-                                                            {/* Compact House Card */}
-                                                            <div className="bg-slate-50/50 border border-slate-100 rounded-[20px] p-5 text-center hover:bg-teal-50 hover:border-teal-200 hover:shadow-lg hover:shadow-teal-500/10 transition-all flex flex-col items-center h-full relative z-10">
+                                                            {/* Balanced Visibility Household Card */}
+                                                            <div className="bg-white border border-slate-200/60 rounded-[32px] p-4 sm:p-5 hover:bg-slate-50 hover:border-teal-400 hover:shadow-xl hover:shadow-teal-900/5 transition-all flex flex-col h-full relative z-10 group">
                                                                 
-                                                                {/* Action Buttons (Visible on Hover) */}
+                                                                {/* Decorative Glow */}
+                                                                <div className="absolute inset-0 rounded-[32px] overflow-hidden pointer-events-none">
+                                                                    <div className="absolute top-0 right-0 w-20 h-20 bg-teal-500/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:bg-teal-500/10 transition-all" />
+                                                                </div>
+
+                                                                {/* House Header */}
+                                                                <div className="flex items-center justify-between mb-4 relative z-10">
+                                                                    <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-teal-50 border border-teal-100 flex items-center justify-center text-teal-600 group-hover:bg-teal-500 group-hover:text-white transition-all shadow-inner relative">
+                                                                        <Home size={20} className="sm:size-[22px]" strokeWidth={2} />
+                                                                        {/* Member Count Badge on Corner */}
+                                                                        <div className="absolute -top-1.5 -right-1.5 w-4.5 h-4.5 sm:w-5 sm:h-5 bg-slate-800 group-hover:bg-teal-600 transition-colors rounded-full border-2 border-white flex items-center justify-center text-white text-[8px] sm:text-[9px] font-black shadow-sm">
+                                                                            {toBnDigits((house.stats?.total_members || 0).toString())}
+                                                                        </div>
+                                                                    </div>
+                                                                    {(house.locker_pin || house.locker_pin_hash) && (
+                                                                        <div className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 text-[8px] sm:text-[9px] font-black border border-emerald-100 flex items-center gap-1">
+                                                                            <Shield size={8} className="sm:size-[9px]" />
+                                                                            সুরক্ষিত
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+
+                                                                {/* Primary Info */}
+                                                                <div className="relative z-10 mb-4">
+                                                                    <h4 className="font-black text-slate-800 text-sm sm:text-base leading-tight mb-2 group-hover:text-teal-950 transition-colors truncate">
+                                                                        {house.owner_name}
+                                                                    </h4>
+                                                                    <div className="flex">
+                                                                        <span className="inline-flex items-center gap-1 text-[10px] sm:text-xs font-black text-slate-500 bg-slate-50 px-2 sm:px-2.5 py-1 rounded-lg sm:rounded-xl border border-slate-100 group-hover:border-teal-100 group-hover:bg-white group-hover:text-teal-600 transition-all">
+                                                                            <Hash size={10} strokeWidth={3} className="text-slate-400 group-hover:text-teal-400" />
+                                                                            {house.house_no ? house.house_no : 'হোল্ডিং নেই'}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Action Buttons (At Bottom, visible on hover) */}
                                                                 {(() => {
-                                                                    // Get volunteer's household-table village ID from the prop
                                                                     const myVillageId = assignedVillage?.id;
-                                                                    
                                                                     const isSuperAdmin = user?.role === 'super_admin';
                                                                     const isMyWard = user?.role === 'ward_member' && house.ward_id === user.access_scope_id;
                                                                     const isMyVillage = user?.role === 'volunteer' && (
-                                                                        // Check both the household village ID and the location ID just in case
                                                                         house.village_id === myVillageId || house.village_id === user.access_scope_id
                                                                     );
-
                                                                     const canEdit = isSuperAdmin || isMyWard || isMyVillage;
-                                                                    
                                                                     if (!canEdit) return null;
 
                                                                     return (
-                                                                        <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all z-20">
+                                                                        <div className="mt-auto pt-3 border-t border-slate-100/50 flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-2 group-hover:translate-y-0">
                                                                             <button
                                                                                 onClick={(e) => handleEditHousehold(e, house)}
-                                                                                className="w-7 h-7 rounded-full bg-white text-blue-500 hover:bg-blue-600 hover:text-white flex items-center justify-center transition-all shadow-md active:scale-90"
-                                                                                title="বাড়ি এডিট করুন"
+                                                                                className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white flex items-center justify-center transition-all shadow-sm active:scale-90"
+                                                                                title="সম্পাদনা"
                                                                             >
-                                                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                                                                                <Edit3 size={14} strokeWidth={2.5} />
                                                                             </button>
                                                                             <button
                                                                                 onClick={(e) => handleDeleteHousehold(e, house.id)}
-                                                                                className="w-7 h-7 rounded-full bg-white text-rose-500 hover:bg-rose-600 hover:text-white flex items-center justify-center transition-all shadow-md active:scale-90"
-                                                                                title="বাড়ি ডিলিট করুন"
+                                                                                className="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white flex items-center justify-center transition-all shadow-sm active:scale-90"
+                                                                                title="মুছে ফেলুন"
                                                                             >
-                                                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                                                                                <Trash2 size={14} strokeWidth={2.5} />
                                                                             </button>
                                                                         </div>
                                                                     );
                                                                 })()}
-
-                                                                {/* House Icon with Member Badge */}
-                                                                <div className="w-14 h-14 rounded-[16px] bg-white shadow-sm border border-slate-100 flex items-center justify-center text-slate-400 group-hover:text-teal-600 group-hover:border-teal-200 transition-all mb-4 relative mt-2">
-                                                                    <Home size={24} strokeWidth={1.5} />
-                                                                    <div className="absolute -top-2 -right-2 w-6 h-6 bg-slate-800 group-hover:bg-teal-600 transition-colors rounded-full border-2 border-white flex items-center justify-center text-white text-[10px] font-black shadow-sm" title="মোট সদস্য">
-                                                                        {toBnDigits((house.stats?.total_members || 0).toString())}
-                                                                    </div>
-                                                                </div>
-                                                                
-                                                                <p className="font-black text-slate-700 text-sm line-clamp-1 w-full mb-1">{house.owner_name}</p>
-                                                                
-                                                                <div className="mt-auto pt-2">
-                                                                    <span className="inline-block text-[10px] font-black text-slate-400 uppercase bg-white px-3 py-1 rounded-full border border-slate-100 group-hover:border-teal-100 group-hover:text-teal-600 transition-colors">
-                                                                        {house.house_no ? house.house_no : 'হোল্ডিং নেই'}
-                                                                    </span>
-                                                                    {house.locker_pin && (
-                                                                        <div className="absolute bottom-1 right-1 w-2.5 h-2.5 rounded-full bg-teal-500 border-2 border-white shadow-sm" title="লকার পিন সেট করা আছে" />
-                                                                    )}
-                                                                </div>
                                                             </div>
                                                         </div>
                                                     ))}
@@ -836,11 +842,12 @@ export default function WardHouseholdManager({ wardId, assignedVillage = null, v
                             initial={{ opacity: 0, scale: 0.95, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                            className="relative w-full max-w-2xl flex items-center justify-center"
+                            className="relative w-full max-w-4xl flex items-center justify-center"
                         >
                             <HouseholdEntryForm 
                                 wardId={wardId}
                                 villageId={selectedVillage.id}
+                                locationVillageId={assignedVillage?.id || selectedVillage?.location_id}
                                 initialData={editingHousehold}
                                 onSuccess={() => {
                                     setShowHouseModal(false);

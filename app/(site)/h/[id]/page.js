@@ -61,7 +61,7 @@ export default function HouseholdPublicProfile() {
             setFullData(fullProfile);
             
             // Load documents
-            const docs = await householdService.getHouseholdDocuments(id);
+            const docs = await householdService.getHouseholdDocuments(id, lockerPin);
             setDocuments(docs);
             
             setIsLockerUnlocked(true);
@@ -84,7 +84,7 @@ export default function HouseholdPublicProfile() {
             
             // Send notification
             await notificationService.createNotification({
-                user_id: data.added_by_volunteer_id || null, // Will also need ward member, but volunteer is good for now
+                user_id: fullData?.added_by_user_id || null,
                 type: 'household_update',
                 title: 'বাড়ির তথ্য আপডেট করা হয়েছে',
                 message: `${data.owner_name}-এর বাড়ির তথ্য ডিজিটাল লকার থেকে আপডেট করা হয়েছে।`,
@@ -105,8 +105,8 @@ export default function HouseholdPublicProfile() {
         setUploading(true);
         try {
             const title = prompt('ফাইলের নাম দিন (যেমন: এনআইডি, জন্ম সনদ):') || 'নথি';
-            await householdService.uploadDocument(id, file, 'General', title);
-            const docs = await householdService.getHouseholdDocuments(id);
+            await householdService.uploadDocument(id, file, 'General', title, lockerPin);
+            const docs = await householdService.getHouseholdDocuments(id, lockerPin);
             setDocuments(docs);
             alert('ফাইল সফলভাবে আপলোড হয়েছে!');
         } catch (err) {
@@ -119,7 +119,7 @@ export default function HouseholdPublicProfile() {
     const handleDeleteDoc = async (docId) => {
         if (!confirm('আপনি কি এই ফাইলটি ডিলিট করতে চান?')) return;
         try {
-            await householdService.deleteDocument(docId);
+            await householdService.deleteDocument(docId, lockerPin);
             setDocuments(documents.filter(d => d.id !== docId));
         } catch (err) {
             alert('ডিলিট করতে সমস্যা হয়েছে');
@@ -270,14 +270,23 @@ export default function HouseholdPublicProfile() {
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <a 
-                                                href={doc.file_url} 
-                                                target="_blank" 
-                                                rel="noreferrer"
-                                                className="p-2 text-slate-400 hover:text-teal-600 transition-colors"
-                                            >
-                                                <Eye size={18} />
-                                            </a>
+                                            {doc.file_url ? (
+                                                <a 
+                                                    href={doc.file_url} 
+                                                    target="_blank" 
+                                                    rel="noreferrer"
+                                                    className="p-2 text-slate-400 hover:text-teal-600 transition-colors"
+                                                >
+                                                    <Eye size={18} />
+                                                </a>
+                                            ) : (
+                                                <span
+                                                    title="এই নথিটি এখনও private locker-এ migrate হয়নি"
+                                                    className="p-2 text-slate-300"
+                                                >
+                                                    <Eye size={18} />
+                                                </span>
+                                            )}
                                             <button 
                                                 onClick={() => handleDeleteDoc(doc.id)}
                                                 className="p-2 text-slate-400 hover:text-rose-500 transition-colors"

@@ -7,7 +7,7 @@ import {
     CheckCircle2, XCircle, MoreVertical,
     School, Activity, Sprout, Landmark, 
     MessageSquare, Fuel, ChevronLeft, ChevronRight,
-    MapPin, Building2, Check, HandHeart, ShoppingBag
+    MapPin, Building2, Check, HandHeart, ShoppingBag, Droplets
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { adminService } from '@/lib/services/adminService';
@@ -29,7 +29,8 @@ const SERVICE_ICONS = {
     'lost-found': HelpCircle,
     'news-updates': Newspaper,
     'donation': HandHeart,
-    'village-market': ShoppingBag
+    'village-market': ShoppingBag,
+    'blood-bank': Droplets
 };
 
 export default function ServiceManagementPage() {
@@ -98,21 +99,22 @@ export default function ServiceManagementPage() {
         setShowLocationModal(false);
     };
 
-    const toggleService = async (serviceId, currentActive) => {
+    const toggleService = async (service, currentActive) => {
         if (!selectedUnion) return;
-        setUpdatingId(serviceId);
+        setUpdatingId(service.id);
         try {
-            await adminService.toggleService(selectedUnion.id, serviceId, !currentActive);
+            await adminService.toggleService(selectedUnion.id, service.id, !currentActive);
             await fetchUnionServices(selectedUnion.id);
         } catch (err) {
             console.error("Error toggling service:", err);
+            alert("সার্ভিস আপডেট করতে সমস্যা হয়েছে। সার্ভার এরর চেক করুন।");
         } finally {
             setUpdatingId(null);
         }
     };
 
-    const getStatusForService = (serviceId) => {
-        const found = unionServices.find(us => us.service_id === serviceId);
+    const getStatusForService = (service) => {
+        const found = unionServices.find(us => us.service_id === service.id);
         return found ? found.is_active : false;
     };
 
@@ -173,7 +175,7 @@ export default function ServiceManagementPage() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                         {masterServices.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map((service, idx) => {
-                            const isActive = getStatusForService(service.id);
+                            const isActive = getStatusForService(service);
                             const Icon = SERVICE_ICONS[service.slug] || Zap;
                             const isUpdating = updatingId === service.id;
 
@@ -198,7 +200,7 @@ export default function ServiceManagementPage() {
                                             </div>
 
                                             <button 
-                                                onClick={() => toggleService(service.id, isActive)}
+                                                onClick={() => toggleService(service, isActive)}
                                                 disabled={isUpdating}
                                                 className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
                                                     isActive ? 'bg-teal-600' : 'bg-slate-300'

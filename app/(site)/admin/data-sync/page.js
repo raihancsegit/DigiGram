@@ -7,6 +7,7 @@ import {
 import { householdService } from '@/lib/services/householdService';
 import { adminService } from '@/lib/services/adminService';
 import { toBnDigits } from '@/lib/utils/format';
+import { toast } from 'react-hot-toast';
 
 export default function DataSyncPage() {
     const [villages, setVillages] = useState([]);
@@ -59,11 +60,11 @@ export default function DataSyncPage() {
                 await householdService.syncUnionData(village.ward.parent_id);
             }
 
-            alert('ডাটা সফলভাবে সিঙ্ক হয়েছে!');
+            toast.success('ডাটা সফলভাবে সিঙ্ক হয়েছে!');
             await loadVillages();
         } catch (err) {
             console.error("Sync Error:", err);
-            alert('সিঙ্ক করতে সমস্যা হয়েছে: ' + err.message);
+            toast.error('সিঙ্ক করতে সমস্যা হয়েছে: ' + (err.message || 'Unknown error'));
         } finally {
             setSyncingId(null);
         }
