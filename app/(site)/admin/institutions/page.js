@@ -46,7 +46,8 @@ export default function InstitutionManagementPage() {
         village: '',
         subdomain: '',
         custom_domain: '',
-        portal_features: INSTITUTION_PROFILES.mosque.features
+        portal_features: INSTITUTION_PROFILES.mosque.features,
+        operational_settings: {}
     });
 
     useEffect(() => {
@@ -85,7 +86,8 @@ export default function InstitutionManagementPage() {
                 village: '',
                 subdomain: '',
                 custom_domain: '',
-                portal_features: INSTITUTION_PROFILES.mosque.features
+                portal_features: INSTITUTION_PROFILES.mosque.features,
+                operational_settings: {}
             });
             loadData();
             alert(`প্রতিষ্ঠান তৈরি হয়েছে। Website: http://${created.subdomain}.localhost:3000`);
@@ -119,7 +121,8 @@ export default function InstitutionManagementPage() {
             village: institution.village || '',
             subdomain: institution.subdomain || '',
             custom_domain: institution.custom_domain || '',
-            portal_features: institution.portal_features || INSTITUTION_PROFILES[institution.category]?.features || []
+            portal_features: institution.portal_features || INSTITUTION_PROFILES[institution.category]?.features || [],
+            operational_settings: institution.operational_settings || INSTITUTION_PROFILES[institution.category]?.academicSettings || {}
         });
         setEditingInstitution(institution);
         setShowAddModal(true);
@@ -148,7 +151,8 @@ export default function InstitutionManagementPage() {
                 village: '',
                 subdomain: '',
                 custom_domain: '',
-                portal_features: INSTITUTION_PROFILES.mosque.features
+                portal_features: INSTITUTION_PROFILES.mosque.features,
+                operational_settings: {}
             });
             loadData();
         } catch (err) {
@@ -505,7 +509,8 @@ export default function InstitutionManagementPage() {
                                         ...formData,
                                         type: profile.type,
                                         category: e.target.value,
-                                        portal_features: profile.features
+                                        portal_features: profile.features,
+                                        operational_settings: profile.academicSettings || {}
                                     });
                                 }}
                                 className="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:bg-white focus:border-teal-500 transition-all outline-none font-bold"
@@ -522,6 +527,68 @@ export default function InstitutionManagementPage() {
                                 {(formData.portal_features || []).join(', ')}
                             </div>
                         </div>
+
+                        {formData.type !== 'mosque' && (
+                            <div className="space-y-2 md:col-span-2">
+                                <label className="text-[10px] font-black text-slate-500 uppercase ml-1">শিক্ষা পরিসর</label>
+                                <div className="grid gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-4 md:grid-cols-3">
+                                    <label className="space-y-2">
+                                        <span className="block text-xs font-black text-slate-500">মডেল</span>
+                                        <select
+                                            value={formData.operational_settings?.model || 'general'}
+                                            onChange={(e) => setFormData({
+                                                ...formData,
+                                                operational_settings: {
+                                                    ...formData.operational_settings,
+                                                    model: e.target.value
+                                                }
+                                            })}
+                                            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 font-bold"
+                                        >
+                                            <option value="general">সাধারণ শিক্ষা</option>
+                                            <option value="madrasa">মাদ্রাসা শিক্ষা</option>
+                                        </select>
+                                    </label>
+                                    <label className="space-y-2">
+                                        <span className="block text-xs font-black text-slate-500">শুরু শ্রেণি</span>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            max="12"
+                                            value={formData.operational_settings?.start_grade ?? ''}
+                                            onChange={(e) => setFormData({
+                                                ...formData,
+                                                operational_settings: {
+                                                    ...formData.operational_settings,
+                                                    start_grade: Number(e.target.value)
+                                                }
+                                            })}
+                                            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 font-bold"
+                                        />
+                                    </label>
+                                    <label className="space-y-2">
+                                        <span className="block text-xs font-black text-slate-500">শেষ শ্রেণি</span>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            max="12"
+                                            value={formData.operational_settings?.end_grade ?? ''}
+                                            onChange={(e) => setFormData({
+                                                ...formData,
+                                                operational_settings: {
+                                                    ...formData.operational_settings,
+                                                    end_grade: Number(e.target.value)
+                                                }
+                                            })}
+                                            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 font-bold"
+                                        />
+                                    </label>
+                                </div>
+                                <p className="text-xs font-bold text-slate-400">
+                                    যেমন: দাখিল মাদ্রাসা ০-১০, আলিম মাদ্রাসা ০-১২, কলেজ ১১-১২। পরে class module এই range অনুযায়ী চলবে।
+                                </p>
+                            </div>
+                        )}
 
                         <div className="space-y-2">
                             <label className="text-[10px] font-black text-slate-500 uppercase ml-1">গ্রাম</label>

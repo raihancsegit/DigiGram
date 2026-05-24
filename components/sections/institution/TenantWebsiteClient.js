@@ -71,7 +71,7 @@ export default function TenantWebsiteClient({
 
                 if (found && !initialPage && initialNotices.length === 0) {
                     const [pageResult, noticeResult] = await Promise.allSettled([
-                        institutionPortalService.getPage(found.id),
+                        institutionPortalService.getPublishedPage(found.id),
                         institutionPortalService.getPublicNotices(found.id)
                     ]);
                     if (pageResult.status === 'fulfilled') setPage(pageResult.value);
@@ -105,7 +105,7 @@ export default function TenantWebsiteClient({
     }
 
     if (
-        ['school', 'primary_school', 'high_school', 'college', 'alim_madrasa', 'kindergarten'].includes(institution.category)
+        ['school', 'primary_school', 'high_school', 'college', 'dakhil_madrasa', 'alim_madrasa', 'kindergarten'].includes(institution.category)
         || institution.type === 'school'
     ) {
         return <SchoolTenantWebsite institution={institution} page={page} notices={notices} />;

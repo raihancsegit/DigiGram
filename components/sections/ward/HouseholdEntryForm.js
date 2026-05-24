@@ -16,7 +16,7 @@ import { notificationService } from '@/lib/services/notificationService';
 import { supabase } from '@/lib/utils/supabase';
 import toast from 'react-hot-toast';
 
-const inputStyles = "w-full px-5 py-4 rounded-[20px] bg-slate-50 border border-slate-100 focus:bg-white focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 outline-none transition-all font-bold text-slate-700 text-sm";
+const inputStyles = "w-full min-w-0 px-4 py-3.5 sm:px-5 sm:py-4 rounded-2xl sm:rounded-[20px] bg-slate-50 border border-slate-100 focus:bg-white focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 outline-none transition-all font-bold text-slate-700 text-sm";
 const labelStyles = "text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1 mb-2 block";
 
 function SectionTitle({ icon: Icon, title, subtitle }) {
@@ -508,26 +508,26 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
     }
 
     return (
-        <div className="bg-white rounded-[24px] shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col relative overflow-hidden ring-1 ring-slate-200">
+        <div className="bg-white shadow-2xl w-full h-[100dvh] max-h-[100dvh] rounded-none sm:h-auto sm:max-h-[92dvh] sm:max-w-4xl sm:rounded-[24px] flex flex-col relative overflow-hidden ring-1 ring-slate-200">
             <button 
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); onCancel(); }}
-                className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:bg-rose-50 hover:text-rose-500 hover:border-rose-100 transition-all z-[100] shadow-sm pointer-events-auto"
+                className="absolute top-3 right-3 sm:top-4 sm:right-4 w-10 h-10 sm:w-9 sm:h-9 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:bg-rose-50 hover:text-rose-500 hover:border-rose-100 transition-all z-[100] shadow-sm pointer-events-auto"
                 type="button"
             >
                 <X size={20} />
             </button>
 
             {/* HEADER - Fixed at top */}
-            <div className="shrink-0 border-b border-slate-200 bg-white px-5 py-4 md:px-6 relative">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-xl bg-teal-600 text-white flex items-center justify-center">
+            <div className="shrink-0 border-b border-slate-200 bg-white px-4 py-3 pr-16 sm:px-5 sm:py-4 md:px-6 relative">
+                <div className="flex items-center justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+                        <div className="w-9 h-9 sm:w-10 sm:h-10 shrink-0 rounded-xl bg-teal-600 text-white flex items-center justify-center">
                             {step === 1 && <Home size={20} className="md:w-6 md:h-6" />}
                             {step === 2 && <User size={20} className="md:w-6 md:h-6" />}
                             {step === 3 && <Shield size={20} className="md:w-6 md:h-6" />}
                         </div>
-                        <div>
-                            <h3 className="text-base md:text-lg font-black tracking-tight text-slate-800">
+                        <div className="min-w-0">
+                            <h3 className="truncate text-base md:text-lg font-black tracking-tight text-slate-800">
                                 {step === 1 ? 'বাড়ির তথ্য' : step === 2 ? 'সদস্যদের তথ্য' : 'নিরাপত্তা সেটআপ'}
                             </h3>
                             <p className="text-[10px] font-bold text-slate-400 mt-0.5">
@@ -536,7 +536,7 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="hidden sm:flex items-center gap-2">
                         {[1, 2, 3].map((s) => (
                             <div 
                                 key={s}
@@ -551,11 +551,11 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
             </div>
 
             {/* BODY - Scrollable */}
-            <div ref={bodyRef} className="flex-1 overflow-y-auto bg-white p-5 custom-scrollbar relative z-0 md:p-6">
+            <div ref={bodyRef} className="flex-1 overflow-y-auto overscroll-contain bg-white p-3 sm:p-5 custom-scrollbar relative z-0 md:p-6">
                 {step === 1 && (
-                    <motion.div initial={{opacity:0, x:20}} animate={{opacity:1, x:0}} className="grid gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(280px,0.65fr)]">
-                        <div className="space-y-5">
-                        <div className="rounded-2xl border border-teal-100 bg-teal-50/50 p-4">
+                    <motion.div initial={{opacity:0, x:20}} animate={{opacity:1, x:0}} className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(280px,0.65fr)]">
+                        <div className="min-w-0 space-y-4 sm:space-y-5">
+                        <div className="rounded-2xl border border-teal-100 bg-teal-50/50 p-3 sm:p-4">
                             <label className={labelStyles}>Auto House ID</label>
                             <div className="relative">
                                 <input 
@@ -573,7 +573,7 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
                             </p>
                         </div>
 
-                        <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4">
+                        <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-3 sm:p-4">
                             <SectionTitle
                                 icon={User}
                                 title="বাড়ির মৌলিক তথ্য"
@@ -595,7 +595,7 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
                             </div>
                         </section>
 
-                        <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4">
+                        <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-3 sm:p-4">
                             <SectionTitle
                                 icon={Home}
                                 title="বাড়ির অবস্থা"
@@ -633,25 +633,25 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
 
                         </div>
 
-                        <section className="h-fit space-y-4 rounded-2xl border border-slate-200 bg-white p-4 lg:sticky lg:top-0">
+                        <section className="h-fit min-w-0 space-y-4 rounded-2xl border border-slate-200 bg-white p-3 sm:p-4 lg:sticky lg:top-0">
                             <SectionTitle
                                 icon={MapPin}
                                 title="লোকেশন ও সুবিধা"
                                 subtitle="ম্যাপ পিন ও মৌলিক সেবা একই জায়গায় নিন।"
                             />
-                        <div className="p-4 rounded-2xl bg-teal-50 border border-teal-100 flex items-center justify-between group transition-all">
-                            <div className="flex items-center gap-4">
+                        <div className="p-3 sm:p-4 rounded-2xl bg-teal-50 border border-teal-100 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between group transition-all">
+                            <div className="flex min-w-0 items-center gap-3 sm:gap-4">
                                 <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-teal-600">
                                     <MapPin size={24} />
                                 </div>
-                                <div>
+                                <div className="min-w-0">
                                     <p className="text-sm font-black text-slate-800">ম্যাপ লোকেশন সেট করুন</p>
-                                    <p className="text-xs text-slate-500 font-bold mt-0.5">
+                                    <p className="break-words text-xs text-slate-500 font-bold mt-0.5">
                                         {houseForm.lat ? `সেট করা হয়েছে: ${houseForm.lat.toFixed(4)}, ${houseForm.lng.toFixed(4)}` : 'লোকেশন সেট করা হয়নি'}
                                     </p>
                                 </div>
                             </div>
-                            <button type="button" onClick={handleGetLocation} className="p-3.5 rounded-xl bg-white border border-teal-200 text-teal-600 shadow-sm hover:bg-teal-600 hover:text-white transition-all hover:scale-105 active:scale-95">
+                            <button type="button" onClick={handleGetLocation} className="w-full sm:w-auto p-3.5 rounded-xl bg-white border border-teal-200 text-teal-600 shadow-sm hover:bg-teal-600 hover:text-white transition-all hover:scale-105 active:scale-95 flex items-center justify-center">
                                 <Navigation size={20} />
                             </button>
                         </div>
@@ -683,13 +683,13 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
 
                 {step === 2 && (
                     <motion.div initial={{opacity:0, x:20}} animate={{opacity:1, x:0}} className="space-y-5">
-                        <div className="rounded-[28px] border border-slate-200 bg-slate-50 p-5">
+                        <div className="rounded-2xl sm:rounded-[28px] border border-slate-200 bg-slate-50 p-4 sm:p-5">
                             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                                 <div>
                                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">তথ্য সম্পূর্ণতা</p>
                                     <p className="mt-1 text-2xl font-black text-slate-800">{toBnDigits(completeness)}%</p>
                                 </div>
-                                <div className="grid grid-cols-2 gap-2 text-[11px] font-bold text-slate-500 md:grid-cols-4">
+                                <div className="grid grid-cols-1 gap-2 text-[11px] font-bold text-slate-500 sm:grid-cols-2 md:grid-cols-4">
                                     <span>NID নেই: {toBnDigits(qualitySummary.missingNid)}</span>
                                     <span>জন্ম সনদ নেই: {toBnDigits(qualitySummary.missingBirthReg)}</span>
                                     <span>রক্তের গ্রুপ নেই: {toBnDigits(qualitySummary.missingBloodGroup)}</span>
@@ -701,7 +701,7 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
                             </div>
                         </div>
 
-                        <div className="rounded-[28px] border border-slate-200 bg-white p-5">
+                        <div className="rounded-2xl sm:rounded-[28px] border border-slate-200 bg-white p-4 sm:p-5">
                             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                                 <div>
                                     <p className="text-sm font-black text-slate-800">দ্রুত সদস্য যোগ করুন</p>
@@ -727,7 +727,7 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
                             </button>
                         </div>
 
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5">
+                        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-5">
                             {[
                                 ['মোট সদস্য', residentSummary.total],
                                 ['ভোটার', residentSummary.voters],
@@ -744,8 +744,8 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
 
                         <div className="space-y-4">
                             {residents.map((r, idx) => (
-                                <div key={idx} className="relative space-y-5 overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 transition-all hover:border-teal-300">
-                                    <div className="mb-4 flex items-center justify-between border-b border-slate-100 pb-3">
+                                <div key={idx} className="relative min-w-0 space-y-4 sm:space-y-5 overflow-hidden rounded-2xl border border-slate-200 bg-white p-3 sm:p-4 transition-all hover:border-teal-300">
+                                    <div className="mb-4 flex flex-col gap-2 border-b border-slate-100 pb-3 sm:flex-row sm:items-center sm:justify-between">
                                         <div>
                                             <p className="text-[10px] font-black text-teal-600">
                                                 সদস্য {toBnDigits(String(idx + 1))}
@@ -754,7 +754,7 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
                                                 {idx === 0 ? 'খানা প্রধান' : (r.name || 'নতুন সদস্য')}
                                             </h5>
                                         </div>
-                                        <div className="flex items-center gap-2 pr-10">
+                                        <div className="flex flex-wrap items-center gap-2 sm:pr-10">
                                             {r.blood_group && (
                                                 <span className="rounded-full bg-rose-50 px-3 py-1 text-[10px] font-black text-rose-600">
                                                     {r.blood_group}
@@ -773,11 +773,11 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
                                         </button>
                                     )}
                                     
-                                    <div className="grid grid-cols-2 gap-x-4 gap-y-5 relative z-0">
-                                        <div className="col-span-2 md:col-span-1">
-                                            <div className="flex items-center justify-between mb-1.5">
+                                    <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:gap-y-5 relative z-0 md:grid-cols-2">
+                                        <div className="min-w-0">
+                                            <div className="flex flex-col gap-2 mb-1.5 sm:flex-row sm:items-center sm:justify-between">
                                                 <label className={labelStyles + " !mb-0"}>নাম (বাংলা)</label>
-                                                <div className="flex gap-1.5">
+                                                <div className="flex flex-wrap gap-1.5">
                                                     <label htmlFor={`scan-nid-${idx}`} className="cursor-pointer group/scan relative">
                                                         <input 
                                                             id={`scan-nid-${idx}`}
@@ -811,24 +811,24 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
                                             </div>
                                             <input value={r.name || ''} onChange={(e) => updateResident(idx, 'name', e.target.value)} className={inputStyles + " bg-white shadow-sm"} placeholder={idx === 0 ? houseForm.owner_name : "উদা: রহিমা বেগম"} />
                                         </div>
-                                        <div className="col-span-2 md:col-span-1">
+                                        <div className="min-w-0">
                                             <label className={labelStyles}>Name (English)</label>
                                             <input value={r.name_en || ''} onChange={(e) => updateResident(idx, 'name_en', e.target.value)} className={inputStyles + " bg-white shadow-sm font-mono tracking-tight"} placeholder="E.g. Rohima Begum" />
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-x-4 gap-y-5">
-                                        <div className="col-span-2 md:col-span-1">
+                                    <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:gap-y-5 md:grid-cols-2">
+                                        <div className="min-w-0">
                                             <label className={labelStyles}>পিতার নাম</label>
                                             <input value={r.father_name || ''} onChange={(e) => updateResident(idx, 'father_name', e.target.value)} className={inputStyles + " bg-white shadow-sm"} placeholder="পিতার নাম লিখুন" />
                                         </div>
-                                        <div className="col-span-2 md:col-span-1">
+                                        <div className="min-w-0">
                                             <label className={labelStyles}>মাতার নাম</label>
                                             <input value={r.mother_name || ''} onChange={(e) => updateResident(idx, 'mother_name', e.target.value)} className={inputStyles + " bg-white shadow-sm"} placeholder="মাতার নাম লিখুন" />
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-1 gap-x-4 gap-y-5 md:grid-cols-3">
+                                    <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:gap-y-5 md:grid-cols-3">
                                         <div>
                                             <label className={labelStyles}>এনআইডি নম্বর</label>
                                             <input
@@ -865,15 +865,15 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-x-4 gap-y-5">
-                                        <div className="col-span-2 md:col-span-1">
+                                    <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:gap-y-5 md:grid-cols-2">
+                                        <div className="min-w-0">
                                             <label className={labelStyles}>স্থায়ী ঠিকানা</label>
                                             <div className="relative">
                                                 <input value={r.address || ''} onChange={(e) => updateResident(idx, 'address', e.target.value)} className={inputStyles + " bg-white shadow-sm pl-9"} placeholder="গ্রাম, থানা, জেলা" />
                                                 <MapPin size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                                             </div>
                                         </div>
-                                        <div className="col-span-2 md:col-span-1">
+                                        <div className="min-w-0">
                                             <label className={labelStyles}>সম্পর্ক</label>
                                             <select value={r.relation_with_head} onChange={(e) => updateResident(idx, 'relation_with_head', e.target.value)} className={inputStyles + " bg-white shadow-sm cursor-pointer appearance-none"}>
                                                 <option value="Head">খানা প্রধান (নিজ)</option>
@@ -888,7 +888,7 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-x-4 gap-y-5">
+                                    <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2 sm:gap-y-5">
                                         <select value={r.gender} onChange={(e) => updateResident(idx, 'gender', e.target.value)} className={inputStyles + " bg-white shadow-sm cursor-pointer appearance-none"}>
                                             <option value="Male">পুরুষ</option>
                                             <option value="Female">নারী</option>
@@ -928,7 +928,7 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
                                          return (
                                              <div className="space-y-3">
                                                  {/* Verification Badges */}
-                                                 <div className="flex gap-2 mb-2">
+                                                  <div className="flex flex-wrap gap-2 mb-2">
                                                      <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-wider transition-all ${r.nid_verified ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-100' : 'bg-slate-100 text-slate-400 border border-slate-200 border-dashed'}`}>
                                                          {r.nid_verified ? <ShieldCheck size={12} /> : <AlertCircle size={12} />}
                                                          NID {r.nid_verified ? 'Verified' : 'Unverified'}
@@ -997,7 +997,7 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
                                                          
                                                          <div className="space-y-3">
                                                             {r.conflicts?.length > 0 && (
-                                                                <div className="flex items-center justify-between p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 group/adv">
+                                                                 <div className="flex flex-col gap-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 group/adv sm:flex-row sm:items-center sm:justify-between">
                                                                     <div>
                                                                         <p className="text-[11px] font-bold text-amber-400">তথ্য সংশোধনের আবেদন (NID অনুযায়ী)</p>
                                                                         <p className="text-[8px] font-black text-amber-500/70 uppercase mt-0.5">জন্ম নিবন্ধন সংশোধন</p>
@@ -1006,25 +1006,25 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
                                                                 </div>
                                                             )}
                                                             {isEligibleForVoter && !r.is_voter && (
-                                                                <div className="flex items-center justify-between group/adv">
+                                                                 <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between group/adv">
                                                                     <p className="text-[11px] font-bold text-slate-100">ভোটার নিবন্ধন আবেদন প্রয়োজন</p>
                                                                     <button type="button" className="text-[9px] font-black text-teal-400 uppercase tracking-tighter hover:text-white transition-all">আবেদন করুন →</button>
                                                                 </div>
                                                             )}
                                                             {age < 18 && !hasBirthReg && (
-                                                                <div className="flex items-center justify-between">
+                                                                 <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                                                                     <p className="text-[11px] font-bold text-slate-100">জন্ম নিবন্ধন (নতুন) প্রয়োজন</p>
                                                                     <button type="button" className="text-[9px] font-black text-teal-400 uppercase tracking-tighter hover:text-white transition-all">আবেদন করুন →</button>
                                                                 </div>
                                                             )}
                                                             {!hasNid && age >= 18 && (
-                                                                <div className="flex items-center justify-between">
+                                                                 <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                                                                     <p className="text-[11px] font-bold text-slate-100">জাতীয় পরিচয়পত্রের আবেদন</p>
                                                                     <button type="button" className="text-[9px] font-black text-teal-400 uppercase tracking-tighter hover:text-white transition-all">আবেদন করুন →</button>
                                                                 </div>
                                                             )}
                                                             {hasNid && !r.blood_group && (
-                                                                <div className="flex items-center justify-between">
+                                                                 <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                                                                     <p className="text-[11px] font-bold text-slate-100">রক্তের গ্রুপ আপডেট প্রয়োজন</p>
                                                                     <button type="button" className="text-[9px] font-black text-teal-400 uppercase tracking-tighter hover:text-white transition-all">আপডেট করুন →</button>
                                                                 </div>
@@ -1046,7 +1046,7 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
                                                         <input type="date" min="1900-01-01" value={r.dob || ''} onChange={(e) => updateResident(idx, 'dob', e.target.value)} className={inputStyles + " bg-white shadow-sm"} />
                                                     </div>
                                                 </div>
-                                                <div className="grid grid-cols-2 gap-x-4 gap-y-5">
+                                                <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:gap-y-5 md:grid-cols-2">
                                                     <div>
                                                         <label className={labelStyles}>পেশা</label>
                                                         <input value={r.occupation || ''} onChange={(e) => updateResident(idx, 'occupation', e.target.value)} className={inputStyles + " bg-white shadow-sm"} placeholder="উদা: গৃহিণী/কৃষক" />
@@ -1127,19 +1127,19 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
             </div>
 
             {/* FOOTER - Fixed at bottom */}
-            <div className="shrink-0 border-t border-slate-200 bg-white p-4 md:p-5">
+            <div className="shrink-0 border-t border-slate-200 bg-white p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:p-4 md:p-5">
                 {step === 1 && (
                     <button 
                         onClick={handleSaveHouse}
                         disabled={!houseForm.owner_name || saving}
-                        className="w-full py-5 rounded-[24px] bg-slate-900 hover:bg-teal-600 text-white font-black text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-xl shadow-slate-200 active:scale-95"
+                        className="w-full py-4 sm:py-5 rounded-2xl sm:rounded-[24px] bg-slate-900 hover:bg-teal-600 text-white font-black text-xs sm:text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-xl shadow-slate-200 active:scale-95"
                     >
                         {saving ? <Loader2 className="animate-spin" /> : <>পরবর্তী ধাপ: সদস্য যোগ করুন <ArrowRight size={18} /></>}
                     </button>
                 )}
 
                 {step === 2 && (
-                    <div className="space-y-4">
+                    <div className="space-y-3 sm:space-y-4">
                         <button 
                             onClick={() => setResidents([...residents, { ...defaultResident, relation_with_head: 'Other' }])} 
                             className="w-full py-4 rounded-[20px] bg-slate-50 text-slate-600 font-black text-[11px] uppercase tracking-widest hover:bg-teal-50 hover:text-teal-600 transition-all flex items-center justify-center gap-2 border border-dashed border-slate-200"
@@ -1147,17 +1147,17 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
                             <Plus size={16} /> নতুন সদস্য যোগ করুন
                         </button>
                         
-                        <div className="flex gap-4">
+                        <div className="grid grid-cols-[0.8fr_1.2fr] gap-3 sm:flex sm:gap-4">
                             <button 
                                 onClick={() => setStep(1)}
-                                className="flex-1 py-5 rounded-[24px] bg-slate-100 text-slate-500 font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition-all"
+                                className="sm:flex-1 py-4 sm:py-5 rounded-2xl sm:rounded-[24px] bg-slate-100 text-slate-500 font-black text-[11px] sm:text-xs uppercase tracking-widest hover:bg-slate-200 transition-all"
                             >
                                 ফিরে যান
                             </button>
                             <button 
                                 onClick={handleSaveResidents} 
                                 disabled={saving} 
-                                className="flex-[2] py-5 rounded-[24px] bg-slate-900 hover:bg-teal-600 text-white font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-xl shadow-slate-200 active:scale-95"
+                                className="sm:flex-[2] py-4 sm:py-5 rounded-2xl sm:rounded-[24px] bg-slate-900 hover:bg-teal-600 text-white font-black text-[11px] sm:text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-xl shadow-slate-200 active:scale-95"
                             >
                                 {saving ? <Loader2 className="animate-spin" /> : <>{isEditMode ? 'তথ্য আপডেট করুন' : 'পরবর্তী ধাপ: লকার'} <ArrowRight size={18} /></>}
                             </button>
@@ -1166,17 +1166,17 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
                 )}
 
                 {step === 3 && (
-                    <div className="flex gap-4">
+                    <div className="grid grid-cols-[0.8fr_1.2fr] gap-3 sm:flex sm:gap-4">
                         <button 
                             onClick={() => setStep(2)}
-                            className="flex-1 py-5 rounded-[24px] bg-slate-100 text-slate-500 font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition-all"
+                            className="sm:flex-1 py-4 sm:py-5 rounded-2xl sm:rounded-[24px] bg-slate-100 text-slate-500 font-black text-[11px] sm:text-xs uppercase tracking-widest hover:bg-slate-200 transition-all"
                         >
                             ফিরে যান
                         </button>
                         <button 
                             onClick={handleFinalize} 
                             disabled={saving} 
-                            className="flex-[2] py-5 rounded-[24px] bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-black text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-3 shadow-xl shadow-teal-500/30 disabled:opacity-50 active:scale-95"
+                            className="sm:flex-[2] py-4 sm:py-5 rounded-2xl sm:rounded-[24px] bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-black text-[11px] sm:text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-2 sm:gap-3 shadow-xl shadow-teal-500/30 disabled:opacity-50 active:scale-95"
                         >
                             {saving ? <Loader2 className="animate-spin" /> : <CheckCircle size={20} />}
                             {isEditMode ? 'তথ্য আপডেট সম্পন্ন করুন' : 'সব তথ্য নিশ্চিত করুন'}

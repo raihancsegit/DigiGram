@@ -164,12 +164,12 @@ export default function HouseholdPublicProfile() {
                 <div className="w-10" />
             </div>
 
-            <main className="max-w-md mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6">
+            <main className="mx-auto w-full max-w-md px-3 py-5 sm:px-4 md:px-6 md:py-8 space-y-5 sm:space-y-6">
                 {/* House Info Card */}
                 <motion.div 
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-white rounded-[32px] md:rounded-[40px] p-6 md:p-8 border border-slate-100 shadow-sm relative overflow-hidden"
+                    className="relative overflow-hidden rounded-3xl border border-slate-100 bg-white p-5 shadow-sm sm:rounded-[32px] sm:p-6 md:rounded-[40px] md:p-8"
                 >
                     <div className="absolute top-0 right-0 p-8 opacity-5">
                         <Home size={120} />
@@ -205,7 +205,7 @@ export default function HouseholdPublicProfile() {
                         {!isLockerUnlocked ? (
                             <button 
                                 onClick={() => setShowLockerModal(true)}
-                                className="mt-6 w-full py-4 bg-teal-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-teal-700 transition-colors shadow-lg shadow-teal-600/20"
+                            className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-teal-600 px-4 py-4 text-sm font-black uppercase tracking-widest text-white shadow-lg shadow-teal-600/20 transition-colors hover:bg-teal-700"
                             >
                                 <Lock size={18} /> লকার আনলক করুন
                             </button>
@@ -236,11 +236,11 @@ export default function HouseholdPublicProfile() {
                     <motion.div 
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        className="bg-white rounded-[32px] md:rounded-[40px] p-6 md:p-8 border-2 border-teal-500/20 shadow-xl shadow-teal-900/5"
+                    className="rounded-3xl border-2 border-teal-500/20 bg-white p-5 shadow-xl shadow-teal-900/5 sm:rounded-[32px] sm:p-6 md:rounded-[40px] md:p-8"
                     >
-                        <div className="flex items-center justify-between mb-8">
-                            <div>
-                                <h3 className="text-xl font-black text-slate-800">ডিজিটাল লকার স্টোরেজ</h3>
+                        <div className="mb-6 flex items-start justify-between gap-3 sm:mb-8">
+                            <div className="min-w-0">
+                                <h3 className="break-words text-lg font-black text-slate-800 sm:text-xl">ডিজিটাল লকার স্টোরেজ</h3>
                                 <p className="text-xs font-bold text-slate-400 mt-1">আপনার প্রয়োজনীয় নথিপত্র এখানে রাখুন</p>
                             </div>
                             <label className="cursor-pointer">
@@ -259,17 +259,17 @@ export default function HouseholdPublicProfile() {
                                 </div>
                             ) : (
                                 documents.map(doc => (
-                                    <div key={doc.id} className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between group">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-teal-600 shadow-sm">
+                                    <div key={doc.id} className="group flex min-w-0 items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                                        <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+                                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-100 bg-white text-teal-600 shadow-sm">
                                                 <FileText size={20} />
                                             </div>
-                                            <div>
+                                            <div className="min-w-0">
                                                 <p className="text-xs md:text-sm font-black text-slate-800 truncate max-w-[120px] sm:max-w-[150px]">{doc.title}</p>
                                                 <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase">{(doc.file_size / 1024).toFixed(1)} KB · {doc.type}</p>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <div className="flex shrink-0 items-center gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
                                             {doc.file_url ? (
                                                 <a 
                                                     href={doc.file_url} 
@@ -307,7 +307,7 @@ export default function HouseholdPublicProfile() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.1 }}
-                        className="bg-rose-50 rounded-[32px] p-8 border border-rose-100"
+                        className="rounded-3xl border border-rose-100 bg-rose-50 p-5 sm:rounded-[32px] sm:p-8"
                     >
                         <h3 className="text-sm font-black text-rose-600 uppercase tracking-widest flex items-center gap-2 mb-4">
                             <Heart size={16} fill="currentColor" /> ব্লাড গ্রুপ প্রাপ্যতা
@@ -328,50 +328,50 @@ export default function HouseholdPublicProfile() {
                     
                     <button 
                         onClick={() => setActiveService('birth_registration')}
-                        className="w-full p-6 rounded-[32px] bg-white border border-slate-200 hover:border-teal-500 transition-all flex items-center justify-between group"
+                        className="group flex w-full min-w-0 items-center justify-between gap-3 rounded-3xl border border-slate-200 bg-white p-4 text-left transition-all hover:border-teal-500 sm:rounded-[32px] sm:p-6"
                     >
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center group-hover:bg-teal-600 group-hover:text-white transition-colors">
+                        <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-teal-50 text-teal-600 transition-colors group-hover:bg-teal-600 group-hover:text-white">
                                 <FileText size={24} />
                             </div>
-                            <div className="text-left">
-                                <p className="font-black text-slate-800">জন্ম নিবন্ধন আবেদন</p>
-                                <p className="text-[10px] font-bold text-slate-400">নতুন সদস্যের জন্য আবেদন করুন</p>
+                            <div className="min-w-0 text-left">
+                                <p className="break-words font-black text-slate-800">জন্ম নিবন্ধন আবেদন</p>
+                                <p className="break-words text-[10px] font-bold text-slate-400">নতুন সদস্যের জন্য আবেদন করুন</p>
                             </div>
                         </div>
-                        <ArrowLeft className="rotate-180 text-slate-300" size={20} />
+                        <ArrowLeft className="shrink-0 rotate-180 text-slate-300" size={20} />
                     </button>
 
                     <button 
                         onClick={() => setActiveService('death_certificate')}
-                        className="w-full p-6 rounded-[32px] bg-white border border-slate-200 hover:border-teal-500 transition-all flex items-center justify-between group"
+                        className="group flex w-full min-w-0 items-center justify-between gap-3 rounded-3xl border border-slate-200 bg-white p-4 text-left transition-all hover:border-teal-500 sm:rounded-[32px] sm:p-6"
                     >
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-2xl bg-slate-50 text-slate-500 flex items-center justify-center group-hover:bg-rose-600 group-hover:text-white transition-colors">
+                        <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-50 text-slate-500 transition-colors group-hover:bg-rose-600 group-hover:text-white">
                                 <AlertCircle size={24} />
                             </div>
-                            <div className="text-left">
-                                <p className="font-black text-slate-800">মৃত্যু সনদ আবেদন</p>
-                                <p className="text-[10px] font-bold text-slate-400">মৃত্যু সংবাদ রিপোর্ট করুন</p>
+                            <div className="min-w-0 text-left">
+                                <p className="break-words font-black text-slate-800">মৃত্যু সনদ আবেদন</p>
+                                <p className="break-words text-[10px] font-bold text-slate-400">মৃত্যু সংবাদ রিপোর্ট করুন</p>
                             </div>
                         </div>
-                        <ArrowLeft className="rotate-180 text-slate-300" size={20} />
+                        <ArrowLeft className="shrink-0 rotate-180 text-slate-300" size={20} />
                     </button>
 
                     <button 
                         onClick={() => setActiveService('utility_request')}
-                        className="w-full p-6 rounded-[32px] bg-white border border-slate-200 hover:border-teal-500 transition-all flex items-center justify-between group"
+                        className="group flex w-full min-w-0 items-center justify-between gap-3 rounded-3xl border border-slate-200 bg-white p-4 text-left transition-all hover:border-teal-500 sm:rounded-[32px] sm:p-6"
                     >
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-2xl bg-slate-50 text-slate-500 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                        <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-50 text-slate-500 transition-colors group-hover:bg-blue-600 group-hover:text-white">
                                 <Zap size={24} />
                             </div>
-                            <div className="text-left">
-                                <p className="font-black text-slate-800">বিদ্যুৎ মিটার আবেদন</p>
-                                <p className="text-[10px] font-bold text-slate-400">নতুন সংযোগের জন্য অনুরোধ</p>
+                            <div className="min-w-0 text-left">
+                                <p className="break-words font-black text-slate-800">বিদ্যুৎ মিটার আবেদন</p>
+                                <p className="break-words text-[10px] font-bold text-slate-400">নতুন সংযোগের জন্য অনুরোধ</p>
                             </div>
                         </div>
-                        <ArrowLeft className="rotate-180 text-slate-300" size={20} />
+                        <ArrowLeft className="shrink-0 rotate-180 text-slate-300" size={20} />
                     </button>
                 </div>
 
@@ -384,12 +384,12 @@ export default function HouseholdPublicProfile() {
             {/* Application Modal */}
             <AnimatePresence>
                 {activeService && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
+                    <div className="fixed inset-0 z-[100] flex items-stretch justify-center p-0 bg-slate-900/60 backdrop-blur-md sm:items-center sm:p-4">
                         <motion.div
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.95 }}
-                            className="w-full flex justify-center"
+                            className="flex h-full w-full justify-center sm:h-auto"
                         >
                             <ServiceRequestModal 
                                 householdId={id}
@@ -402,12 +402,12 @@ export default function HouseholdPublicProfile() {
                 
                 {/* Locker PIN Modal */}
                 {showLockerModal && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
+                    <div className="fixed inset-0 z-[100] flex items-stretch justify-center p-0 bg-slate-900/60 backdrop-blur-md sm:items-center sm:p-4">
                         <motion.div
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.95 }}
-                            className="w-full max-w-sm bg-white rounded-[32px] p-8 relative overflow-hidden"
+                            className="relative flex h-[100dvh] max-h-[100dvh] w-full max-w-sm flex-col overflow-y-auto bg-white p-5 sm:h-auto sm:max-h-[90vh] sm:rounded-[32px] sm:p-8"
                         >
                             <div className="absolute top-0 right-0 p-6 opacity-5 pointer-events-none">
                                 <ShieldCheck size={100} />
@@ -431,7 +431,7 @@ export default function HouseholdPublicProfile() {
                                     />
                                     {pinError && <p className="text-xs text-rose-500 font-bold">{pinError}</p>}
                                     
-                                    <div className="flex gap-3 pt-4">
+                                    <div className="flex flex-col gap-3 pt-4 sm:flex-row">
                                         <button 
                                             type="button"
                                             onClick={() => setShowLockerModal(false)}
@@ -455,12 +455,12 @@ export default function HouseholdPublicProfile() {
 
                 {/* Edit Form Modal */}
                 {isEditing && isLockerUnlocked && fullData && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
+                    <div className="fixed inset-0 z-[100] flex items-stretch justify-center p-0 bg-slate-900/60 backdrop-blur-md sm:items-center sm:p-4">
                         <motion.div
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.95 }}
-                            className="w-full flex justify-center"
+                            className="flex h-full w-full justify-center sm:h-auto"
                         >
                             <HouseholdEntryForm 
                                 wardId={data.ward_id}

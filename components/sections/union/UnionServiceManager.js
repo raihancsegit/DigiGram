@@ -1,10 +1,11 @@
 'use client';
 
+import Link from 'next/link';
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-    FileText, CheckCircle, XCircle, Clock, Calendar, 
-    User, MapPin, Search, Loader2, Filter, ChevronRight, Save
+import {
+    FileText, CheckCircle, XCircle, Clock, Calendar,
+    User, MapPin, Search, Loader2, ChevronRight, Save, PackageCheck, ExternalLink
 } from 'lucide-react';
 import { householdService } from '@/lib/services/householdService';
 import { toBnDigits } from '@/lib/utils/format';
@@ -15,6 +16,8 @@ export default function UnionServiceManager({ unionId }) {
     const [selectedRequest, setSelectedRequest] = useState(null);
     const [actionForm, setActionForm] = useState({ status: '', collection_date: '', feedback: '' });
     const [saving, setSaving] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [statusFilter, setStatusFilter] = useState('active');
 
     const loadRequests = useCallback(async () => {
         try {
@@ -43,6 +46,7 @@ export default function UnionServiceManager({ unionId }) {
                 unionId
             );
             setSelectedRequest(null);
+            setActionForm({ status: '', collection_date: '', feedback: '' });
             await loadRequests();
         } catch (err) {
             alert("আপডেট করতে সমস্যা হয়েছে।");
@@ -53,6 +57,31 @@ export default function UnionServiceManager({ unionId }) {
 
     if (loading) return <div className="p-20 text-center"><Loader2 className="animate-spin mx-auto text-teal-600" /></div>;
 
+    const filteredRequests = requests.filter((request) => {
+        const statusMatches = statusFilter === 'all'
+            || (statusFilter === 'active' && ['pending', 'processing', 'ready'].includes(request.status))
+            || request.status === statusFilter;
+        if (!statusMatches) return false;
+
+        const keyword = searchTerm.trim().toLowerCase();
+        if (!keyword) return true;
+
+        return [
+            request.id,
+            request.applicant_name,
+            request.contact_phone,
+            request.request_type,
+            request.household?.house_no,
+            request.household?.owner_name,
+            request.household?.village?.bn_name
+        ].filter(Boolean).some((value) => String(value).toLowerCase().includes(keyword));
+    });
+
+    const statusCounts = requests.reduce((acc, request) => {
+        acc[request.status] = (acc[request.status] || 0) + 1;
+        return acc;
+    }, {});
+
     const getStatusMeta = (status) => ({
         pending: { label: 'পেন্ডিং', className: 'bg-amber-50 text-amber-600' },
         processing: { label: 'প্রক্রিয়াধীন', className: 'bg-blue-50 text-blue-600' },
@@ -62,9 +91,9 @@ export default function UnionServiceManager({ unionId }) {
 
     return (
         <div className="space-y-8">
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex flex-col gap-4 mb-6 lg:flex-row lg:items-center lg:justify-between">
                 <h3 className="text-2xl font-black text-slate-800">আগত আবেদনসমূহ</h3>
-                <div className="flex items-center gap-3">
+                <div className="hidden">
                     <div className="relative">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                         <input className="pl-11 pr-6 py-2.5 rounded-xl bg-slate-100 border-none text-sm font-bold w-64" placeholder="আবেদনকারী বা আইডি..." />
@@ -72,14 +101,42 @@ export default function UnionServiceManager({ unionId }) {
                 </div>
             </div>
 
+            <div className="flex flex-col gap-3 rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm sm:flex-row sm:items-center">
+                <div className="relative min-w-0 flex-1">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                    <input
+                        value={searchTerm}
+                        onChange={(event) => setSearchTerm(event.target.value)}
+                        className="w-full rounded-xl border-none bg-slate-100 py-3 pl-11 pr-4 text-sm font-bold"
+                        placeholder="Search applicant, phone, house or ID..."
+                    />
+                </div>
+                <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-600 outline-none focus:border-teal-500">
+                    <option value="active">চলমান ({toBnDigits(((statusCounts.pending || 0) + (statusCounts.processing || 0) + (statusCounts.ready || 0)).toString())})</option>
+                    <option value="all">সব ({toBnDigits(requests.length.toString())})</option>
+                    <option value="pending">Pending ({toBnDigits((statusCounts.pending || 0).toString())})</option>
+                    <option value="processing">Processing ({toBnDigits((statusCounts.processing || 0).toString())})</option>
+                    <option value="ready">Ready ({toBnDigits((statusCounts.ready || 0).toString())})</option>
+                    <option value="completed">Completed ({toBnDigits((statusCounts.completed || 0).toString())})</option>
+                    <option value="rejected">Rejected ({toBnDigits((statusCounts.rejected || 0).toString())})</option>
+                </select>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {requests.map(req => {
+                {filteredRequests.map(req => {
                     const currentStatus = getStatusMeta(req.status);
                     return (
                     <motion.div 
                         key={req.id}
                         layoutId={req.id}
-                        onClick={() => setSelectedRequest(req)}
+                        onClick={() => {
+                            setSelectedRequest(req);
+                            setActionForm({
+                                status: req.status || '',
+                                collection_date: req.collection_date || '',
+                                feedback: req.feedback || ''
+                            });
+                        }}
                         className="p-8 rounded-[32px] bg-white border border-slate-100 shadow-sm hover:shadow-xl hover:border-teal-200 transition-all cursor-pointer group"
                     >
                         <div className="flex items-start justify-between mb-6">
@@ -106,13 +163,20 @@ export default function UnionServiceManager({ unionId }) {
                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
                                 {new Date(req.created_at).toLocaleDateString('bn-BD')}
                             </span>
+                            <Link
+                                href={`/track/${req.id}`}
+                                onClick={(event) => event.stopPropagation()}
+                                className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1.5 text-[10px] font-black text-slate-600 transition hover:bg-teal-50 hover:text-teal-700"
+                            >
+                                Track <ExternalLink size={12} />
+                            </Link>
                             <ChevronRight size={18} className="text-slate-300 group-hover:translate-x-1 transition-transform" />
                         </div>
                     </motion.div>
                     );
                 })}
                 
-                {requests.length === 0 && (
+                {filteredRequests.length === 0 && (
                     <div className="col-span-full py-20 text-center bg-slate-50 rounded-[40px] border-2 border-dashed border-slate-200">
                         <Clock className="mx-auto text-slate-300 mb-4" size={48} />
                         <p className="text-slate-400 font-bold italic">বর্তমানে কোনো নতুন আবেদন নেই।</p>
@@ -123,12 +187,12 @@ export default function UnionServiceManager({ unionId }) {
             {/* Action Modal */}
             <AnimatePresence>
                 {selectedRequest && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
+                    <div className="fixed inset-0 z-[100] flex items-stretch justify-center bg-slate-900/60 p-0 backdrop-blur-md sm:items-center sm:p-4">
                         <motion.div 
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.95 }}
-                            className="bg-white rounded-[40px] p-10 w-full max-w-2xl shadow-2xl relative"
+                            className="relative h-[100dvh] max-h-[100dvh] w-full overflow-y-auto bg-white p-5 shadow-2xl sm:h-auto sm:max-h-[90vh] sm:max-w-2xl sm:rounded-[40px] sm:p-10"
                         >
                             <button onClick={() => setSelectedRequest(null)} className="absolute top-8 right-8 text-slate-400 hover:text-slate-600">
                                 <XCircle size={24} />
@@ -136,12 +200,12 @@ export default function UnionServiceManager({ unionId }) {
                             
                             <h3 className="text-2xl font-black text-slate-800 mb-8">আবেদন পর্যালোচনা</h3>
                             
-                            <div className="grid grid-cols-2 gap-8 mb-10">
+                            <div className="grid grid-cols-1 gap-4 mb-8 sm:grid-cols-2 sm:gap-8 sm:mb-10">
                                 <div className="space-y-4">
                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">আবেদনকারীর তথ্য</p>
                                     <div className="p-5 rounded-2xl bg-slate-50 border border-slate-100">
                                         <p className="font-black text-slate-800">{selectedRequest.applicant_name}</p>
-                                        <p className="text-sm font-bold text-slate-500">{toBnDigits(selectedRequest.applicant_phone)}</p>
+                                        <p className="text-sm font-bold text-slate-500">{toBnDigits(selectedRequest.contact_phone || selectedRequest.applicant_phone || '')}</p>
                                     </div>
                                 </div>
                                 <div className="space-y-4">
@@ -153,8 +217,16 @@ export default function UnionServiceManager({ unionId }) {
                                 </div>
                             </div>
 
+                            <Link
+                                href={`/track/${selectedRequest.id}`}
+                                className="mb-8 flex w-full items-center justify-center gap-2 rounded-2xl bg-teal-50 px-5 py-4 text-sm font-black text-teal-700 ring-1 ring-teal-100 transition hover:bg-teal-600 hover:text-white"
+                            >
+                                Citizen tracking page দেখুন
+                                <ExternalLink size={16} />
+                            </Link>
+
                             <div className="space-y-6">
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
                                     <button 
                                         onClick={() => setActionForm({...actionForm, status: 'processing'})}
                                         className={`py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${actionForm.status === 'processing' ? 'bg-amber-500 text-white shadow-xl' : 'bg-slate-100 text-slate-500 hover:bg-amber-50'}`}
@@ -172,6 +244,12 @@ export default function UnionServiceManager({ unionId }) {
                                         className={`py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${actionForm.status === 'rejected' ? 'bg-rose-600 text-white shadow-xl' : 'bg-slate-100 text-slate-500 hover:bg-rose-50'}`}
                                     >
                                         <XCircle size={18} /> বাতিল করুন
+                                    </button>
+                                    <button
+                                        onClick={() => setActionForm({...actionForm, status: 'completed'})}
+                                        className={`py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${actionForm.status === 'completed' ? 'bg-teal-600 text-white shadow-xl' : 'bg-slate-100 text-slate-500 hover:bg-teal-50'}`}
+                                    >
+                                        <PackageCheck size={18} /> Collected
                                     </button>
                                 </div>
 

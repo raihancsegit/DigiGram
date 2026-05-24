@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
@@ -11,6 +12,7 @@ import { householdService } from '@/lib/services/householdService';
 export default function ServiceRequestModal({ householdId, serviceType, onClose }) {
     const [saving, setSaving] = useState(false);
     const [success, setSuccess] = useState(false);
+    const [createdRequest, setCreatedRequest] = useState(null);
     
     const [formData, setFormData] = useState({
         applicant_name: '',
@@ -34,7 +36,7 @@ export default function ServiceRequestModal({ householdId, serviceType, onClose 
         e.preventDefault();
         setSaving(true);
         try {
-            await householdService.createServiceRequest({
+            const request = await householdService.createServiceRequest({
                 household_id: householdId,
                 request_type: serviceType,
                 applicant_name: formData.applicant_name,
@@ -48,8 +50,8 @@ export default function ServiceRequestModal({ householdId, serviceType, onClose 
                     source: 'public_household_profile'
                 }
             });
+            setCreatedRequest(request);
             setSuccess(true);
-            setTimeout(() => onClose(), 2000);
         } catch (err) {
             alert("আবেদন জমা দিতে সমস্যা হয়েছে।");
         } finally {
@@ -59,18 +61,38 @@ export default function ServiceRequestModal({ householdId, serviceType, onClose 
 
     if (success) {
         return (
-            <div className="bg-white rounded-[40px] p-12 text-center max-w-sm w-full shadow-2xl">
+            <div className="flex h-[100dvh] w-full max-w-sm flex-col justify-center bg-white p-8 text-center shadow-2xl sm:h-auto sm:rounded-[40px] sm:p-12">
                 <div className="w-20 h-20 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6">
                     <CheckCircle2 size={40} />
                 </div>
                 <h3 className="text-2xl font-black text-slate-800 mb-2">আবেদন সফল!</h3>
                 <p className="text-slate-500 font-bold">আবেদন জমা হয়েছে। অবস্থা বদলালে আপনার মোবাইলে SMS যাবে।</p>
+                {createdRequest?.id && (
+                    <>
+                        <div className="mt-6 rounded-2xl bg-slate-50 p-4 text-left">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Tracking ID</p>
+                            <p className="mt-1 break-all font-black text-slate-800">{createdRequest.id}</p>
+                        </div>
+                        <Link
+                            href={`/track/${createdRequest.id}`}
+                            className="mt-4 block w-full rounded-2xl bg-teal-600 py-4 text-sm font-black uppercase tracking-widest text-white transition-all hover:bg-teal-700"
+                        >
+                            আবেদন ট্র্যাক করুন
+                        </Link>
+                    </>
+                )}
+                <button
+                    onClick={onClose}
+                    className="mt-8 w-full rounded-2xl bg-slate-900 py-4 text-sm font-black uppercase tracking-widest text-white transition-all hover:bg-teal-600"
+                >
+                    ঠিক আছে
+                </button>
             </div>
         );
     }
 
     return (
-        <div className="bg-white rounded-[40px] p-8 md:p-10 shadow-2xl w-full max-w-xl relative max-h-[90vh] overflow-y-auto">
+        <div className="relative flex h-[100dvh] max-h-[100dvh] w-full max-w-xl flex-col overflow-hidden bg-white p-5 shadow-2xl sm:h-auto sm:max-h-[90vh] sm:rounded-[40px] sm:p-8 md:p-10">
             <button onClick={onClose} className="absolute top-8 right-8 text-slate-400 hover:text-slate-600 transition-colors">
                 <X size={24} />
             </button>
@@ -85,7 +107,7 @@ export default function ServiceRequestModal({ householdId, serviceType, onClose 
                 </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="min-h-0 flex-1 space-y-6 overflow-y-auto p-0">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">আবেদনকারীর নাম</label>
@@ -164,7 +186,7 @@ export default function ServiceRequestModal({ householdId, serviceType, onClose 
 
                 <button 
                     disabled={saving}
-                    className="w-full py-5 rounded-2xl bg-slate-900 text-white font-black text-sm uppercase tracking-widest hover:bg-teal-600 transition-all flex items-center justify-center gap-3 disabled:opacity-50 shadow-xl"
+                    className="sticky bottom-0 flex w-full items-center justify-center gap-3 rounded-2xl bg-slate-900 py-5 text-sm font-black uppercase tracking-widest text-white shadow-xl transition-all hover:bg-teal-600 disabled:opacity-50"
                 >
                     {saving ? <Loader2 className="animate-spin" /> : <Save size={20} />}
                     আবেদন নিশ্চিত করুন

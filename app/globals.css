@@ -27,3 +27,31 @@ body {
   font-family: var(--dg-font);
   -webkit-font-smoothing: antialiased;
 }
+@keyframes schoolNoticeMarquee {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.school-notice-track {
+  -webkit-mask-image: linear-gradient(90deg, transparent, black 7%, black 93%, transparent);
+  mask-image: linear-gradient(90deg, transparent, black 7%, black 93%, transparent);
+}
+
+.school-notice-marquee {
+  animation: schoolNoticeMarquee 34s linear infinite;
+}
+
+.school-notice-track:hover .school-notice-marquee {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .school-notice-marquee {
+    animation: none;
+  }
+}

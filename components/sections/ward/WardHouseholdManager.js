@@ -842,7 +842,7 @@ export default function WardHouseholdManager({ wardId, assignedVillage = null, v
                             initial={{ opacity: 0, scale: 0.95, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                            className="relative w-full max-w-4xl flex items-center justify-center"
+                            className="relative flex h-full w-full items-stretch justify-center sm:h-auto sm:max-w-4xl sm:items-center"
                         >
                             <HouseholdEntryForm 
                                 wardId={wardId}
@@ -867,22 +867,22 @@ export default function WardHouseholdManager({ wardId, assignedVillage = null, v
                             initial={{ opacity: 0, scale: 0.95, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                            className="bg-white rounded-[40px] shadow-2xl relative z-[1001] w-full max-w-6xl overflow-hidden border border-slate-100 flex flex-col max-h-[90vh]"
+                            className="relative z-[1001] flex h-[100dvh] max-h-[100dvh] w-full min-w-0 flex-col overflow-hidden rounded-none border border-slate-100 bg-white shadow-2xl sm:h-auto sm:max-h-[90vh] sm:max-w-6xl sm:rounded-[40px]"
                         >
-                            <div className="p-8 pb-4 flex items-center justify-between shrink-0 bg-slate-50 border-b border-slate-100">
-                                <div>
-                                    <h2 className="text-2xl font-black text-slate-800">ডিজিটাল লকার ও হাউসহোল্ড তথ্য</h2>
-                                    <p className="text-xs font-bold text-slate-400 mt-1">{selectedHouseholdForLocker.owner_name} এর প্রোফাইল ও ডকুমেন্টস</p>
+                            <div className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-100 bg-slate-50 p-4 sm:items-center sm:p-8 sm:pb-4">
+                                <div className="min-w-0">
+                                    <h2 className="break-words text-xl font-black leading-tight text-slate-800 sm:text-2xl">ডিজিটাল লকার ও হাউসহোল্ড তথ্য</h2>
+                                    <p className="mt-1 break-words text-xs font-bold text-slate-400">{selectedHouseholdForLocker.owner_name} এর প্রোফাইল ও ডকুমেন্টস</p>
                                 </div>
                                 <button 
                                     onClick={() => setSelectedHouseholdForLocker(null)} 
-                                    className="p-2 rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-rose-500 transition-colors"
+                                    className="shrink-0 rounded-xl border border-slate-200 bg-white p-2 text-slate-400 transition-colors hover:text-rose-500"
                                 >
                                     <X size={24} />
                                 </button>
                             </div>
                             
-                            <div className="p-8 pt-4 overflow-y-auto custom-scrollbar flex-1">
+                            <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto p-3 sm:p-8 sm:pt-4">
                                 <HouseholdLockerManager 
                                     household={selectedHouseholdForLocker} 
                                     onUpdate={loadInitialData}

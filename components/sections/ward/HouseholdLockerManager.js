@@ -18,7 +18,7 @@ import ModalPortal from '@/components/common/ModalPortal';
 import ApplicationPreview from './ApplicationPreview';
 import toast from 'react-hot-toast';
 
-const inputStyles = "w-full px-5 py-4 rounded-[20px] bg-slate-50 border border-slate-100 focus:bg-white focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 outline-none transition-all font-bold text-slate-700 text-sm";
+const inputStyles = "w-full min-w-0 px-4 py-3.5 sm:px-5 sm:py-4 rounded-[20px] bg-slate-50 border border-slate-100 focus:bg-white focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 outline-none transition-all font-bold text-slate-700 text-sm";
 const labelStyles = "text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1 mb-1.5 block";
 
 const SERVICE_TYPES = {
@@ -659,18 +659,18 @@ export default function HouseholdLockerManager({ household, onUpdate, onClose })
                         setSelectedResident(resident);
                     }
                 }}
-                className={`w-full text-left p-4 rounded-2xl border ${isDeceased ? 'border-slate-200 bg-slate-100 grayscale opacity-80' : `${colorClass} bg-white`} shadow-sm relative overflow-hidden group transition-all hover:border-teal-500 hover:shadow-md focus:ring-2 focus:ring-teal-500 outline-none z-10`}
+                className={`relative z-10 w-full min-w-0 overflow-hidden rounded-2xl border p-4 text-left ${isDeceased ? 'border-slate-200 bg-slate-100 grayscale opacity-80' : `${colorClass} bg-white`} group shadow-sm outline-none transition-all hover:border-teal-500 hover:shadow-md focus:ring-2 focus:ring-teal-500`}
             >
                 {isDeceased && (
                     <span className="absolute right-3 top-3 rounded-full bg-slate-700 px-2.5 py-1 text-[8px] font-black text-white">
                         মৃত
                     </span>
                 )}
-                <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:scale-110 group-hover:text-teal-600 transition-all"><Icon size={20} /></div>
-                    <div className="flex-1">
+                <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-50 text-slate-400 transition-all group-hover:scale-110 group-hover:text-teal-600"><Icon size={20} /></div>
+                    <div className="min-w-0 flex-1">
                         <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-0.5">{title}</p>
-                        <h4 className="text-xs font-black text-slate-800">{resident.name}</h4>
+                        <h4 className="break-words text-xs font-black text-slate-800">{resident.name}</h4>
                         <p className="text-[9px] font-bold text-slate-500 mt-1">{toBnDigits(age?.toString() || '0')} বছর • {resident.gender === 'Male' ? 'পুরুষ' : 'নারী'}</p>
                     </div>
                 </div>
@@ -701,7 +701,7 @@ export default function HouseholdLockerManager({ household, onUpdate, onClose })
                         <Clock size={10} /> {SERVICE_TYPES[activeRequest.request_type] || 'আবেদন'} {STATUS_CONFIG[activeRequest.status]?.label}
                     </div>
                 )}
-                <div className="mt-3 flex flex-wrap gap-2">
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                     <button
                         type="button"
                         onClick={(e) => {
@@ -709,7 +709,7 @@ export default function HouseholdLockerManager({ household, onUpdate, onClose })
                             e.stopPropagation();
                             startApplicationForResident(resident, 'birth_registration');
                         }}
-                        className="rounded-lg bg-slate-900 px-2.5 py-1.5 text-[8px] font-black text-white"
+                        className="rounded-lg bg-slate-900 px-2.5 py-2 text-center text-[8px] font-black text-white sm:py-1.5"
                     >
                         জন্ম নিবন্ধন
                     </button>
@@ -720,7 +720,7 @@ export default function HouseholdLockerManager({ household, onUpdate, onClose })
                             e.stopPropagation();
                             startApplicationForResident(resident, 'death_certificate');
                         }}
-                        className="rounded-lg bg-slate-100 px-2.5 py-1.5 text-[8px] font-black text-slate-700"
+                        className="rounded-lg bg-slate-100 px-2.5 py-2 text-center text-[8px] font-black text-slate-700 sm:py-1.5"
                     >
                         মৃত্যু সনদ
                     </button>
@@ -771,14 +771,14 @@ export default function HouseholdLockerManager({ household, onUpdate, onClose })
     ].filter(Boolean) : [];
 
     return (
-        <div className="flex flex-col h-full bg-white overflow-hidden">
+        <div className="flex h-full min-h-0 w-full max-w-full flex-col overflow-hidden bg-white">
             {/* Header Tabs */}
-            <div className="flex items-center gap-2 p-4 border-b border-slate-100 overflow-x-auto no-scrollbar shrink-0">
+            <div className="no-scrollbar flex shrink-0 items-center gap-2 overflow-x-auto border-b border-slate-100 p-3 sm:p-4">
                 {Object.entries(TABS).map(([key, tab]) => (
                     <button
                         key={key}
                         onClick={() => setActiveTab(key)}
-                        className={`flex items-center gap-2 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                        className={`flex shrink-0 items-center gap-2 rounded-2xl px-4 py-3 text-[10px] font-black uppercase tracking-widest transition-all sm:px-6 ${
                             activeTab === key ? 'bg-slate-900 text-white shadow-xl' : 'text-slate-500 hover:bg-slate-50'
                         }`}
                     >
@@ -789,21 +789,21 @@ export default function HouseholdLockerManager({ household, onUpdate, onClose })
                 ))}
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
+            <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-4 md:p-8">
                 <AnimatePresence mode="wait">
                     {activeTab === 'profile' && (
-                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-12">
-                            <div className="p-8 rounded-[32px] bg-slate-50 border border-slate-100 flex flex-col md:flex-row items-start justify-between gap-8">
-                                <div className="flex items-center gap-6">
-                                    <div className="w-20 h-20 rounded-3xl bg-teal-600 text-white flex items-center justify-center shadow-2xl shadow-teal-200"><Home size={40} /></div>
-                                    <div>
-                                        <h3 className="text-2xl font-black text-slate-800 tracking-tight">{household.owner_name} এর খানা</h3>
-                                        <p className="text-sm font-bold text-slate-400 mt-1 uppercase tracking-widest">হোল্ডিং: {toBnDigits(household.house_no || '0')} • {household.village_name}</p>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="min-w-0 space-y-6 sm:space-y-12">
+                            <div className="flex min-w-0 flex-col items-start justify-between gap-5 rounded-3xl border border-slate-100 bg-slate-50 p-4 sm:p-6 md:flex-row md:gap-8 md:rounded-[32px] md:p-8">
+                                <div className="flex min-w-0 items-center gap-4 sm:gap-6">
+                                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-teal-600 text-white shadow-2xl shadow-teal-200 sm:h-20 sm:w-20 sm:rounded-3xl"><Home size={32} className="sm:h-10 sm:w-10" /></div>
+                                    <div className="min-w-0">
+                                        <h3 className="break-words text-xl font-black tracking-tight text-slate-800 sm:text-2xl">{household.owner_name} এর খানা</h3>
+                                        <p className="mt-1 break-words text-xs font-bold uppercase tracking-widest text-slate-400 sm:text-sm">হোল্ডিং: {toBnDigits(household.house_no || '0')} • {household.village_name}</p>
                                     </div>
                                 </div>
-                                <div className="flex flex-wrap gap-4">
-                                    <div className="px-5 py-3 rounded-2xl bg-white border border-slate-200 shadow-sm"><p className={labelStyles}>খানা প্রধান</p><p className="text-sm font-black text-slate-800">{household.owner_name}</p></div>
-                                    <div className="px-5 py-3 rounded-2xl bg-white border border-slate-200 shadow-sm"><p className={labelStyles}>মোট সদস্য</p><p className="text-sm font-black text-slate-800">{toBnDigits(residents.length.toString())} জন</p></div>
+                                <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 md:w-auto md:gap-4">
+                                    <div className="min-w-0 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:px-5"><p className={labelStyles}>খানা প্রধান</p><p className="break-words text-sm font-black text-slate-800">{household.owner_name}</p></div>
+                                    <div className="min-w-0 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:px-5"><p className={labelStyles}>মোট সদস্য</p><p className="text-sm font-black text-slate-800">{toBnDigits(residents.length.toString())} জন</p></div>
                                 </div>
                             </div>
 
@@ -818,7 +818,7 @@ export default function HouseholdLockerManager({ household, onUpdate, onClose })
                                 </div>
                             )}
 
-                            <div className="space-y-10 py-4">
+                            <div className="space-y-8 py-2 sm:space-y-10 sm:py-4">
                                 {parents.length > 0 && (
                                     <div className="space-y-4">
                                         <p className="text-center text-[10px] font-black uppercase tracking-widest text-slate-400">পূর্ব প্রজন্ম</p>
@@ -883,16 +883,16 @@ export default function HouseholdLockerManager({ household, onUpdate, onClose })
 
                     {activeTab === 'services' && (
                         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-                            <div id="service-form-top" className="flex items-center justify-between mb-4">
-                                <h3 className="text-xl font-black text-slate-800">সেবা আবেদনসমূহ</h3>
-                                <button onClick={() => setShowServiceForm(!showServiceForm)} className="px-6 py-3 rounded-2xl bg-slate-900 text-white font-black text-[10px] uppercase tracking-widest hover:bg-teal-600 shadow-lg flex items-center gap-2"><Plus size={16} /> নতুন আবেদন</button>
+                            <div id="service-form-top" className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <h3 className="text-lg font-black text-slate-800 sm:text-xl">সেবা আবেদনসমূহ</h3>
+                                <button onClick={() => setShowServiceForm(!showServiceForm)} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 text-[10px] font-black uppercase tracking-widest text-white shadow-lg hover:bg-teal-600 sm:w-auto sm:px-6"><Plus size={16} /> নতুন আবেদন</button>
                             </div>
                             {showServiceForm && (
-                                <form onSubmit={handleServiceSubmit} className="p-8 rounded-[32px] bg-white border-4 border-teal-100 shadow-2xl space-y-6 relative overflow-hidden">
+                                <form onSubmit={handleServiceSubmit} className="relative space-y-5 overflow-hidden rounded-3xl border-2 border-teal-100 bg-white p-4 shadow-2xl sm:space-y-6 sm:p-8 sm:rounded-[32px] sm:border-4">
                                     <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none"><Sparkles size={100} /></div>
                                     {!isPreviewMode ? (
                                         <>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
+                                            <div className="relative z-10 grid grid-cols-1 gap-4 md:grid-cols-2 sm:gap-6">
                                                 <div><label className={labelStyles}>সেবার ধরণ</label><select value={serviceForm.request_type} onChange={e => setServiceForm({...serviceForm, request_type: e.target.value})} className={inputStyles}>{Object.entries(SERVICE_TYPES).map(([k,v]) => <option key={k} value={k}>{v}</option>)}</select></div>
                                                 <div><label className={labelStyles}>আবেদনকারী</label><select value={serviceForm.applicant_name} onChange={e => handleApplicantChange(e.target.value)} className={inputStyles}><option value="">সদস্য নির্বাচন করুন</option>{residents.map(r => <option key={r.id} value={r.name}>{r.name}</option>)}</select></div>
                                                 {selectedApplicant && (
@@ -1015,15 +1015,15 @@ export default function HouseholdLockerManager({ household, onUpdate, onClose })
                             </div>
                             <div className="grid grid-cols-1 gap-4">
                                 {serviceRequests.map(sr => (
-                                    <div key={sr.id} className="p-6 rounded-[28px] bg-white border border-slate-100 shadow-sm flex items-center justify-between group hover:border-teal-100 transition-all">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400"><ClipboardList size={24} /></div>
-                                            <div>
-                                                <h5 className="font-black text-slate-800">{SERVICE_TYPES[sr.request_type] || sr.request_type}</h5>
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">আবেদনকারী: {sr.applicant_name} • {toBnDigits(new Date(sr.created_at).toLocaleDateString())}</p>
+                                    <div key={sr.id} className="flex min-w-0 flex-col gap-4 rounded-[28px] border border-slate-100 bg-white p-4 shadow-sm transition-all hover:border-teal-100 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+                                        <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+                                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-50 text-slate-400"><ClipboardList size={24} /></div>
+                                            <div className="min-w-0">
+                                                <h5 className="break-words font-black text-slate-800">{SERVICE_TYPES[sr.request_type] || sr.request_type}</h5>
+                                                <p className="mt-1 break-words text-[10px] font-bold uppercase tracking-widest text-slate-400">আবেদনকারী: {sr.applicant_name} • {toBnDigits(new Date(sr.created_at).toLocaleDateString())}</p>
                                             </div>
                                         </div>
-                                        <div className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border ${STATUS_CONFIG[sr.status]?.color}`}>{STATUS_CONFIG[sr.status]?.label}</div>
+                                        <div className={`self-start rounded-full border px-4 py-2 text-[10px] font-black uppercase tracking-widest sm:self-auto ${STATUS_CONFIG[sr.status]?.color}`}>{STATUS_CONFIG[sr.status]?.label}</div>
                                     </div>
                                 ))}
                             </div>
@@ -1044,12 +1044,12 @@ export default function HouseholdLockerManager({ household, onUpdate, onClose })
                                 </div>
                             ) : (
                                 <div className="space-y-6">
-                                    <div className="flex items-center justify-between">
-                                        <h3 className="text-xl font-black text-slate-800">ডিজিটাল ডকুমেন্ট লকার</h3>
-                                        <button onClick={() => setShowUploadForm(true)} className="px-5 py-2.5 bg-teal-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-lg"><Plus size={16} /> আপলোড</button>
+                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                        <h3 className="text-lg font-black text-slate-800 sm:text-xl">ডিজিটাল ডকুমেন্ট লকার</h3>
+                                        <button onClick={() => setShowUploadForm(true)} className="flex w-full items-center justify-center gap-2 rounded-xl bg-teal-600 px-5 py-3 text-[10px] font-black uppercase tracking-widest text-white shadow-lg sm:w-auto sm:py-2.5"><Plus size={16} /> আপলোড</button>
                                     </div>
                                     {showUploadForm && (
-                                        <form onSubmit={handleFileUpload} className="p-6 rounded-3xl bg-slate-50 border border-slate-200 space-y-4">
+                                        <form onSubmit={handleFileUpload} className="space-y-4 rounded-3xl border border-slate-200 bg-slate-50 p-4 sm:p-6">
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                 <div><label className={labelStyles}>ফাইলের নাম</label><input required value={uploadForm.title} onChange={e => setUploadForm({...uploadForm, title: e.target.value})} className={inputStyles} /></div>
                                                 <div><label className={labelStyles}>ধরণ</label><select value={uploadForm.type} onChange={e => setUploadForm({...uploadForm, type: e.target.value})} className={inputStyles}><option value="nid">NID</option><option value="birth_cert">জন্ম সনদ</option><option value="trade">ট্রেড লাইসেন্স</option></select></div>
@@ -1060,12 +1060,12 @@ export default function HouseholdLockerManager({ household, onUpdate, onClose })
                                     )}
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         {documents.map(doc => (
-                                            <div key={doc.id} className="p-4 rounded-2xl bg-white border border-slate-100 flex items-center justify-between group hover:border-teal-200 shadow-sm">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center text-teal-600"><FileText size={24} /></div>
-                                                    <div><p className="text-xs font-black text-slate-800">{doc.title}</p><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{doc.type}</p></div>
+                                            <div key={doc.id} className="group flex min-w-0 items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm hover:border-teal-200">
+                                                <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+                                                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-slate-50 text-teal-600"><FileText size={24} /></div>
+                                                    <div className="min-w-0"><p className="truncate text-xs font-black text-slate-800">{doc.title}</p><p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{doc.type}</p></div>
                                                 </div>
-                                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                                <div className="flex shrink-0 gap-1 opacity-100 transition-all sm:opacity-0 sm:group-hover:opacity-100">
                                                     {doc.file_url ? (
                                                         <a href={doc.file_url} target="_blank" className="p-2 text-slate-400 hover:text-teal-600"><Eye size={18} /></a>
                                                     ) : (
@@ -1083,12 +1083,12 @@ export default function HouseholdLockerManager({ household, onUpdate, onClose })
 
                     {activeTab === 'tax' && (
                         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-xl font-black text-slate-800">ট্যাক্স হিসেব ও পেমেন্ট</h3>
+                            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <h3 className="text-lg font-black text-slate-800 sm:text-xl">ট্যাক্স হিসেব ও পেমেন্ট</h3>
                                 {canManage && (
                                     <button 
                                         onClick={() => setShowTaxForm(!showTaxForm)} 
-                                        className={`px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center gap-2 shadow-lg ${showTaxForm ? 'bg-rose-500 text-white' : 'bg-slate-900 text-white hover:bg-teal-600'}`}
+                                        className={`flex w-full items-center justify-center gap-2 rounded-2xl px-5 py-3 text-[10px] font-black uppercase tracking-widest shadow-lg transition-all sm:w-auto sm:px-6 ${showTaxForm ? 'bg-rose-500 text-white' : 'bg-slate-900 text-white hover:bg-teal-600'}`}
                                     >
                                         {showTaxForm ? <><X size={16} /> বন্ধ করুন</> : <><Plus size={16} /> নতুন রেকর্ড</>}
                                     </button>
@@ -1096,8 +1096,8 @@ export default function HouseholdLockerManager({ household, onUpdate, onClose })
                             </div>
 
                             {showTaxForm && (
-                                <form onSubmit={handleAddTax} className="p-8 rounded-[32px] bg-white border-2 border-amber-100 shadow-2xl space-y-6">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <form onSubmit={handleAddTax} className="space-y-5 rounded-3xl border-2 border-amber-100 bg-white p-4 shadow-2xl sm:space-y-6 sm:p-8 sm:rounded-[32px]">
+                                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 sm:gap-6">
                                         <div>
                                             <label className={labelStyles}>অর্থ বছর</label>
                                             <input type="number" required value={taxForm.year} onChange={e => setTaxForm({...taxForm, year: e.target.value})} className={inputStyles} placeholder="২০২৪" />
@@ -1107,14 +1107,14 @@ export default function HouseholdLockerManager({ household, onUpdate, onClose })
                                             <input value={taxForm.fiscal_year_label} onChange={e => setTaxForm({...taxForm, fiscal_year_label: e.target.value})} className={inputStyles} placeholder="২০২৫-২০২৬" />
                                         </div>
                                     </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 sm:gap-6">
                                         <div><label className={labelStyles}>ওয়ার্ড নং</label><input value={taxForm.ward_no} onChange={e => setTaxForm({...taxForm, ward_no: e.target.value})} className={inputStyles} placeholder="০৩" /></div>
                                         <div><label className={labelStyles}>হোল্ডিং নং</label><input value={taxForm.holding_no} onChange={e => setTaxForm({...taxForm, holding_no: e.target.value})} className={inputStyles} placeholder="হোল্ডিং নম্বর" /></div>
                                         <div><label className={labelStyles}>করদাতার নাম</label><input value={taxForm.taxpayer_name} onChange={e => setTaxForm({...taxForm, taxpayer_name: e.target.value})} className={inputStyles} /></div>
                                         <div><label className={labelStyles}>পিতা/স্বামীর নাম</label><input value={taxForm.guardian_name} onChange={e => setTaxForm({...taxForm, guardian_name: e.target.value})} className={inputStyles} /></div>
                                     </div>
                                     <div><label className={labelStyles}>বিলের ঠিকানা</label><input value={taxForm.address} onChange={e => setTaxForm({...taxForm, address: e.target.value})} className={inputStyles} /></div>
-                                    <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+                                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-6">
                                         <div><label className={labelStyles}>পূর্বের বকেয়া</label><input type="number" value={taxForm.previous_due} onChange={e => setTaxForm({...taxForm, previous_due: e.target.value})} className={inputStyles} /></div>
                                         <div><label className={labelStyles}>১ম কিস্তি</label><input type="number" value={taxForm.quarter_1} onChange={e => setTaxForm({...taxForm, quarter_1: e.target.value})} className={inputStyles} /></div>
                                         <div><label className={labelStyles}>২য় কিস্তি</label><input type="number" value={taxForm.quarter_2} onChange={e => setTaxForm({...taxForm, quarter_2: e.target.value})} className={inputStyles} /></div>
@@ -1135,18 +1135,18 @@ export default function HouseholdLockerManager({ household, onUpdate, onClose })
 
                             <div className="grid grid-cols-1 gap-4">
                                 {taxes.map(t => (
-                                    <div key={t.id} className="p-6 rounded-[32px] bg-white border border-slate-100 shadow-sm space-y-6 group hover:border-amber-200 transition-all">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shadow-inner"><Receipt size={24} /></div>
-                                                <div><h5 className="font-black text-slate-800">অর্থ বছর: {toBnDigits(t.year.toString())}</h5><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">ট্যাক্স আইডি: #{t.id.substring(0,8)}</p></div>
+                                    <div key={t.id} className="group space-y-5 rounded-3xl border border-slate-100 bg-white p-4 shadow-sm transition-all hover:border-amber-200 sm:space-y-6 sm:p-6 sm:rounded-[32px]">
+                                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                            <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+                                                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 shadow-inner"><Receipt size={24} /></div>
+                                                <div className="min-w-0"><h5 className="break-words font-black text-slate-800">অর্থ বছর: {toBnDigits(t.year.toString())}</h5><p className="break-words text-[10px] font-bold uppercase tracking-widest text-slate-400">ট্যাক্স আইডি: #{t.id.substring(0,8)}</p></div>
                                             </div>
-                                            <div className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border ${t.status === 'paid' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 'bg-rose-50 border-rose-100 text-rose-600'}`}>{t.status === 'paid' ? 'পরিশোধিত' : 'বকেয়া'}</div>
+                                            <div className={`self-start rounded-full border px-4 py-2 text-[10px] font-black uppercase tracking-widest sm:self-auto ${t.status === 'paid' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 'bg-rose-50 border-rose-100 text-rose-600'}`}>{t.status === 'paid' ? 'পরিশোধিত' : 'বকেয়া'}</div>
                                         </div>
-                                        <div className="grid grid-cols-3 gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100 text-center">
-                                            <div><p className={labelStyles}>মোট ট্যাক্স</p><p className="text-sm font-black text-slate-800">৳{toBnDigits(t.amount_due.toString())}</p></div>
-                                            <div className="border-x border-slate-200"><p className={labelStyles}>পরিশোধিত</p><p className="text-sm font-black text-emerald-600">৳{toBnDigits(t.amount_paid.toString())}</p></div>
-                                            <div><p className={labelStyles}>বকেয়া</p><p className="text-sm font-black text-rose-600">৳{toBnDigits((t.amount_due - t.amount_paid).toString())}</p></div>
+                                        <div className="grid grid-cols-1 gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-4 text-center sm:grid-cols-3 sm:gap-4">
+                                            <div><p className={labelStyles}>মোট ট্যাক্স</p><p className="break-words text-sm font-black text-slate-800">৳{toBnDigits(t.amount_due.toString())}</p></div>
+                                            <div className="border-y border-slate-200 py-3 sm:border-x sm:border-y-0 sm:py-0"><p className={labelStyles}>পরিশোধিত</p><p className="break-words text-sm font-black text-emerald-600">৳{toBnDigits(t.amount_paid.toString())}</p></div>
+                                            <div><p className={labelStyles}>বকেয়া</p><p className="break-words text-sm font-black text-rose-600">৳{toBnDigits((t.amount_due - t.amount_paid).toString())}</p></div>
                                         </div>
                                         {t.payments?.length > 0 && (
                                             <div className="space-y-2">
@@ -1178,7 +1178,7 @@ export default function HouseholdLockerManager({ household, onUpdate, onClose })
             {/* Resident Detail Modal - Now fixed and wrapped in ModalPortal */}
             {selectedResident && (
                 <ModalPortal>
-                    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 overflow-hidden">
+                    <div className="fixed inset-0 z-[99999] flex items-stretch justify-center overflow-hidden p-0 sm:items-center sm:p-4">
                         <motion.div 
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
@@ -1190,24 +1190,24 @@ export default function HouseholdLockerManager({ household, onUpdate, onClose })
                             initial={{ opacity: 0, scale: 0.9, y: 40 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.9, y: 40 }}
-                            className="bg-white rounded-[40px] shadow-2xl relative z-10 w-full max-w-4xl max-h-[90vh] overflow-hidden border border-slate-100 flex flex-col"
+                            className="relative z-10 flex h-[100dvh] max-h-[100dvh] w-full min-w-0 flex-col overflow-hidden rounded-none border border-slate-100 bg-white shadow-2xl sm:h-auto sm:max-h-[90vh] sm:max-w-4xl sm:rounded-[40px]"
                         >
-                            <div className="p-8 pb-4 flex items-center justify-between shrink-0 bg-slate-50 border-b border-slate-100">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-2xl bg-teal-600 text-white flex items-center justify-center shadow-lg shadow-teal-200">
+                            <div className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-100 bg-slate-50 p-4 sm:items-center sm:p-8 sm:pb-4">
+                                <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+                                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-teal-600 text-white shadow-lg shadow-teal-200 sm:h-12 sm:w-12">
                                         <User size={24} />
                                     </div>
-                                    <div>
-                                        <h2 className="text-2xl font-black text-slate-800">{selectedResident.name}</h2>
-                                        <p className="text-xs font-bold text-slate-400 mt-1">সদস্যের বিস্তারিত তথ্য ও সেবাসমূহ</p>
+                                    <div className="min-w-0">
+                                        <h2 className="break-words text-xl font-black text-slate-800 sm:text-2xl">{selectedResident.name}</h2>
+                                        <p className="mt-1 break-words text-xs font-bold text-slate-400">সদস্যের বিস্তারিত তথ্য ও সেবাসমূহ</p>
                                     </div>
                                 </div>
-                                <button onClick={() => setSelectedResident(null)} className="p-2 rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-rose-500 transition-colors">
+                                <button onClick={() => setSelectedResident(null)} className="shrink-0 rounded-xl border border-slate-200 bg-white p-2 text-slate-400 transition-colors hover:text-rose-500">
                                     <X size={24} />
                                 </button>
                             </div>
 
-                            <div className="p-8 pt-4 overflow-y-auto custom-scrollbar flex-1">
+                            <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-8 sm:pt-4">
                                 {/* Application Progress Tracking */}
                                 <div className="mb-10">
                                     <div className="flex items-center gap-3 mb-6">
@@ -1216,22 +1216,22 @@ export default function HouseholdLockerManager({ household, onUpdate, onClose })
                                         </div>
                                         <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">আবেদনের বর্তমান অবস্থা</h3>
                                     </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                         {serviceRequests.filter(sr => sr.applicant_name === selectedResident.name).length > 0 ? (
                                             serviceRequests.filter(sr => sr.applicant_name === selectedResident.name).map(sr => (
-                                                <div key={sr.id} className="p-6 rounded-[28px] border border-slate-100 bg-slate-50 flex items-center justify-between group hover:border-teal-200 transition-all">
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-slate-400">
+                                                <div key={sr.id} className="flex min-w-0 flex-col gap-4 rounded-[28px] border border-slate-100 bg-slate-50 p-4 transition-all hover:border-teal-200 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+                                                    <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+                                                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white text-slate-400">
                                                             <div className={`${STATUS_CONFIG[sr.status]?.color} bg-opacity-10 p-2 rounded-xl`}>
                                                                 <Clock size={20} />
                                                             </div>
                                                         </div>
-                                                        <div>
-                                                            <p className="text-sm font-black text-slate-800">{SERVICE_TYPES[sr.request_type] || sr.request_type}</p>
-                                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">ID: #{sr.id.substring(0,8)}</p>
+                                                        <div className="min-w-0">
+                                                            <p className="break-words text-sm font-black text-slate-800">{SERVICE_TYPES[sr.request_type] || sr.request_type}</p>
+                                                            <p className="mt-0.5 break-words text-[10px] font-bold uppercase tracking-widest text-slate-400">ID: #{sr.id.substring(0,8)}</p>
                                                         </div>
                                                     </div>
-                                                    <div className="flex flex-col items-end gap-1">
+                                                    <div className="flex flex-col items-start gap-1 sm:items-end">
                                                         <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase border ${STATUS_CONFIG[sr.status]?.color}`}>
                                                             {STATUS_CONFIG[sr.status]?.label}
                                                         </span>
@@ -1240,18 +1240,18 @@ export default function HouseholdLockerManager({ household, onUpdate, onClose })
                                                 </div>
                                             ))
                                         ) : (
-                                            <div className="col-span-2 p-8 rounded-[28px] border border-dashed border-slate-200 flex items-center justify-center text-slate-400 bg-slate-50/50">
+                                            <div className="rounded-[28px] border border-dashed border-slate-200 bg-slate-50/50 p-6 text-center text-slate-400 md:col-span-2 sm:p-8">
                                                 <p className="text-xs font-bold italic">অন্য কোনো আবেদন নেই</p>
                                             </div>
                                         )}
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-10">
                                     <div className="space-y-8">
                                         <div>
                                             <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-4">ব্যক্তিগত তথ্য</h4>
-                                            <div className="grid grid-cols-2 gap-6 bg-slate-50 p-6 rounded-[32px] border border-slate-100">
+                                            <div className="grid grid-cols-1 gap-4 rounded-3xl border border-slate-100 bg-slate-50 p-4 sm:grid-cols-2 sm:gap-6 sm:p-6 sm:rounded-[32px]">
                                                 <div>
                                                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">লিঙ্গ</p>
                                                     <p className="font-bold text-slate-700">{selectedResident.gender === 'Male' ? 'পুরুষ' : 'নারী'}</p>
@@ -1275,26 +1275,26 @@ export default function HouseholdLockerManager({ household, onUpdate, onClose })
                                         <div>
                                             <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-4">পরিচয়পত্র ও অন্যান্য</h4>
                                             <div className="grid grid-cols-1 gap-4">
-                                                <div className="p-5 rounded-[24px] bg-white border border-slate-100 flex items-center justify-between shadow-sm">
-                                                    <div className="flex items-center gap-3">
+                                                <div className="flex min-w-0 flex-col gap-3 rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-5">
+                                                    <div className="flex min-w-0 items-center gap-3">
                                                         <Shield className="text-slate-300" size={20} />
                                                         <span className="text-xs font-black text-slate-500 uppercase">National ID</span>
                                                     </div>
-                                                    <p className="font-black text-slate-800">{selectedResident.nid ? toBnDigits(selectedResident.nid) : 'নেই'}</p>
+                                                    <p className="break-words font-black text-slate-800">{selectedResident.nid ? toBnDigits(selectedResident.nid) : 'নেই'}</p>
                                                 </div>
-                                                <div className="p-5 rounded-[24px] bg-white border border-slate-100 flex items-center justify-between shadow-sm">
-                                                    <div className="flex items-center gap-3">
+                                                <div className="flex min-w-0 flex-col gap-3 rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-5">
+                                                    <div className="flex min-w-0 items-center gap-3">
                                                         <FileText className="text-slate-300" size={20} />
                                                         <span className="text-xs font-black text-slate-500 uppercase">জন্ম নিবন্ধন</span>
                                                     </div>
-                                                    <p className="font-black text-slate-800">{selectedResident.birth_reg_no ? toBnDigits(selectedResident.birth_reg_no) : 'নেই'}</p>
+                                                    <p className="break-words font-black text-slate-800">{selectedResident.birth_reg_no ? toBnDigits(selectedResident.birth_reg_no) : 'নেই'}</p>
                                                 </div>
-                                                <div className="p-5 rounded-[24px] bg-white border border-slate-100 flex items-center justify-between shadow-sm">
-                                                    <div className="flex items-center gap-3">
+                                                <div className="flex min-w-0 flex-col gap-3 rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-5">
+                                                    <div className="flex min-w-0 items-center gap-3">
                                                         <Zap className="text-slate-300" size={20} />
                                                         <span className="text-xs font-black text-slate-500 uppercase">পেশা</span>
                                                     </div>
-                                                    <p className="font-black text-slate-800">{selectedResident.occupation || 'দেওয়া হয়নি'}</p>
+                                                    <p className="break-words font-black text-slate-800">{selectedResident.occupation || 'দেওয়া হয়নি'}</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -1306,15 +1306,15 @@ export default function HouseholdLockerManager({ household, onUpdate, onClose })
                 </ModalPortal>
             )}
                 {showPaymentModal && (
-                    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+                    <div className="fixed inset-0 z-[1000] flex items-stretch justify-center p-0 sm:items-center sm:p-4">
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowPaymentModal(null)} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" />
-                        <motion.form initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} onSubmit={handleRecordPayment} className="relative w-full max-w-md bg-white rounded-[40px] shadow-2xl p-10 space-y-6">
-                            <div className="text-center mb-8"><h4 className="text-2xl font-black text-slate-800">ট্যাক্স পেমেন্ট</h4><p className="text-xs font-bold text-slate-400 mt-2 uppercase tracking-widest">বছর: {toBnDigits(showPaymentModal.year.toString())}</p></div>
+                        <motion.form initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} onSubmit={handleRecordPayment} className="relative h-[100dvh] w-full space-y-5 overflow-y-auto bg-white p-5 shadow-2xl sm:h-auto sm:max-h-[90vh] sm:max-w-md sm:space-y-6 sm:rounded-[40px] sm:p-10">
+                            <div className="mb-6 text-center sm:mb-8"><h4 className="text-xl font-black text-slate-800 sm:text-2xl">ট্যাক্স পেমেন্ট</h4><p className="mt-2 text-xs font-bold uppercase tracking-widest text-slate-400">বছর: {toBnDigits(showPaymentModal.year.toString())}</p></div>
                             <div><label className={labelStyles}>পরিমাণ (৳)</label><input type="number" required value={paymentForm.amount_paid} onChange={e => setPaymentForm({...paymentForm, amount_paid: e.target.value})} className={inputStyles} placeholder="0.00" /></div>
                             <div><label className={labelStyles}>রসিদ নম্বর</label><input type="text" required value={paymentForm.receipt_no} onChange={e => setPaymentForm({...paymentForm, receipt_no: e.target.value})} className={inputStyles} placeholder="রসিদ বইয়ের নম্বর" /></div>
                             <div><label className={labelStyles}>আদায়ের তারিখ</label><input type="date" required value={paymentForm.paid_date} onChange={e => setPaymentForm({...paymentForm, paid_date: e.target.value})} className={inputStyles} /></div>
                             <div><label className={labelStyles}>আদায়কারীর নাম</label><input value={paymentForm.collected_by} onChange={e => setPaymentForm({...paymentForm, collected_by: e.target.value})} className={inputStyles} placeholder="চেয়ারম্যান/আদায়কারী" /></div>
-                            <div className="flex gap-4 pt-4"><button type="button" onClick={() => setShowPaymentModal(null)} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black text-xs uppercase tracking-widest">বাতিল</button><button disabled={savingTax} className="flex-1 py-4 bg-teal-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg">{savingTax ? <Loader2 className="animate-spin mx-auto" /> : 'নিশ্চিত করুন'}</button></div>
+                            <div className="flex flex-col gap-3 pt-4 sm:flex-row sm:gap-4"><button type="button" onClick={() => setShowPaymentModal(null)} className="flex-1 rounded-2xl bg-slate-100 py-4 text-xs font-black uppercase tracking-widest text-slate-500">বাতিল</button><button disabled={savingTax} className="flex-1 rounded-2xl bg-teal-600 py-4 text-xs font-black uppercase tracking-widest text-white shadow-lg">{savingTax ? <Loader2 className="animate-spin mx-auto" /> : 'নিশ্চিত করুন'}</button></div>
                         </motion.form>
                     </div>
                 )}
