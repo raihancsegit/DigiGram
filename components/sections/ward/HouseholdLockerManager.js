@@ -15,6 +15,7 @@ import { notificationService } from '@/lib/services/notificationService';
 import { supabase } from '@/lib/utils/supabase';
 import { toBnDigits, parseBnInt } from '@/lib/utils/format';
 import ModalPortal from '@/components/common/ModalPortal';
+import { menuStyles } from '@/components/common/menuStyles';
 import ApplicationPreview from './ApplicationPreview';
 import toast from 'react-hot-toast';
 
@@ -773,16 +774,15 @@ export default function HouseholdLockerManager({ household, onUpdate, onClose })
     return (
         <div className="flex h-full min-h-0 w-full max-w-full flex-col overflow-hidden bg-white">
             {/* Header Tabs */}
-            <div className="no-scrollbar flex shrink-0 items-center gap-2 overflow-x-auto border-b border-slate-100 p-3 sm:p-4">
+            <div className="no-scrollbar -mx-2 flex shrink-0 items-center gap-2 overflow-x-auto border-b border-slate-100 px-2 py-3 sm:mx-0 sm:p-4">
                 {Object.entries(TABS).map(([key, tab]) => (
                     <button
                         key={key}
                         onClick={() => setActiveTab(key)}
-                        className={`flex shrink-0 items-center gap-2 rounded-2xl px-4 py-3 text-[10px] font-black uppercase tracking-widest transition-all sm:px-6 ${
-                            activeTab === key ? 'bg-slate-900 text-white shadow-xl' : 'text-slate-500 hover:bg-slate-50'
-                        }`}
+                        aria-current={activeTab === key ? 'page' : undefined}
+                        className={`flex shrink-0 items-center gap-1.5 rounded-2xl px-3 py-2.5 text-[9px] font-black uppercase tracking-widest transition-all sm:gap-2 sm:px-6 sm:py-3 sm:text-[10px] ${menuStyles.tab(activeTab === key, 'dark')}`}
                     >
-                        <tab.icon size={16} className={activeTab === key ? 'text-teal-400' : ''} />
+                        <tab.icon size={14} className={activeTab === key ? 'text-teal-400 sm:size-4' : 'sm:size-4'} />
                         {tab.label}
                         {tab.premium && <span className="ml-1 px-1.5 py-0.5 bg-teal-500 text-white rounded text-[7px]">PRO</span>}
                     </button>

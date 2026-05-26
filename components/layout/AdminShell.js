@@ -11,6 +11,7 @@ import {
 import { useDispatch, useSelector } from 'react-redux';
 import { performLogout } from '@/lib/store/features/authSlice';
 import NotificationBell from '@/components/ui/NotificationBell';
+import { menuStyles } from '@/components/common/menuStyles';
 
 export default function AdminShell({ children }) {
     const [isSidebarOpen, setSidebarOpen] = useState(true);
@@ -74,17 +75,15 @@ export default function AdminShell({ children }) {
                 {/* Nav Links */}
                 <nav className="flex-1 overflow-y-auto p-4 space-y-1.5 custom-scrollbar">
                     {filteredMenu.map((item) => {
-                        const isActive = pathname === item.path;
+                        const isActive = pathname === item.path || (item.path !== '/admin' && pathname.startsWith(`${item.path}/`));
                         return (
                             <Link
                                 key={item.path}
                                 href={item.path}
-                                className={`flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all group relative ${isActive
-                                    ? 'bg-teal-50 text-teal-700 font-bold shadow-sm'
-                                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
-                                    }`}
+                                aria-current={isActive ? 'page' : undefined}
+                                className={`flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all group relative font-bold ${menuStyles.navItem(isActive, 'teal')}`}
                             >
-                                <item.icon size={20} strokeWidth={isActive ? 2.5 : 2} className={isActive ? 'text-teal-600' : 'text-slate-400 group-hover:text-slate-600'} />
+                                <item.icon size={20} strokeWidth={isActive ? 2.5 : 2} className={isActive ? 'text-teal-700' : 'text-slate-400 group-hover:text-teal-700'} />
                                 {isSidebarOpen && (
                                     <span className="text-sm font-bold whitespace-nowrap animate-in fade-in duration-300">
                                         {item.name}

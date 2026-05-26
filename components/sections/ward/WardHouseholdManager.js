@@ -1,15 +1,17 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSelector } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
     Home, Users, MapPin, UserCheck, Plus, Search, 
     ChevronRight, ChevronLeft, Save, Trash2, Edit3, CheckCircle2, CheckCircle, AlertCircle, Loader2,
-    ArrowLeft, ArrowRight, Map as MapIcon, Info, Filter, X, Shield, Hash
+    ArrowLeft, ArrowRight, Map as MapIcon, Info, Filter, X, Shield, Hash, Fingerprint, Baby, HeartPulse, Phone, HandHeart, GraduationCap,
+    Clock3, FileText, WalletCards, Activity, Stethoscope
 } from 'lucide-react';
 import { householdService } from '@/lib/services/householdService';
 import { adminService } from '@/lib/services/adminService';
+import { smsService } from '@/lib/services/smsService';
 import { toBnDigits } from '@/lib/utils/format';
 import HouseholdEntryForm from './HouseholdEntryForm';
 import HouseholdLockerManager from './HouseholdLockerManager';
@@ -27,6 +29,7 @@ export default function WardHouseholdManager({ wardId, assignedVillage = null, v
     const [households, setHouseholds] = useState([]);
     const [currentPage, setCurrentPage] = useState(1);
     const [searchQuery, setSearchQuery] = useState('');
+    const [followUpFilter, setFollowUpFilter] = useState('all');
     const ITEMS_PER_PAGE = 24;
     const [loading, setLoading] = useState(true);
     const [activeView, setActiveView] = useState(isAssignedVillageMode ? 'houses' : 'villages');
@@ -42,6 +45,23 @@ export default function WardHouseholdManager({ wardId, assignedVillage = null, v
     const [editingHousehold, setEditingHousehold] = useState(null);
     const [selectedHouseholdForLocker, setSelectedHouseholdForLocker] = useState(null);
     const [saving, setSaving] = useState(false);
+    const [sendingReminderKey, setSendingReminderKey] = useState(null);
+
+    const followUpItems = useMemo(() => buildFamilyFollowUpItems(households), [households]);
+    const priorityFamilies = useMemo(() => buildHouseholdPriorityCards(households, followUpItems), [households, followUpItems]);
+    const filteredFollowUps = useMemo(() => {
+        if (followUpFilter === 'all') return followUpItems;
+        return followUpItems.filter((item) => item.issueTypes.includes(followUpFilter));
+    }, [followUpFilter, followUpItems]);
+    const followUpSummary = useMemo(() => ({
+        all: followUpItems.length,
+        nid: followUpItems.filter((item) => item.issueTypes.includes('nid')).length,
+        birth: followUpItems.filter((item) => item.issueTypes.includes('birth')).length,
+        blood: followUpItems.filter((item) => item.issueTypes.includes('blood')).length,
+        health: followUpItems.filter((item) => item.issueTypes.includes('health')).length,
+        empty: followUpItems.filter((item) => item.issueTypes.includes('empty')).length,
+        benefit: followUpItems.filter((item) => item.issueTypes.includes('benefit')).length
+    }), [followUpItems]);
 
     const loadInitialData = useCallback(async () => {
         try {
@@ -215,6 +235,33 @@ export default function WardHouseholdManager({ wardId, assignedVillage = null, v
             toast.error('বাড়ির তথ্য লোড করতে সমস্যা হয়েছে।');
         }
     };
+
+    async function handleSendFollowUpSms(item) {
+        if (!item?.phone) {
+            toast.error('এই পরিবারের ফোন নম্বর নেই। আগে ফোন নম্বর আপডেট করুন।');
+            return;
+        }
+
+        const message = buildFollowUpSmsMessage(item);
+        try {
+            setSendingReminderKey(item.key);
+            await smsService.queueMessage({
+                ownerType: 'location',
+                ownerId: wardId,
+                recipientPhone: item.phone,
+                message,
+                category: 'family_followup',
+                sourceType: 'household_followup',
+                sourceId: item.house.id
+            });
+            toast.success('Follow-up SMS queue করা হয়েছে।');
+        } catch (err) {
+            console.error('Failed to send family follow-up SMS:', err);
+            toast.error(err.message || 'SMS পাঠানো যায়নি। Wallet balance/gateway check করুন।');
+        } finally {
+            setSendingReminderKey(null);
+        }
+    }
 
     if (loading) {
         return (
@@ -473,6 +520,160 @@ export default function WardHouseholdManager({ wardId, assignedVillage = null, v
                                 })()}
                             </div>
                         </div>
+
+                        <section className="rounded-[32px] border border-amber-100 bg-amber-50/70 p-5 sm:p-6">
+                            <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                                <div>
+                                    <p className="text-[10px] font-black uppercase tracking-[0.24em] text-amber-700">Family Follow-up Worklist</p>
+                                    <h4 className="text-2xl font-black text-slate-900">যে পরিবারে তথ্য ঘাটতি আছে</h4>
+                                    <p className="mt-1 text-sm font-bold text-amber-800/80">
+                                        NID, জন্ম নিবন্ধন, রক্তের গ্রুপ বা সদস্যহীন বাড়ি দ্রুত follow-up করুন।
+                                    </p>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                    {[
+                                        ['all', 'সব', followUpSummary.all],
+                                        ['nid', 'NID নেই', followUpSummary.nid],
+                                        ['birth', 'জন্ম নেই', followUpSummary.birth],
+                                        ['blood', 'রক্ত নেই', followUpSummary.blood],
+                                        ['health', 'স্বাস্থ্য', followUpSummary.health],
+                                        ['empty', 'সদস্য নেই', followUpSummary.empty],
+                                        ['benefit', 'ভাতা/সহায়তা', followUpSummary.benefit]
+                                    ].map(([key, label, count]) => (
+                                        <button
+                                            key={key}
+                                            type="button"
+                                            onClick={() => setFollowUpFilter(key)}
+                                            className={`rounded-full px-4 py-2 text-xs font-black transition ${
+                                                followUpFilter === key
+                                                    ? 'bg-slate-950 text-white'
+                                                    : 'bg-white text-slate-600 hover:bg-amber-100'
+                                            }`}
+                                        >
+                                            {label} · {toBnDigits(count || 0)}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {filteredFollowUps.length === 0 ? (
+                                <div className="rounded-3xl bg-white p-5 text-sm font-bold text-emerald-700">
+                                    এই filter অনুযায়ী follow-up নেই। ডাটা ভালো আছে।
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    {priorityFamilies.length > 0 && (
+                                        <div className="grid gap-3 xl:grid-cols-4">
+                                            {priorityFamilies.slice(0, 4).map((family) => (
+                                                <button
+                                                    key={family.house.id}
+                                                    type="button"
+                                                    onClick={() => setSelectedHouseholdForLocker(family.house)}
+                                                    className="group rounded-[28px] border border-amber-100 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-teal-200 hover:shadow-xl hover:shadow-amber-100/60"
+                                                >
+                                                    <div className="mb-3 flex items-start justify-between gap-3">
+                                                        <div>
+                                                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-600">Priority score</p>
+                                                            <h5 className="mt-1 text-lg font-black text-slate-950">{family.house.owner_name}</h5>
+                                                            <p className="text-xs font-bold text-slate-400">Holding: {family.house.house_no || 'নেই'}</p>
+                                                        </div>
+                                                        <span className={`rounded-2xl px-3 py-2 text-lg font-black ${family.tone}`}>
+                                                            {toBnDigits(family.score)}
+                                                        </span>
+                                                    </div>
+                                                    <div className="mb-3 flex flex-wrap gap-1.5">
+                                                        {family.reasons.slice(0, 3).map((reason) => (
+                                                            <span key={reason} className="rounded-full bg-slate-50 px-2.5 py-1 text-[10px] font-black text-slate-600">
+                                                                {reason}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                    <div className="space-y-2 border-t border-dashed border-slate-100 pt-3">
+                                                        {family.timeline.slice(0, 3).map((event) => {
+                                                            const EventIcon = event.Icon;
+                                                            return (
+                                                                <div key={event.key} className="flex items-start gap-2">
+                                                                    <span className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-xl ${event.tone}`}>
+                                                                        <EventIcon size={12} />
+                                                                    </span>
+                                                                    <div className="min-w-0">
+                                                                        <p className="truncate text-xs font-black text-slate-800">{event.title}</p>
+                                                                        <p className="text-[10px] font-bold text-slate-400">{event.meta}</p>
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    <div className="grid gap-3 lg:grid-cols-2">
+                                    {filteredFollowUps.slice(0, 8).map((item) => (
+                                        <div key={item.key} className="rounded-3xl border border-amber-100 bg-white p-4 shadow-sm">
+                                            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                                <div>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-50 text-amber-700">
+                                                            {item.issueTypes.includes('empty') ? <Home size={20} /> : <Users size={20} />}
+                                                        </span>
+                                                        <div>
+                                                            <p className="text-base font-black text-slate-900">{item.house.owner_name}</p>
+                                                            <p className="text-xs font-bold text-slate-400">Holding: {item.house.house_no || 'নেই'} · {item.residentName || 'পরিবার সদস্য যোগ দরকার'}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="mt-3 flex flex-wrap gap-2">
+                                                        {item.issues.map((issue) => (
+                                                            <span key={issue.label} className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[10px] font-black ${issue.tone}`}>
+                                                                <issue.Icon size={12} />
+                                                                {issue.label}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                    {item.phone && (
+                                                        <p className="mt-3 flex items-center gap-2 text-xs font-bold text-slate-500">
+                                                            <Phone size={13} />
+                                                            {toBnDigits(item.phone)}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                                <div className="flex shrink-0 gap-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setSelectedHouseholdForLocker(item.house)}
+                                                        className="rounded-2xl bg-slate-950 px-4 py-3 text-xs font-black text-white transition hover:bg-teal-600"
+                                                    >
+                                                        আবেদন/লকার
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleSendFollowUpSms(item)}
+                                                        disabled={!item.phone || sendingReminderKey === item.key}
+                                                        className="rounded-2xl bg-teal-50 px-4 py-3 text-xs font-black text-teal-700 transition hover:bg-teal-100 disabled:cursor-not-allowed disabled:opacity-50"
+                                                    >
+                                                        {sendingReminderKey === item.key ? 'পাঠাচ্ছে...' : 'SMS'}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={(event) => handleEditHousehold(event, item.house)}
+                                                        className="rounded-2xl bg-amber-100 px-4 py-3 text-xs font-black text-amber-900 transition hover:bg-amber-200"
+                                                    >
+                                                        আপডেট
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    </div>
+                                </div>
+                            )}
+                            {filteredFollowUps.length > 8 && (
+                                <p className="mt-4 text-center text-xs font-black text-amber-700">
+                                    আরও {toBnDigits(filteredFollowUps.length - 8)}টি follow-up আছে। filter/search দিয়ে কাজ ভাগ করুন।
+                                </p>
+                            )}
+                        </section>
 
                         <div className="bg-white rounded-[32px] border border-slate-100 p-8 shadow-sm">
                             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
@@ -896,4 +1097,297 @@ export default function WardHouseholdManager({ wardId, assignedVillage = null, v
 
         </div>
     );
+}
+
+function getResidentAge(dob) {
+    if (!dob) return null;
+    const birthDate = new Date(dob);
+    if (Number.isNaN(birthDate.getTime())) return null;
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) age -= 1;
+    return age;
+}
+
+function buildHouseholdPriorityCards(households = [], followUpItems = []) {
+    const followUpsByHouse = followUpItems.reduce((acc, item) => {
+        if (!item.house?.id) return acc;
+        acc[item.house.id] = acc[item.house.id] || [];
+        acc[item.house.id].push(item);
+        return acc;
+    }, {});
+
+    return households.map((house) => {
+        const followUps = followUpsByHouse[house.id] || [];
+        const timeline = buildHouseholdTimeline(house, followUps);
+        const openRequests = (house.service_requests || []).filter((request) => !['approved', 'completed', 'rejected', 'cancelled', 'closed'].includes(String(request.status || '').toLowerCase()));
+        const dueTaxes = (house.household_taxes || []).filter((tax) => String(tax.status || '').toLowerCase() !== 'paid');
+        const benefitCount = followUps.filter((item) => item.issueTypes.includes('benefit')).length;
+        const healthCount = followUps.filter((item) => item.issueTypes.includes('health')).length;
+        const dataGapCount = followUps.filter((item) => !item.issueTypes.includes('benefit') || item.issueTypes.length > 1).length;
+        const emptyHousehold = (house.residents || []).length === 0;
+        const score = Math.min(99, (benefitCount * 18) + (healthCount * 14) + (dataGapCount * 12) + (openRequests.length * 10) + (dueTaxes.length * 8) + (emptyHousehold ? 22 : 0));
+        const reasons = [
+            benefitCount > 0 ? `${toBnDigits(benefitCount)} সহায়তা সম্ভাবনা` : null,
+            healthCount > 0 ? `${toBnDigits(healthCount)} স্বাস্থ্য follow-up` : null,
+            dataGapCount > 0 ? `${toBnDigits(dataGapCount)} তথ্য ঘাটতি` : null,
+            openRequests.length > 0 ? `${toBnDigits(openRequests.length)} আবেদন চলমান` : null,
+            dueTaxes.length > 0 ? `${toBnDigits(dueTaxes.length)} ট্যাক্স pending` : null,
+            emptyHousehold ? 'সদস্য যোগ দরকার' : null
+        ].filter(Boolean);
+
+        return {
+            house,
+            score,
+            reasons,
+            timeline,
+            tone: score >= 60 ? 'bg-rose-50 text-rose-700' : score >= 30 ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'
+        };
+    })
+        .filter((item) => item.score > 0)
+        .sort((a, b) => b.score - a.score);
+}
+
+function buildHouseholdTimeline(house, followUps = []) {
+    const events = [];
+
+    if (house.created_at) {
+        events.push({
+            key: `${house.id}-created`,
+            date: house.created_at,
+            title: 'Household profile created',
+            meta: formatTimelineDate(house.created_at),
+            Icon: Home,
+            tone: 'bg-teal-50 text-teal-700'
+        });
+    }
+
+    (house.service_requests || []).forEach((request) => {
+        events.push({
+            key: `request-${request.id}`,
+            date: request.updated_at || request.created_at,
+            title: `${request.title || request.request_type || 'Service request'} · ${request.status || 'pending'}`,
+            meta: request.collection_date ? `Collection: ${formatTimelineDate(request.collection_date)}` : formatTimelineDate(request.created_at),
+            Icon: FileText,
+            tone: 'bg-sky-50 text-sky-700'
+        });
+    });
+
+    (house.household_taxes || []).forEach((tax) => {
+        events.push({
+            key: `tax-${tax.id}`,
+            date: tax.updated_at || tax.created_at || tax.due_date,
+            title: `${tax.fiscal_year_label || tax.year || 'Tax'} · ${tax.status || 'due'}`,
+            meta: tax.receipt_no ? `Receipt: ${tax.receipt_no}` : `Due: ${formatTimelineDate(tax.due_date)}`,
+            Icon: WalletCards,
+            tone: String(tax.status || '').toLowerCase() === 'paid' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
+        });
+    });
+
+    followUps.slice(0, 4).forEach((item, index) => {
+        events.push({
+            key: `followup-${item.key}-${index}`,
+            date: new Date().toISOString(),
+            title: item.issues?.[0]?.label || 'Family follow-up',
+            meta: item.residentName || 'পরিবার',
+            Icon: Activity,
+            tone: 'bg-violet-50 text-violet-700'
+        });
+    });
+
+    return events
+        .filter((event) => event.title)
+        .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+}
+
+function formatTimelineDate(value) {
+    if (!value) return 'তারিখ নেই';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return String(value);
+    return toBnDigits(date.toLocaleDateString('bn-BD', { day: '2-digit', month: 'short', year: 'numeric' }));
+}
+
+function buildFamilyFollowUpItems(households = []) {
+    return households.flatMap((house) => {
+        const residents = house.residents || [];
+        if (residents.length === 0) {
+            return [{
+                key: `${house.id}-empty`,
+                house,
+                residentName: '',
+                phone: house.phone,
+                issueTypes: ['empty'],
+                issues: [{
+                    label: 'সদস্য নেই',
+                    Icon: Home,
+                    tone: 'bg-rose-50 text-rose-700'
+                }]
+            }];
+        }
+
+        return residents.map((resident) => {
+            const age = getResidentAge(resident.dob);
+            const issues = [];
+            const issueTypes = [];
+
+            if (age !== null && age >= 18 && !resident.nid) {
+                issueTypes.push('nid');
+                issues.push({
+                    label: '১৮+ NID নেই',
+                    Icon: Fingerprint,
+                    tone: 'bg-amber-50 text-amber-700'
+                });
+            }
+
+            if (!resident.birth_reg_no) {
+                issueTypes.push('birth');
+                issues.push({
+                    label: 'জন্ম নিবন্ধন নেই',
+                    Icon: Baby,
+                    tone: 'bg-sky-50 text-sky-700'
+                });
+            }
+
+            if (!resident.blood_group) {
+                issueTypes.push('blood');
+                issues.push({
+                    label: 'রক্তের গ্রুপ নেই',
+                    Icon: HeartPulse,
+                    tone: 'bg-rose-50 text-rose-700'
+                });
+            }
+
+            const healthIssues = detectHealthFollowUps(resident, age);
+            if (healthIssues.length > 0) {
+                issueTypes.push('health');
+                issues.push(...healthIssues);
+            }
+
+            const benefitIssues = detectBenefitOpportunities(resident, house, age);
+            if (benefitIssues.length > 0) {
+                issueTypes.push('benefit');
+                issues.push(...benefitIssues);
+            }
+
+            if (issues.length === 0) return null;
+
+            return {
+                key: `${house.id}-${resident.id}`,
+                house,
+                resident,
+                residentName: resident.name || resident.bn_name,
+                phone: resident.phone || house.phone,
+                issueTypes,
+                issues
+            };
+        }).filter(Boolean);
+    });
+}
+
+function isFemale(value) {
+    return ['female', 'নারী', 'মহিলা', 'woman'].includes(String(value || '').toLowerCase());
+}
+
+function isDisabled(value) {
+    const normalized = String(value || '').toLowerCase();
+    return normalized && !['none', 'no', 'না', 'নেই', 'n/a'].includes(normalized);
+}
+
+function isStudent(resident) {
+    const text = `${resident.occupation || ''} ${resident.education_level || ''}`.toLowerCase();
+    return text.includes('student') || text.includes('ছাত্র') || text.includes('শিক্ষার্থী');
+}
+
+function detectBenefitOpportunities(resident, house, age) {
+    const issues = [];
+    const economic = String(house?.economic_status || '').toLowerCase();
+    const lowIncome = ['lower', 'poor', 'low', 'দরিদ্র', 'নিম্ন'].some((term) => economic.includes(term));
+
+    if (age !== null && ((isFemale(resident.gender) && age >= 62) || (!isFemale(resident.gender) && age >= 65))) {
+        issues.push({
+            label: 'বয়স্ক ভাতা সম্ভাব্য',
+            Icon: HandHeart,
+            tone: 'bg-emerald-50 text-emerald-700'
+        });
+    }
+
+    if (isDisabled(resident.disability_status)) {
+        issues.push({
+            label: 'প্রতিবন্ধী ভাতা সম্ভাব্য',
+            Icon: HandHeart,
+            tone: 'bg-violet-50 text-violet-700'
+        });
+    }
+
+    if (isFemale(resident.gender) && String(resident.marital_status || '').toLowerCase().includes('widow')) {
+        issues.push({
+            label: 'বিধবা ভাতা সম্ভাব্য',
+            Icon: HandHeart,
+            tone: 'bg-fuchsia-50 text-fuchsia-700'
+        });
+    }
+
+    if (age !== null && age >= 5 && age <= 24 && isStudent(resident) && lowIncome) {
+        issues.push({
+            label: 'শিক্ষা সহায়তা সম্ভাব্য',
+            Icon: GraduationCap,
+            tone: 'bg-indigo-50 text-indigo-700'
+        });
+    }
+
+    if (age !== null && age <= 5 && !resident.birth_reg_no) {
+        issues.push({
+            label: 'শিশু সেবা follow-up',
+            Icon: Baby,
+            tone: 'bg-sky-50 text-sky-700'
+        });
+    }
+
+    return issues;
+}
+
+function detectHealthFollowUps(resident, age) {
+    const issues = [];
+    const disabilityFollowUp = isDisabled(resident.disability_status);
+
+    if (age !== null && age <= 5) {
+        issues.push({
+            label: 'শিশু টিকা/ওজন follow-up',
+            Icon: Stethoscope,
+            tone: 'bg-cyan-50 text-cyan-700'
+        });
+    }
+
+    if (age !== null && age >= 60) {
+        issues.push({
+            label: 'বয়স্ক স্বাস্থ্য checkup',
+            Icon: Stethoscope,
+            tone: 'bg-emerald-50 text-emerald-700'
+        });
+    }
+
+    if (disabilityFollowUp) {
+        issues.push({
+            label: 'প্রতিবন্ধী স্বাস্থ্য সহায়তা',
+            Icon: Stethoscope,
+            tone: 'bg-violet-50 text-violet-700'
+        });
+    }
+
+    if (!resident.blood_group) {
+        issues.push({
+            label: 'জরুরি চিকিৎসার জন্য blood group দরকার',
+            Icon: HeartPulse,
+            tone: 'bg-rose-50 text-rose-700'
+        });
+    }
+
+    return issues;
+}
+
+function buildFollowUpSmsMessage(item) {
+    const person = item.residentName || item.house.owner_name || 'আপনার পরিবার';
+    const issues = item.issues.map((issue) => issue.label).join(', ');
+    return `DigiGram: ${person} এর ${issues} তথ্য আপডেট দরকার। অনুগ্রহ করে ওয়ার্ড মেম্বার/ভলান্টিয়ার অফিসে যোগাযোগ করুন। Holding: ${item.house.house_no || 'N/A'}`;
 }

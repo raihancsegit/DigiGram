@@ -8,7 +8,7 @@ import {
     Plus, Store, Search, Filter, Trash2, Edit2, 
     Save, X, ChevronRight, TrendingUp, History, Info,
     Users, TrendingDown, Minus, MapPin, Calendar, 
-    Loader2, CheckCircle2, ShoppingBag
+    Loader2, CheckCircle2, ShoppingBag, BellRing, AlertTriangle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PriceHistoryModal } from './PriceHistoryModal';
@@ -295,6 +295,8 @@ export default function MarketManagement() {
                 ))}
             </div>
 
+            <MarketIntelligencePanel markets={markets} commodities={commodities} prices={prices} selectedMarketId={selectedMarketId} />
+
             {/* Main Price Editor */}
             <div className="bg-white rounded-[40px] border border-slate-200/60 shadow-xl overflow-hidden">
                 <div className="px-8 py-6 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -515,6 +517,85 @@ export default function MarketManagement() {
                 commodity={historyModal.commodity}
             />
         </div>
+    );
+}
+
+function MarketIntelligencePanel({ markets = [], commodities = [], prices = [], selectedMarketId }) {
+    const selectedMarket = markets.find((market) => market.id === selectedMarketId);
+    const coverage = commodities.length ? Math.round((prices.length / commodities.length) * 100) : 0;
+    const rising = prices.filter((item) => item.trend === 'up').length;
+    const falling = prices.filter((item) => item.trend === 'down').length;
+    const lowSupply = prices.filter((item) => item.supply === 'Low').length;
+    const lastUpdated = prices
+        .map((item) => item.updated_at)
+        .filter(Boolean)
+        .sort((a, b) => new Date(b) - new Date(a))[0];
+    const topMovers = [...prices]
+        .filter((item) => item.trend && item.trend !== 'stable')
+        .slice(0, 4);
+
+    return (
+        <section className="rounded-[34px] border border-teal-100 bg-gradient-to-br from-teal-50 via-white to-amber-50 p-5 shadow-sm">
+            <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.22em] text-teal-700">Market Intelligence</p>
+                    <h2 className="text-2xl font-black text-slate-950">{selectedMarket?.name || 'বাজার'} live health report</h2>
+                    <p className="mt-1 text-sm font-bold text-slate-500">দাম, supply সংকট, alert readiness ও update coverage এক নজরে।</p>
+                </div>
+                <span className="rounded-full bg-white px-4 py-2 text-xs font-black text-slate-600 ring-1 ring-slate-200">
+                    Last update: {lastUpdated ? new Date(lastUpdated).toLocaleDateString('bn-BD') : 'নেই'}
+                </span>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                {[
+                    { label: 'Price coverage', value: `${toBnDigits(coverage)}%`, hint: `${toBnDigits(prices.length)} / ${toBnDigits(commodities.length)} পণ্য`, Icon: CheckCircle2, tone: 'text-emerald-700 bg-emerald-50' },
+                    { label: 'দাম বাড়ছে', value: toBnDigits(rising), hint: 'SMS alert trigger হতে পারে', Icon: TrendingUp, tone: 'text-rose-700 bg-rose-50' },
+                    { label: 'দাম কমছে', value: toBnDigits(falling), hint: 'ক্রেতাদের জন্য সুযোগ', Icon: TrendingDown, tone: 'text-teal-700 bg-teal-50' },
+                    { label: 'Supply সংকট', value: toBnDigits(lowSupply), hint: 'চেয়ারম্যান follow-up দরকার', Icon: AlertTriangle, tone: 'text-amber-700 bg-amber-50' }
+                ].map((item) => (
+                    <div key={item.label} className="rounded-[26px] border border-white bg-white/85 p-4 shadow-sm">
+                        <div className={`mb-4 flex h-11 w-11 items-center justify-center rounded-2xl ${item.tone}`}>
+                            <item.Icon size={20} />
+                        </div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">{item.label}</p>
+                        <p className="mt-2 text-3xl font-black text-slate-950">{item.value}</p>
+                        <p className="mt-1 text-xs font-bold text-slate-500">{item.hint}</p>
+                    </div>
+                ))}
+            </div>
+
+            <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_0.8fr]">
+                <div className="rounded-[26px] border border-white bg-white/85 p-4">
+                    <div className="mb-3 flex items-center gap-2">
+                        <BellRing className="text-teal-600" size={18} />
+                        <h3 className="text-sm font-black text-slate-900">Alert-worthy products</h3>
+                    </div>
+                    {topMovers.length === 0 ? (
+                        <p className="rounded-2xl bg-slate-50 p-4 text-xs font-bold text-slate-400">আজ বড় price movement নেই।</p>
+                    ) : (
+                        <div className="grid gap-2 sm:grid-cols-2">
+                            {topMovers.map((item) => (
+                                <div key={item.id || item.commodity_id} className="rounded-2xl bg-slate-50 p-3">
+                                    <p className="text-sm font-black text-slate-900">{item.commodity?.name || 'পণ্য'}</p>
+                                    <p className="mt-1 text-xs font-bold text-slate-500">৳{toBnDigits(Number(item.price || 0).toLocaleString('bn-BD'))} · {item.trend === 'up' ? 'দাম বাড়ছে' : 'দাম কমছে'}</p>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+                <div className="rounded-[26px] border border-white bg-slate-950 p-4 text-white">
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-teal-300">Next best action</p>
+                    <p className="mt-2 text-lg font-black">
+                        {lowSupply > 0
+                            ? `${toBnDigits(lowSupply)}টি পণ্যে supply সংকট। Demand/Supply post ও SMS alert চালু রাখুন।`
+                            : coverage < 80
+                                ? 'সব পণ্যের দাম update করলে public market page বেশি বিশ্বাসযোগ্য হবে।'
+                                : 'Market data ভালো আছে। Price alert subscriber বাড়ান।'}
+                    </p>
+                </div>
+            </div>
+        </section>
     );
 }
 

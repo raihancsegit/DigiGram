@@ -12,6 +12,7 @@ import { getInstitutionDesignProfile } from '@/lib/constants/institutionDesignPr
 import { getInstitutionProfile } from '@/lib/constants/institutionProfiles';
 import { buildExamResultSummaries } from '@/lib/constants/grading';
 import StudentReportCard from '@/components/sections/school/StudentReportCard';
+import { menuStyles } from '@/components/common/menuStyles';
 
 const ROLE_COPY = {
     admin: {
@@ -377,8 +378,8 @@ export default function SchoolPortalShell({ schoolId, role }) {
             sidebarBorder: 'border-white/10',
             avatar: 'bg-[#f59e0b] text-[#172554]',
             badge: 'bg-white/10 text-cyan-200',
-            activeNav: 'bg-white text-[#172554] shadow-xl shadow-blue-950/20',
-            inactiveNav: 'text-blue-100/75 hover:bg-white/10 hover:text-white',
+            activeNav: menuStyles.navItem(true, 'white'),
+            inactiveNav: menuStyles.navItem(false, 'white'),
             header: 'border-b border-blue-100 bg-white/90',
             eyebrow: 'text-blue-700',
             primary: 'bg-[#1d4ed8] text-white',
@@ -392,8 +393,8 @@ export default function SchoolPortalShell({ schoolId, role }) {
                 sidebarBorder: 'border-orange-100',
                 avatar: 'bg-[#fb923c] text-white',
                 badge: 'bg-orange-50 text-orange-700',
-                activeNav: 'bg-orange-600 text-white shadow-lg shadow-orange-200',
-                inactiveNav: 'text-slate-600 hover:bg-orange-50 hover:text-orange-700',
+                activeNav: menuStyles.tab(true, 'orange'),
+                inactiveNav: menuStyles.navItem(false, 'orange'),
                 header: 'border-b border-orange-100 bg-[#fffaf3]/95',
                 eyebrow: 'text-orange-700',
                 primary: 'bg-orange-600 text-white',
@@ -406,8 +407,8 @@ export default function SchoolPortalShell({ schoolId, role }) {
                 sidebarBorder: 'border-white/10',
                 avatar: 'bg-[#c8922a] text-white',
                 badge: 'bg-white/10 text-[#f0b840]',
-                activeNav: 'bg-white text-[#0f4a27] shadow-xl',
-                inactiveNav: 'text-white/75 hover:bg-white/10 hover:text-white',
+                activeNav: menuStyles.navItem(true, 'white'),
+                inactiveNav: menuStyles.navItem(false, 'white'),
                 header: 'border-b border-slate-200 bg-white/95',
                 eyebrow: 'text-emerald-700',
                 primary: 'bg-emerald-700 text-white',
@@ -756,7 +757,8 @@ export default function SchoolPortalShell({ schoolId, role }) {
                                 key={id}
                                 type="button"
                                 onClick={() => setPortalTab(id)}
-                                className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-black transition ${portalTab === id ? portalTheme.activeNav : portalTheme.inactiveNav}`}
+                                aria-current={portalTab === id ? 'page' : undefined}
+                                className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-black transition-all ${portalTab === id ? portalTheme.activeNav : portalTheme.inactiveNav}`}
                             >
                                 <Icon size={18} />
                                 {label}

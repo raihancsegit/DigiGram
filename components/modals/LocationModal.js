@@ -21,20 +21,6 @@ export default function LocationModal() {
     const [wards, setWards] = useState([]);
     const [loading, setLoading] = useState(false);
 
-    useEffect(() => {
-        if (!isOpen) return;
-        if (step === 1) {
-            loadDistricts();
-        } else if (step === 2 && selected.districtId) {
-            loadUpazilas(selected.districtId);
-        } else if (step === 3 && selected.upazilaId) {
-            loadUnions(selected.upazilaId);
-        } else if (step === 4 && selected.unionSlug) {
-            const selectedUnion = unions.find((u) => u.slug === selected.unionSlug);
-            if (selectedUnion) loadWards(selectedUnion.id);
-        }
-    }, [isOpen, step, selected.districtId, selected.upazilaId, selected.unionSlug]);
-
     const loadDistricts = async () => {
         setLoading(true);
         const data = await getDistricts();
@@ -62,6 +48,20 @@ export default function LocationModal() {
         setWards(data);
         setLoading(false);
     };
+
+    useEffect(() => {
+        if (!isOpen) return;
+        if (step === 1) {
+            loadDistricts();
+        } else if (step === 2 && selected.districtId) {
+            loadUpazilas(selected.districtId);
+        } else if (step === 3 && selected.upazilaId) {
+            loadUnions(selected.upazilaId);
+        } else if (step === 4 && selected.unionSlug) {
+            const selectedUnion = unions.find((u) => u.slug === selected.unionSlug);
+            if (selectedUnion) loadWards(selectedUnion.id);
+        }
+    }, [isOpen, step, selected.districtId, selected.upazilaId, selected.unionSlug, unions]);
 
     const handleSelect = async (item) => {
         if (step === 1) {

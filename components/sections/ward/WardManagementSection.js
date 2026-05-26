@@ -14,6 +14,7 @@ import { wardService } from '@/lib/services/wardService';
 import { createVillageAction, updateVillageAction, deleteVillageAction, updateWardStatsAction } from '@/lib/actions/wardActions';
 import { parseBnInt, toBnDigits } from '@/lib/utils/format';
 import ModalPortal from '@/components/common/ModalPortal';
+import { menuStyles } from '@/components/common/menuStyles';
 import toast from 'react-hot-toast';
 
 import BloodGroupManagement from './BloodGroupManagement';
@@ -191,22 +192,14 @@ export default function WardManagementSection({ user = {}, wardInfo, villages: i
                 <div className="flex items-center gap-3 p-1.5 bg-slate-100/80 backdrop-blur-sm rounded-2xl border border-slate-200">
                     <button
                         onClick={() => setActiveTab('stats')}
-                        className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-black transition-all ${
-                            activeTab === 'stats' 
-                            ? 'bg-white text-teal-600 shadow-sm' 
-                            : 'text-slate-500 hover:text-slate-700'
-                        }`}
+                        className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-black transition-all ${menuStyles.tab(activeTab === 'stats', 'teal')}`}
                     >
                         <LayoutDashboard size={18} />
                         ওয়াড পরিসংখ্যান
                     </button>
                     <button
                         onClick={() => setActiveTab('blood')}
-                        className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-black transition-all ${
-                            activeTab === 'blood' 
-                            ? 'bg-white text-rose-600 shadow-sm' 
-                            : 'text-slate-500 hover:text-slate-700'
-                        }`}
+                        className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-black transition-all ${menuStyles.tab(activeTab === 'blood', 'rose')}`}
                     >
                         <Droplets size={18} />
                         রক্তদাতা ডাটাবেস

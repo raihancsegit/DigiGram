@@ -7,7 +7,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { 
     MapPin, Bell, UserCircle, ChevronDown, Clock, BookOpen, 
     Sparkles, LogOut, User, Search, Menu, LayoutDashboard, Settings,
-    Globe, ShieldCheck, Zap, Mic, MicOff, SearchX, X, Loader2,
+    Globe, ShieldAlert, ShieldCheck, Zap, Mic, MicOff, SearchX, X, Loader2,
     Droplet, Phone, Store, FileText
 } from 'lucide-react';
 import { openModal } from '@/lib/store/features/locationSlice';
@@ -274,6 +274,21 @@ export default function Header() {
         return '';
     };
 
+    const getQuickLinkLabel = (item) => {
+        const labels = {
+            blood: 'রক্ত',
+            emergency: 'জরুরি',
+            market: 'বাজার',
+            'e-up': 'ইউপি'
+        };
+        return labels[item.id] || item.title;
+    };
+
+    const isQuickLinkActive = (href) => {
+        if (!href) return false;
+        return pathname === href || (href !== '/' && pathname.startsWith(`${href}/`));
+    };
+
     const profileMenu =
         mounted &&
         createPortal(
@@ -380,10 +395,10 @@ export default function Header() {
                     ? 'bg-slate-900/95 backdrop-blur-2xl border-b border-white/10 shadow-xl' 
                     : 'bg-white/95 backdrop-blur-md border-b border-slate-100'
                 }`}>
-                    <nav className="flex w-full items-center justify-between h-16 sm:h-20">
+                    <nav className="flex w-full items-center justify-between gap-3 h-16 sm:h-20">
                         
                         {/* Left: Branding & Location */}
-                        <div className="flex-1 flex items-center justify-start gap-4 sm:gap-8">
+                        <div className="flex min-w-0 items-center justify-start gap-3 sm:gap-5 xl:max-w-[560px]">
                             <Link href={paths.home} className="flex items-center gap-3 group shrink-0">
                                 <div className={`w-11 h-11 sm:w-13 sm:h-13 rounded-2xl flex items-center justify-center transition-all duration-500 group-hover:rotate-6 ${
                                     isScrolled ? 'bg-teal-500 shadow-[0_0_25px_rgba(20,184,166,0.4)]' : 'bg-slate-900 shadow-xl'
@@ -396,11 +411,11 @@ export default function Header() {
                                 </div>
                             </Link>
 
-                            <div className={`hidden sm:block w-px h-10 transition-colors ${isScrolled ? 'bg-white/10' : 'bg-slate-200'}`} />
+                            <div className={`hidden lg:block w-px h-10 transition-colors ${isScrolled ? 'bg-white/10' : 'bg-slate-200'}`} />
 
                             {/* Advanced Location Picker - Split Logic */}
                             {mounted && (
-                                <div className={`flex items-center rounded-full border transition-all h-9 sm:h-12 overflow-hidden shadow-sm w-fit min-w-[110px] sm:min-w-[180px] ${
+                                <div className={`hidden sm:flex items-center rounded-full border transition-all h-9 sm:h-12 overflow-hidden shadow-sm w-fit min-w-[110px] sm:min-w-[180px] max-w-[260px] ${
                                     isScrolled 
                                     ? 'bg-white/5 border-white/10' 
                                     : 'bg-white border-slate-200'
@@ -414,7 +429,7 @@ export default function Header() {
                                                 dispatch(openModal());
                                             }
                                         }}
-                                        className={`flex items-center gap-1.5 sm:gap-2.5 px-2 sm:px-5 h-full transition-all hover:bg-slate-50/50 min-w-0 group/loc-text ${
+                                        className={`flex items-center gap-1.5 sm:gap-2.5 px-2 sm:px-4 h-full transition-all hover:bg-slate-50/50 min-w-0 group/loc-text ${
                                             isScrolled ? 'hover:bg-white/5' : ''
                                         }`}
                                     >
@@ -452,35 +467,44 @@ export default function Header() {
                         </div>
 
                         {/* Middle: Desktop Nav Quick Links */}
-                        <div className="flex-1 hidden xl:flex items-center justify-center">
-                            <div className={`flex items-center gap-1 p-1 rounded-2xl transition-all duration-500 ${
+                        <div className="hidden xl:flex min-w-0 flex-1 items-center justify-center px-2">
+                            <div className={`flex max-w-full items-center gap-1 overflow-hidden p-1 rounded-full transition-all duration-500 ${
                                 isScrolled ? 'bg-white/5 border border-white/10' : 'bg-slate-100 border border-slate-200/50 shadow-inner'
                             }`}>
-                            {HEADER_QUICK_LINKS.map((item) => (
-                                <Link
-                                    key={item.id}
-                                    href={item.href}
-                                    className={`flex items-center gap-2.5 px-5 py-2 rounded-xl transition-all duration-300 group relative overflow-hidden ${
-                                        isScrolled 
-                                        ? 'text-white/70 hover:text-white' 
-                                        : 'text-slate-600 hover:text-teal-700'
-                                    }`}
-                                >
-                                    <item.icon size={16} className={`transition-all duration-500 group-hover:scale-125 group-hover:rotate-6 ${isScrolled ? 'text-teal-400' : 'text-teal-600'}`} />
-                                    <span className="text-[13px] font-black tracking-tight">{item.title}</span>
-                                    {pathname === item.href && (
-                                        <motion.div 
-                                            layoutId="active-nav"
-                                            className={`absolute inset-0 -z-10 rounded-xl ${isScrolled ? 'bg-white/10' : 'bg-white shadow-sm ring-1 ring-slate-200/50'}`}
-                                        />
-                                    )}
-                                </Link>
-                            ))}
+                            {HEADER_QUICK_LINKS.map((item) => {
+                                const active = isQuickLinkActive(item.href);
+                                return (
+                                    <Link
+                                        key={item.id}
+                                        href={item.href}
+                                        title={item.title}
+                                        aria-current={active ? 'page' : undefined}
+                                        className={`flex min-w-0 items-center gap-2 px-3 2xl:px-4 py-2 rounded-full transition-all duration-300 group relative overflow-hidden whitespace-nowrap ${
+                                            active
+                                                ? isScrolled
+                                                    ? 'bg-teal-500/30 text-white ring-1 ring-teal-300/30 shadow-sm'
+                                                    : 'bg-teal-50 text-teal-800 ring-1 ring-teal-200 shadow-sm'
+                                                : isScrolled
+                                                    ? 'text-white/70 hover:bg-white/10 hover:text-white'
+                                                    : 'text-slate-600 hover:bg-white hover:text-teal-700 hover:shadow-sm'
+                                        }`}
+                                    >
+                                        <item.icon size={16} className={`transition-all duration-500 group-hover:scale-110 ${active ? (isScrolled ? 'text-teal-200' : 'text-teal-700') : (isScrolled ? 'text-teal-400' : 'text-teal-600')}`} />
+                                        <span className="text-[12px] 2xl:text-[13px] font-black tracking-tight whitespace-nowrap">{getQuickLinkLabel(item)}</span>
+                                        {active && (
+                                            <motion.div 
+                                                layoutId="active-nav"
+                                                className="pointer-events-none absolute inset-0 -z-10 rounded-full"
+                                            />
+                                        )}
+                                    </Link>
+                                );
+                            })}
                             </div>
                         </div>
 
                         {/* Right: Info & Profile */}
-                        <div className="flex-1 flex items-center justify-end gap-3 sm:gap-5">
+                        <div className="flex shrink-0 items-center justify-end gap-2 sm:gap-4">
                             
                             {/* Time & Info (Desktop) */}
                             {mounted && (
@@ -680,9 +704,11 @@ export default function Header() {
                                             <p className="text-[10px] font-black uppercase tracking-[0.25em] text-teal-500 mb-6">জনপ্রিয় অনুসন্ধান</p>
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                 {[
+                                                    { title: 'Citizen Center', icon: User, href: '/citizen', color: 'text-teal-500' },
                                                     { title: 'ব্লাড ব্যাংক', icon: Droplet, href: '/services/blood', color: 'text-rose-500' },
                                                     { title: 'জরুরি নম্বর', icon: Phone, href: '/services/emergency', color: 'text-orange-500' },
                                                     { title: 'ডিজি-বাজার', icon: Store, href: '/services/market', color: 'text-amber-500' },
+                                                    { title: 'হারানো-প্রাপ্তি', icon: ShieldAlert, href: '/lost-found', color: 'text-indigo-500' },
                                                     { title: 'ই-ইউপি সেবা', icon: FileText, href: '/services/e-up', color: 'text-sky-500' }
                                                 ].map((s, i) => (
                                                     <Link 

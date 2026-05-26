@@ -8,10 +8,14 @@ import { findUnionBySlug } from '@/lib/constants/locations';
 import { MapPin, CalendarDays, TrendingUp, TrendingDown, Minus, Info, CheckCircle2, ChevronRight, Zap, ShoppingBag, Store, Loader2 } from 'lucide-react';
 import { MarketReviewSection } from './MarketReviewSection';
 import { PriceComparisonTable } from './PriceComparisonTable';
+import { MarketPriceAlertSignup } from './MarketPriceAlertSignup';
+import { MarketDemandBoard } from './MarketDemandBoard';
 import { toBnDigits } from '@/lib/utils/format';
 import { paths } from '@/lib/constants/paths';
 import { PriceHistoryModal } from '@/components/sections/admin/market/PriceHistoryModal';
 import { motion, AnimatePresence } from 'framer-motion';
+import RelatedServiceLinks from '@/components/common/RelatedServiceLinks';
+import MarketDecisionTools from './MarketDecisionTools';
 
 export function UnionMarketView({ unionSlug }) {
     const unionInfo = findUnionBySlug(unionSlug);
@@ -96,6 +100,7 @@ export function UnionMarketView({ unionSlug }) {
     const selectedHat = data.markets.find(h => h.id === selectedHatId);
     const isMarketOpenToday = selectedHat?.days?.includes(today) || selectedHat?.days?.includes('Everyday');
     const selectedHatPrices = data.allPrices.filter(p => p.market_id === selectedHatId);
+    const unionIntelligence = buildUnionMarketIntelligence(data);
 
     // Helper: Find if this product is cheapest in union
     const getLowestPriceInUnion = (commodityId) => {
@@ -237,6 +242,58 @@ export function UnionMarketView({ unionSlug }) {
                 </div>
             </div>
 
+            <RelatedServiceLinks
+                currentKey="market"
+                preset="market"
+                title="বাজারের সাথে related কাজ"
+                subtitle="দাম দেখে alert নিন, lost-found দেখুন, অথবা Citizen Center থেকে request track করুন।"
+            />
+
+            <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                {[
+                    { label: 'দাম আপডেট', value: data.allPrices.length, hint: 'সব হাট মিলিয়ে', tone: 'bg-teal-50 text-teal-700' },
+                    { label: 'দাম বাড়ছে', value: unionIntelligence.rising, hint: 'price alert প্রয়োজন', tone: 'bg-rose-50 text-rose-700' },
+                    { label: 'দাম কমছে', value: unionIntelligence.falling, hint: 'ক্রেতাদের সুযোগ', tone: 'bg-emerald-50 text-emerald-700' },
+                    { label: 'Supply সংকট', value: unionIntelligence.lowSupply, hint: 'দোকানদার/farmer follow-up', tone: 'bg-amber-50 text-amber-700' }
+                ].map((item) => (
+                    <div key={item.label} className="rounded-[30px] border border-slate-100 bg-white p-5 shadow-sm">
+                        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">{item.label}</p>
+                        <p className={`mt-3 w-fit rounded-2xl px-4 py-2 text-3xl font-black ${item.tone}`}>{toBnDigits(item.value)}</p>
+                        <p className="mt-2 text-xs font-bold text-slate-500">{item.hint}</p>
+                    </div>
+                ))}
+            </section>
+
+            {unionIntelligence.bestDeals.length > 0 && (
+                <section className="rounded-[42px] border border-emerald-100 bg-emerald-50/60 p-5 sm:p-6">
+                    <div className="mb-5">
+                        <p className="text-[10px] font-black uppercase tracking-[0.22em] text-emerald-700">Smart Savings</p>
+                        <h2 className="text-3xl font-black text-slate-950">এই ইউনিয়নে আজকের সাশ্রয়ী পণ্য</h2>
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-3">
+                        {unionIntelligence.bestDeals.slice(0, 6).map((deal) => (
+                            <button
+                                key={deal.commodityId}
+                                type="button"
+                                onClick={() => setSelectedHatId(deal.marketId)}
+                                className="rounded-[28px] bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-xl"
+                            >
+                                <p className="text-lg font-black text-slate-950">{deal.name}</p>
+                                <p className="mt-1 text-sm font-black text-emerald-700">৳{toBnDigits(Number(deal.price || 0).toLocaleString('bn-BD'))} / {deal.unit}</p>
+                                <p className="mt-1 text-xs font-bold text-slate-500">{deal.marketName}</p>
+                            </button>
+                        ))}
+                    </div>
+                </section>
+            )}
+
+            <MarketDecisionTools
+                prices={data.allPrices}
+                markets={data.markets}
+                commodities={data.commodities}
+                title={`${unionInfo?.union?.name || data.union?.name_bn || 'Union'} Daily Market Bulletin`}
+            />
+
             {/* Agri Alerts Bar */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 <div className="lg:col-span-8 p-6 sm:p-8 rounded-[40px] bg-amber-50/50 border border-amber-100/50 flex flex-col sm:flex-row items-center gap-6 group hover:shadow-xl hover:bg-amber-50 transition-all duration-500">
@@ -350,6 +407,17 @@ export function UnionMarketView({ unionSlug }) {
                     </div>
 
                     <div className="lg:col-span-4 space-y-8">
+                        <MarketPriceAlertSignup
+                            union={data.union}
+                            market={selectedHat}
+                            commodities={data.commodities}
+                            prices={selectedHatPrices}
+                        />
+                        <MarketDemandBoard
+                            union={data.union}
+                            market={selectedHat}
+                            commodities={data.commodities}
+                        />
                         <MarketReviewSection unionSlug={unionSlug} hatId={selectedHat.id} marketName={selectedHat.name} />
                         
                         {/* More relevant info for Union View could go here, or leave empty for cleaner look */}
@@ -409,4 +477,35 @@ export function UnionMarketView({ unionSlug }) {
             </AnimatePresence>
         </div>
     );
+}
+
+function buildUnionMarketIntelligence(data) {
+    const marketsById = new Map((data.markets || []).map((market) => [market.id, market]));
+    const commodityMap = new Map((data.commodities || []).map((commodity) => [commodity.id, commodity]));
+    const bestByCommodity = {};
+
+    (data.allPrices || []).forEach((price) => {
+        const currentBest = bestByCommodity[price.commodity_id];
+        if (!currentBest || Number(price.price) < Number(currentBest.price)) {
+            bestByCommodity[price.commodity_id] = price;
+        }
+    });
+
+    return {
+        rising: (data.allPrices || []).filter((item) => item.trend === 'up').length,
+        falling: (data.allPrices || []).filter((item) => item.trend === 'down').length,
+        lowSupply: (data.allPrices || []).filter((item) => item.supply === 'Low').length,
+        bestDeals: Object.values(bestByCommodity).map((price) => {
+            const commodity = commodityMap.get(price.commodity_id);
+            const market = marketsById.get(price.market_id);
+            return {
+                commodityId: price.commodity_id,
+                marketId: price.market_id,
+                name: commodity?.name || price.commodity?.name || 'পণ্য',
+                unit: commodity?.unit || price.commodity?.unit || 'unit',
+                price: price.price,
+                marketName: market?.name || 'হাট'
+            };
+        })
+    };
 }

@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { marketService } from '@/lib/services/marketService';
-import { Search, MapPin, TrendingUp, Minus, Store, Zap, ArrowUpRight, ShoppingBag, Loader2 } from 'lucide-react';
+import { Search, MapPin, TrendingUp, TrendingDown, Minus, Store, Zap, ArrowUpRight, ShoppingBag, Loader2, AlertTriangle } from 'lucide-react';
 import { PriceComparisonTable } from './PriceComparisonTable';
 import { PriceHistoryModal } from '@/components/sections/admin/market/PriceHistoryModal';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toBnDigits } from '@/lib/utils/format';
+import MarketDecisionTools from './MarketDecisionTools';
 
 export function GlobalMarketDashboard() {
     const [searchQuery, setSearchQuery] = useState('');
@@ -38,6 +40,7 @@ export function GlobalMarketDashboard() {
     }, []);
 
     const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+    const intelligence = buildGlobalMarketIntelligence(data);
 
     if (loading) {
         return (
@@ -107,6 +110,51 @@ export function GlobalMarketDashboard() {
                     <Store size={320} />
                 </div>
             </div>
+
+            <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                {[
+                    { label: 'Tracked markets', value: data.markets.length, hint: 'active union markets', Icon: Store, tone: 'bg-teal-50 text-teal-700' },
+                    { label: 'Price updates', value: data.prices.length, hint: 'latest commodity prices', Icon: ShoppingBag, tone: 'bg-sky-50 text-sky-700' },
+                    { label: 'দাম বাড়ছে', value: intelligence.rising, hint: 'SMS alert-worthy items', Icon: TrendingUp, tone: 'bg-rose-50 text-rose-700' },
+                    { label: 'Supply সংকট', value: intelligence.lowSupply, hint: 'local shortage signals', Icon: AlertTriangle, tone: 'bg-amber-50 text-amber-700' }
+                ].map((item) => (
+                    <div key={item.label} className="rounded-[30px] border border-slate-200 bg-white p-5 shadow-sm">
+                        <div className={`mb-4 flex h-12 w-12 items-center justify-center rounded-2xl ${item.tone}`}>
+                            <item.Icon size={22} />
+                        </div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">{item.label}</p>
+                        <p className="mt-2 text-3xl font-black text-slate-950">{toBnDigits(item.value)}</p>
+                        <p className="mt-1 text-xs font-bold text-slate-500">{item.hint}</p>
+                    </div>
+                ))}
+            </section>
+
+            {intelligence.bestDeals.length > 0 && (
+                <section className="rounded-[38px] border border-emerald-100 bg-emerald-50/60 p-5 sm:p-6">
+                    <div className="mb-4 flex items-center justify-between gap-3">
+                        <div>
+                            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-emerald-700">District Deal Finder</p>
+                            <h2 className="text-2xl font-black text-slate-950">আজ কোথায় কম দামে পাওয়া যাবে</h2>
+                        </div>
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-3">
+                        {intelligence.bestDeals.slice(0, 6).map((deal) => (
+                            <div key={deal.commodityId} className="rounded-[26px] bg-white p-4 shadow-sm">
+                                <p className="text-lg font-black text-slate-950">{deal.name}</p>
+                                <p className="mt-1 text-sm font-black text-emerald-700">৳{toBnDigits(Number(deal.price || 0).toLocaleString('bn-BD'))} / {deal.unit}</p>
+                                <p className="mt-1 text-xs font-bold text-slate-500">{deal.marketName}</p>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+            )}
+
+            <MarketDecisionTools
+                prices={data.prices}
+                markets={data.markets}
+                commodities={data.commodities}
+                title="District Daily Market Bulletin"
+            />
 
             {/* Main Content Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -216,4 +264,34 @@ export function GlobalMarketDashboard() {
             </AnimatePresence>
         </div>
     );
+}
+
+function buildGlobalMarketIntelligence(data) {
+    const marketsById = new Map((data.markets || []).map((market) => [market.id, market]));
+    const commodityMap = new Map((data.commodities || []).map((commodity) => [commodity.id, commodity]));
+    const bestByCommodity = {};
+
+    (data.prices || []).forEach((price) => {
+        const currentBest = bestByCommodity[price.commodity_id];
+        if (!currentBest || Number(price.price) < Number(currentBest.price)) {
+            bestByCommodity[price.commodity_id] = price;
+        }
+    });
+
+    return {
+        rising: (data.prices || []).filter((item) => item.trend === 'up').length,
+        falling: (data.prices || []).filter((item) => item.trend === 'down').length,
+        lowSupply: (data.prices || []).filter((item) => item.supply === 'Low').length,
+        bestDeals: Object.values(bestByCommodity).map((price) => {
+            const commodity = commodityMap.get(price.commodity_id) || price.commodity;
+            const market = marketsById.get(price.market_id);
+            return {
+                commodityId: price.commodity_id,
+                name: commodity?.name || 'পণ্য',
+                unit: commodity?.unit || 'unit',
+                price: price.price,
+                marketName: market?.name || 'হাট'
+            };
+        })
+    };
 }

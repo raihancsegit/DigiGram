@@ -94,6 +94,11 @@ function LostFoundContent() {
     const [reportType, setReportType] = useState('lost');
     const [submitting, setSubmitting] = useState(false);
     const [uploading, setUploading] = useState(false);
+    const [otpState, setOtpState] = useState({ code: '', sent: false, sending: false, debugCode: '' });
+    const [smsBlast, setSmsBlast] = useState(false);
+    const [claimForm, setClaimForm] = useState({ claimantName: '', claimantPhone: '', proofNote: '', otpCode: '' });
+    const [claimOtp, setClaimOtp] = useState({ sending: false, sent: false, debugCode: '' });
+    const [claimSubmitting, setClaimSubmitting] = useState(false);
 
     const [formData, setFormData] = useState({
         title: '',
@@ -188,6 +193,129 @@ function LostFoundContent() {
             alert('তথ্য যোগ করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।');
         } finally {
             setSubmitting(false);
+        }
+    };
+
+    const resetReportState = () => {
+        setFormData({
+            title: '',
+            category: '',
+            description: '',
+            location: '',
+            event_date: '',
+            contact_name: '',
+            contact_phone: '',
+            image_url: ''
+        });
+        setOtpState({ code: '', sent: false, sending: false, debugCode: '' });
+        setSmsBlast(false);
+    };
+
+    const requestReportOtp = async () => {
+        if (!formData.contact_phone) {
+            alert('মোবাইল নম্বর দিন');
+            return;
+        }
+        setOtpState((current) => ({ ...current, sending: true }));
+        try {
+            const response = await fetch('/api/citizen/otp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone: formData.contact_phone, purpose: 'lost_found_report' })
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || 'OTP পাঠানো যায়নি');
+            setOtpState({ code: result.debugCode || '', sent: true, sending: false, debugCode: result.debugCode || '' });
+        } catch (error) {
+            setOtpState((current) => ({ ...current, sending: false }));
+            alert(error.message || 'OTP পাঠানো যায়নি');
+        }
+    };
+
+    const handleVerifiedReportSubmit = async (e) => {
+        e.preventDefault();
+        if (!unionData?.id) {
+            alert('ইউনিয়ন তথ্য পাওয়া যায়নি');
+            return;
+        }
+        if (!otpState.code) {
+            alert('OTP কোড দিন। আগে OTP পাঠান, তারপর কোড লিখে submit করুন।');
+            return;
+        }
+        setSubmitting(true);
+        try {
+            const response = await fetch('/api/lost-found/report', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ...formData,
+                    type: reportType,
+                    location_id: unionData.id,
+                    otpCode: otpState.code,
+                    smsBlast,
+                    is_global: smsBlast
+                })
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || 'তথ্য যোগ করা যায়নি');
+            setShowReportModal(false);
+            resetReportState();
+            loadData();
+            alert(result.blast?.status === 'queued'
+                ? `তথ্য প্রকাশ হয়েছে এবং ${result.blast.count} টি SMS queue হয়েছে।`
+                : 'আপনার তথ্য OTP verified হয়ে প্রকাশ হয়েছে।');
+        } catch (err) {
+            console.error(err);
+            alert(err.message || 'তথ্য যোগ করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const requestClaimOtp = async () => {
+        if (!claimForm.claimantPhone) {
+            alert('মোবাইল নম্বর দিন');
+            return;
+        }
+        setClaimOtp({ sending: true, sent: false, debugCode: '' });
+        try {
+            const response = await fetch('/api/citizen/otp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone: claimForm.claimantPhone, purpose: 'lost_found_claim' })
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || 'OTP পাঠানো যায়নি');
+            setClaimOtp({ sending: false, sent: true, debugCode: result.debugCode || '' });
+            if (result.debugCode) setClaimForm((current) => ({ ...current, otpCode: result.debugCode }));
+        } catch (error) {
+            setClaimOtp({ sending: false, sent: false, debugCode: '' });
+            alert(error.message || 'OTP পাঠানো যায়নি');
+        }
+    };
+
+    const submitClaim = async (event) => {
+        event.preventDefault();
+        if (!selectedPost?.id) return;
+        setClaimSubmitting(true);
+        try {
+            const response = await fetch('/api/lost-found/claims', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    postId: selectedPost.id,
+                    ...claimForm
+                })
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || 'Claim submit হয়নি');
+            setClaimForm({ claimantName: '', claimantPhone: '', proofNote: '', otpCode: '' });
+            setClaimOtp({ sending: false, sent: false, debugCode: '' });
+            alert('Claim জমা হয়েছে। ইউনিয়ন অফিস যাচাই করে জানাবে।');
+        } catch (error) {
+            alert(error.message || 'Claim submit হয়নি');
+        } finally {
+            setClaimSubmitting(false);
         }
     };
 
@@ -641,6 +769,86 @@ function LostFoundContent() {
                                 </div>
                             </div>
 
+                            {selectedPost.status !== 'resolved' && (
+                                <form onSubmit={submitClaim} className="space-y-4 pt-8 border-t border-slate-100">
+                                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                        <div>
+                                            <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
+                                                <ShieldAlert size={18} className="text-emerald-600" /> Claim / মালিকানা যাচাই
+                                            </h4>
+                                            <p className="text-xs font-bold text-slate-400 mt-1">
+                                                এটি আপনার হলে নাম, ফোন ও প্রমাণের ছোট বিবরণ দিন। অফিস যাচাই করে resolve করবে।
+                                            </p>
+                                        </div>
+                                        <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase">
+                                            OTP verified
+                                        </span>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        <input
+                                            required
+                                            type="text"
+                                            value={claimForm.claimantName}
+                                            onChange={(e) => setClaimForm({ ...claimForm, claimantName: e.target.value })}
+                                            placeholder="আপনার নাম"
+                                            className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-100 focus:bg-white focus:border-emerald-500 outline-none font-bold text-sm"
+                                        />
+                                        <input
+                                            required
+                                            type="tel"
+                                            value={claimForm.claimantPhone}
+                                            onChange={(e) => setClaimForm({ ...claimForm, claimantPhone: e.target.value })}
+                                            placeholder="মোবাইল নম্বর"
+                                            className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-100 focus:bg-white focus:border-emerald-500 outline-none font-bold text-sm"
+                                        />
+                                    </div>
+
+                                    <textarea
+                                        required
+                                        rows={3}
+                                        value={claimForm.proofNote}
+                                        onChange={(e) => setClaimForm({ ...claimForm, proofNote: e.target.value })}
+                                        placeholder="প্রমাণ লিখুন: রং, চিহ্ন, ডকুমেন্ট নম্বর, কোথায় হারিয়েছে ইত্যাদি"
+                                        className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-100 focus:bg-white focus:border-emerald-500 outline-none font-bold text-sm"
+                                    />
+
+                                    <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-3">
+                                        <input
+                                            required
+                                            type="text"
+                                            value={claimForm.otpCode}
+                                            onChange={(e) => setClaimForm({ ...claimForm, otpCode: e.target.value })}
+                                            placeholder="OTP code"
+                                            className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-100 focus:bg-white focus:border-emerald-500 outline-none font-bold text-sm"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={requestClaimOtp}
+                                            disabled={claimOtp.sending || !claimForm.claimantPhone}
+                                            className="px-5 py-3 rounded-2xl bg-white border border-slate-200 text-slate-700 font-black text-xs hover:border-emerald-400 disabled:opacity-50 flex items-center justify-center gap-2"
+                                        >
+                                            {claimOtp.sending ? <Loader2 size={16} className="animate-spin" /> : <Phone size={16} />}
+                                            OTP পাঠান
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            disabled={claimSubmitting}
+                                            className="px-6 py-3 rounded-2xl bg-emerald-600 text-white font-black text-xs hover:bg-emerald-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                                        >
+                                            {claimSubmitting ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
+                                            Claim জমা দিন
+                                        </button>
+                                    </div>
+
+                                    {claimOtp.sent && (
+                                        <p className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-2xl px-4 py-3">
+                                            OTP পাঠানো হয়েছে। {claimOtp.debugCode ? `Dev code: ${claimOtp.debugCode}` : ''}
+                                        </p>
+                                    )}
+                                </form>
+                            )}
+
                             <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pt-8 border-t border-slate-100">
                                 <div className="flex items-center gap-3">
                                     <p className="text-xs font-black text-slate-400 uppercase tracking-widest">শেয়ার করুন:</p>
@@ -690,7 +898,7 @@ function LostFoundContent() {
                         </div>
                     </div>
 
-                    <form onSubmit={handleReportSubmit} className="space-y-5">
+                    <form onSubmit={handleVerifiedReportSubmit} className="space-y-5">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black text-slate-500 uppercase ml-1 tracking-widest">ক্যাটাগরি</label>
@@ -720,6 +928,46 @@ function LostFoundContent() {
                                     className="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:bg-white focus:border-indigo-500 transition-all outline-none font-bold text-sm"
                                 />
                             </div>
+                        </div>
+
+                        <div className="rounded-[28px] border border-indigo-100 bg-indigo-50/70 p-4 md:p-5">
+                            <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3">
+                                <div>
+                                    <label className="text-[10px] font-black text-indigo-700 uppercase ml-1 tracking-widest">OTP verification</label>
+                                    <input
+                                        value={otpState.code}
+                                        onChange={e => setOtpState({ ...otpState, code: e.target.value })}
+                                        placeholder="SMS OTP code"
+                                        className="mt-2 w-full px-5 py-4 rounded-2xl bg-white border border-indigo-100 focus:bg-white focus:border-indigo-500 transition-all outline-none font-bold text-sm"
+                                    />
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={requestReportOtp}
+                                    disabled={otpState.sending || !formData.contact_phone}
+                                    className="self-end px-5 py-4 rounded-2xl bg-indigo-600 text-white font-black text-sm hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                                >
+                                    {otpState.sending ? <Loader2 size={18} className="animate-spin" /> : <Phone size={18} />}
+                                    OTP পাঠান
+                                </button>
+                            </div>
+                            <div className="mt-4 flex items-start gap-3 rounded-2xl bg-white p-4">
+                                <input
+                                    id="lost-found-sms-blast"
+                                    type="checkbox"
+                                    checked={smsBlast}
+                                    onChange={e => setSmsBlast(e.target.checked)}
+                                    className="mt-1 h-4 w-4 rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500"
+                                />
+                                <label htmlFor="lost-found-sms-blast" className="text-xs font-bold leading-relaxed text-slate-600">
+                                    Union SMS blast চাই। Wallet balance থাকলে এই ইউনিয়নের household phone-গুলোতে সংক্ষিপ্ত হারানো-প্রাপ্তি SMS queue হবে।
+                                </label>
+                            </div>
+                            {otpState.sent && (
+                                <p className="mt-3 text-xs font-black text-indigo-700">
+                                    OTP পাঠানো হয়েছে। {otpState.debugCode ? `Dev code: ${otpState.debugCode}` : ''}
+                                </p>
+                            )}
                         </div>
 
                         <div className="space-y-2">

@@ -2,20 +2,23 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Home, MapPin, Search, User, Grid } from 'lucide-react';
+import { Home, MapPin, Search, User, Smartphone } from 'lucide-react';
 import { paths } from '@/lib/constants/paths';
 
 const navBtn = "relative p-3 transition-all active:scale-75 rounded-2xl flex flex-col items-center gap-1 group";
 
 export default function BottomNav() {
     const pathname = usePathname();
-    const isActive = (p) => pathname === p;
+    const isActive = (p) => {
+        if (p === '#search') return false;
+        return pathname === p || (p !== '/' && pathname.startsWith(`${p}/`));
+    };
 
     const navItems = [
         { href: paths.home, icon: Home, label: 'হোম' },
         { href: paths.area, icon: MapPin, label: 'এলাকা' },
         { href: '#search', icon: Search, label: 'সার্চ', isSearchTrigger: true },
-        { href: paths.service('more'), icon: Grid, label: 'সেবা' },
+        { href: paths.citizen, icon: Smartphone, label: 'নাগরিক' },
         { href: paths.login, icon: User, label: 'প্রোফাইল' },
     ];
 
@@ -39,10 +42,11 @@ export default function BottomNav() {
                                     window.dispatchEvent(new CustomEvent('open-global-search'));
                                 }
                             }}
-                            className={`${navBtn} ${active ? 'text-teal-400' : 'text-slate-400'}`}
+                            aria-current={active ? 'page' : undefined}
+                            className={`${navBtn} ${active ? 'text-teal-300' : 'text-slate-400 hover:text-white'}`}
                             aria-label={item.label}
                         >
-                            <div className={`relative transition-all duration-300 ${active ? 'scale-110 -translate-y-1' : 'group-hover:scale-110'}`}>
+                            <div className={`relative rounded-2xl p-1 transition-all duration-300 ${active ? 'scale-110 -translate-y-1 bg-teal-500/15' : 'group-hover:scale-110 group-hover:bg-white/10'}`}>
                                 <item.icon 
                                     size={24} 
                                     strokeWidth={active ? 2.5 : 2} 
@@ -61,7 +65,7 @@ export default function BottomNav() {
                             {active && (
                                 <motion.div
                                     layoutId="nav-dot"
-                                    className="absolute -bottom-1 w-1 h-1 bg-teal-400 rounded-full"
+                                    className="absolute -bottom-1 h-1 w-5 rounded-full bg-teal-300"
                                 />
                             )}
                         </Link>

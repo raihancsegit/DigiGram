@@ -1,6 +1,109 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 
+function normalizePhone(phone) {
+    const digits = String(phone || '').replace(/[^0-9]/g, '');
+    if (digits.startsWith('8801') && digits.length === 13) return `0${digits.slice(3)}`;
+    return digits;
+}
+
+function shouldNotifyPriceAlert(subscription, price, trend) {
+    if (!subscription?.is_active) return false;
+    if (subscription.last_notified_at) {
+        const last = new Date(subscription.last_notified_at).getTime();
+        if (Date.now() - last < 6 * 60 * 60 * 1000) return false;
+    }
+
+    if (subscription.alert_type === 'price_down') return trend === 'down';
+    if (subscription.alert_type === 'price_up') return trend === 'up';
+    if (subscription.alert_type === 'target_below') {
+        return Number(subscription.target_price || 0) > 0 && Number(price) <= Number(subscription.target_price);
+    }
+    return trend !== 'stable';
+}
+
+async function queueMarketPriceAlerts(supabaseAdmin, { marketId, commodityId, price, prevPrice, trend, updated }) {
+    try {
+        const { data: market } = await supabaseAdmin
+            .from('markets')
+            .select('id, name, location_id')
+            .eq('id', marketId)
+            .maybeSingle();
+
+        if (!market?.location_id) return { queued: 0, reason: 'market_location_missing' };
+
+        const { data: commodity } = await supabaseAdmin
+            .from('market_commodities')
+            .select('id, name, unit')
+            .eq('id', commodityId)
+            .maybeSingle();
+
+        const { data: subscriptions, error: subError } = await supabaseAdmin
+            .from('market_price_alert_subscriptions')
+            .select('*')
+            .eq('market_id', marketId)
+            .eq('commodity_id', commodityId)
+            .eq('is_active', true);
+
+        if (subError) throw subError;
+
+        const matched = (subscriptions || []).filter((item) => shouldNotifyPriceAlert(item, price, trend));
+        if (matched.length === 0) return { queued: 0 };
+
+        const { data: wallet, error: walletError } = await supabaseAdmin
+            .from('sms_wallets')
+            .upsert({ owner_type: 'location', owner_id: market.location_id }, { onConflict: 'owner_type,owner_id' })
+            .select()
+            .single();
+
+        if (walletError) throw walletError;
+
+        const available = Number(wallet.balance || 0);
+        const sendable = matched.slice(0, Math.max(0, available));
+        if (sendable.length === 0) return { queued: 0, reason: 'empty_wallet' };
+
+        const message = `${market.name}: ${commodity?.name || 'পণ্য'} এখন ${price} টাকা/${commodity?.unit || 'unit'}। আগের দর ${prevPrice}। DigiGram বাজারদর।`;
+        const rows = sendable.map((item) => ({
+            wallet_id: wallet.id,
+            owner_type: 'location',
+            owner_id: market.location_id,
+            recipient_phone: normalizePhone(item.phone),
+            message,
+            category: 'market_price_alert',
+            source_type: 'market_prices',
+            source_id: updated?.id || null
+        }));
+
+        const { error: smsError } = await supabaseAdmin.from('sms_messages').insert(rows);
+        if (smsError) throw smsError;
+
+        const nextBalance = available - sendable.length;
+        await supabaseAdmin
+            .from('sms_wallets')
+            .update({ balance: nextBalance, updated_at: new Date().toISOString() })
+            .eq('id', wallet.id);
+
+        await supabaseAdmin.from('sms_wallet_transactions').insert([{
+            wallet_id: wallet.id,
+            transaction_type: 'usage',
+            credits: -sendable.length,
+            reference_type: 'market_prices',
+            reference_id: updated?.id || null,
+            note: 'market_price_alert'
+        }]);
+
+        await supabaseAdmin
+            .from('market_price_alert_subscriptions')
+            .update({ last_notified_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+            .in('id', sendable.map((item) => item.id));
+
+        return { queued: sendable.length, skipped: matched.length - sendable.length };
+    } catch (error) {
+        console.error('Market price alert queue failed:', error);
+        return { queued: 0, error: error.message };
+    }
+}
+
 export async function POST(request) {
     try {
         const body = await request.json();
@@ -146,7 +249,16 @@ export async function POST(request) {
                     recorded_at: new Date().toISOString()
                 });
 
-            return NextResponse.json({ success: true, data: updated });
+            const alertResult = await queueMarketPriceAlerts(supabaseAdmin, {
+                marketId,
+                commodityId,
+                price,
+                prevPrice,
+                trend,
+                updated
+            });
+
+            return NextResponse.json({ success: true, data: updated, alertResult });
         }
 
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 });

@@ -6,7 +6,7 @@ import {
     MapPin, Loader2, Save, X, Phone,
     ChevronLeft, ChevronRight, Edit2,
     Calendar, Tag, FileText, Image as ImageIcon,
-    AlertCircle, CheckCircle2, Package
+    AlertCircle, CheckCircle2, Package, ShieldAlert
 } from 'lucide-react';
 import { lostFoundService } from '@/lib/services/lostFoundService';
 import ModalPortal from '@/components/common/ModalPortal';
@@ -23,16 +23,10 @@ export default function LostFoundManager({ locationId, isAdmin = false }) {
     const [currentPage, setCurrentPage] = useState(1);
     const [editingPost, setEditingPost] = useState(null);
     const [uploading, setUploading] = useState(false);
+    const [claims, setClaims] = useState([]);
+    const [claimsLoading, setClaimsLoading] = useState(false);
     const ITEMS_PER_PAGE = 5;
 
-    if (!locationId) {
-        return (
-            <div className="py-10 text-center text-slate-400 font-bold">
-                কোনো ইউনিয়ন সিলেক্ট করা হয়নি।
-            </div>
-        );
-    }
-    
     const [formData, setFormData] = useState({
         type: 'lost',
         category: '',
@@ -51,8 +45,18 @@ export default function LostFoundManager({ locationId, isAdmin = false }) {
     });
 
     useEffect(() => {
+        if (!locationId) return;
         loadPosts();
+        loadClaims();
     }, [locationId, currentPage]);
+
+    if (!locationId) {
+        return (
+            <div className="py-10 text-center text-slate-400 font-bold">
+                কোনো ইউনিয়ন সিলেক্ট করা হয়নি।
+            </div>
+        );
+    }
 
     const loadPosts = async () => {
         setLoading(true);
@@ -64,6 +68,41 @@ export default function LostFoundManager({ locationId, isAdmin = false }) {
             console.error(err);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const loadClaims = async () => {
+        if (!locationId) return;
+        setClaimsLoading(true);
+        try {
+            const response = await fetch(`/api/lost-found/claims?locationId=${locationId}`);
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || 'Claim load failed');
+            setClaims(result.claims || []);
+        } catch (err) {
+            console.error('Claim load error:', err);
+        } finally {
+            setClaimsLoading(false);
+        }
+    };
+
+    const handleClaimDecision = async (claimId, status) => {
+        const note = status === 'approved'
+            ? 'Verified and handed over by office.'
+            : 'Rejected after office verification.';
+        try {
+            const response = await fetch('/api/lost-found/claims', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ claimId, status, officerNote: note })
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || 'Claim update failed');
+            await Promise.all([loadClaims(), loadPosts()]);
+            alert(status === 'approved' ? 'Claim approve হয়েছে।' : 'Claim reject হয়েছে।');
+        } catch (err) {
+            console.error('Claim update error:', err);
+            alert(err.message || 'Claim update করতে সমস্যা হয়েছে।');
         }
     };
 
@@ -298,6 +337,89 @@ export default function LostFoundManager({ locationId, isAdmin = false }) {
                             pageSize={10}
                             onPageChange={setCurrentPage}
                         />
+                    </div>
+                )}
+            </div>
+
+            <div className="bg-white rounded-[32px] border border-slate-200 shadow-sm overflow-hidden">
+                <div className="p-6 border-b border-slate-100 bg-emerald-50/40 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div>
+                        <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
+                            <ShieldAlert size={20} className="text-emerald-600" /> Claim verification
+                        </h3>
+                        <p className="text-xs font-bold text-slate-400 mt-1">
+                            মানুষ claim করলে এখানে দেখাবে। Approve করলে post resolved হবে এবং SMS queue হবে।
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={loadClaims}
+                        className="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-black hover:border-emerald-400"
+                    >
+                        Refresh
+                    </button>
+                </div>
+
+                {claimsLoading ? (
+                    <div className="py-12 flex justify-center">
+                        <Loader2 className="animate-spin text-emerald-600" size={28} />
+                    </div>
+                ) : claims.length > 0 ? (
+                    <div className="divide-y divide-slate-100">
+                        {claims.slice(0, 8).map((claim) => (
+                            <div key={claim.id} className="p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                                <div className="space-y-2">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <span className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase ${
+                                            claim.status === 'approved'
+                                                ? 'bg-emerald-100 text-emerald-700'
+                                                : claim.status === 'rejected'
+                                                    ? 'bg-rose-100 text-rose-700'
+                                                    : 'bg-amber-100 text-amber-700'
+                                        }`}>
+                                            {claim.status}
+                                        </span>
+                                        <h4 className="font-black text-slate-800">
+                                            {claim.lost_found_posts?.title || 'Lost-found post'}
+                                        </h4>
+                                    </div>
+                                    <p className="text-sm font-bold text-slate-600">
+                                        {claim.claimant_name} · {claim.claimant_phone}
+                                    </p>
+                                    <p className="text-xs font-medium text-slate-500 bg-slate-50 border border-slate-100 rounded-2xl p-3 max-w-3xl">
+                                        {claim.proof_note}
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    {claim.status === 'pending' ? (
+                                        <>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleClaimDecision(claim.id, 'approved')}
+                                                className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-black hover:bg-emerald-700"
+                                            >
+                                                Approve
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleClaimDecision(claim.id, 'rejected')}
+                                                className="px-4 py-2 rounded-xl bg-rose-50 text-rose-700 text-xs font-black hover:bg-rose-100"
+                                            >
+                                                Reject
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <span className="text-[11px] font-bold text-slate-400">
+                                            {claim.officer_note || 'Reviewed'}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="py-12 text-center text-slate-400 font-bold">
+                        এখনো কোনো claim জমা হয়নি।
                     </div>
                 )}
             </div>

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { 
     Globe, Search, MapPin, ArrowUpRight, 
-    Settings2, ChevronRight, Loader2, Plus,
+    Settings2, ChevronLeft, ChevronRight, Loader2, Plus,
     BarChart3, Users2, ShieldCheck, X, UserCheck, Trash2, LayoutGrid, ArrowLeft,
     School, Building2, BookOpen, Home
 } from 'lucide-react';

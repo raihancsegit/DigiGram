@@ -11,6 +11,7 @@ import {
 import Link from 'next/link';
 import { lostFoundService } from '@/lib/services/lostFoundService';
 import LostFoundDetailView from '@/components/templates/LostFoundDetailView';
+import RelatedServiceLinks from '@/components/common/RelatedServiceLinks';
 
 export default function GlobalLostFoundPage() {
     const searchParams = useSearchParams();
@@ -157,6 +158,15 @@ export default function GlobalLostFoundPage() {
             </div>
 
             {/* ── Posts Container ── */}
+            <div className="dg-section-x max-w-7xl mx-auto px-4 mt-8">
+                <RelatedServiceLinks
+                    currentKey="lost-found"
+                    preset="lostFound"
+                    title="হারানো-প্রাপ্তির সাথে দরকারি কাজ"
+                    subtitle="Report করার পর Citizen Center, জরুরি নম্বর বা বাজার update-এ দ্রুত যান।"
+                />
+            </div>
+
             <div className="dg-section-x max-w-7xl mx-auto px-4 mt-10">
                 <div className="rounded-[40px] border border-slate-200 bg-white shadow-sm overflow-hidden">
                     <div className="px-8 md:px-10 py-8 border-b border-slate-200 bg-slate-50/50">

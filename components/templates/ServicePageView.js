@@ -22,6 +22,7 @@ import UpSebaView from '@/components/sections/services/UpSebaView';
 import SchoolDirectoryView from '@/components/sections/services/SchoolDirectoryView';
 import LearningHubView from '@/components/sections/services/LearningHubView';
 import NewsLandingView from '@/components/sections/services/NewsLandingView';
+import RelatedServiceLinks from '@/components/common/RelatedServiceLinks';
 import { adminService } from '@/lib/services/adminService';
 import { getLocationBySlug } from '@/lib/services/hierarchyService';
 import { useSearchParams } from 'next/navigation';
@@ -330,6 +331,13 @@ export default function ServicePageView({ slug, data }) {
                         সার্ভিস ডিরেক্টরিতে ফিরুন
                     </Link>
                     <MarketCalendarView selectedUnionSlug={unionQuery} selectedUnionName={unionName} />
+                    <RelatedServiceLinks
+                        currentKey="market"
+                        preset="market"
+                        title="বাজারের সাথে related কাজ"
+                        subtitle="দাম দেখা শেষে alert, lost-found বা Citizen Center খুলুন।"
+                        className="mt-10"
+                    />
                 </div>
             </div>
         );
@@ -598,6 +606,14 @@ export default function ServicePageView({ slug, data }) {
                     </motion.div>
                 )}
 
+                <RelatedServiceLinks
+                    currentKey={slug}
+                    preset="service"
+                    title="এই service-এর সাথে related link"
+                    subtitle="একই জায়গা থেকে citizen, বাজার, স্কুল, blood অথবা lost-found খুলুন।"
+                    className="mt-12"
+                />
+
                 <div className="mt-16 text-center">
                     <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest pb-4">ডিজিগ্রাম সার্ভিস ইঞ্জিন v2.0</p>
                     <div className="w-12 h-1 bg-slate-100 mx-auto rounded-full" />
@@ -606,4 +622,3 @@ export default function ServicePageView({ slug, data }) {
         </div>
     );
 }
-

@@ -7,7 +7,7 @@ import { findUnionBySlug } from '@/lib/constants/locations';
 import { 
     Clock, Fuel, UserCheck, ArrowRight, ShieldCheck, 
     Ticket, QrCode, ArrowRight as ArrowRightIcon, UserCheck as UserCheckIcon, 
-    BarChart3, AlertTriangle, Phone, Map as MapIcon, Info, X, Store, MapPin, AlertCircle
+    BarChart3, AlertTriangle, Phone, Map as MapIcon, Info, X, Store, MapPin, AlertCircle, Users
 } from 'lucide-react';
 import { toBnDigits } from '@/lib/utils/format';
 import { 

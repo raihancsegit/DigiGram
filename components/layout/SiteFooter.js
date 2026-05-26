@@ -1,26 +1,62 @@
+"use client";
+
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import {
+    Activity,
+    BellRing,
     Droplet,
     FileText,
+    Fuel,
     Globe,
+    GraduationCap,
+    HelpCircle,
     Mail,
     MapPin,
     Phone,
-    ShieldCheck
+    School,
+    ShieldCheck,
+    ShoppingBag,
+    Smartphone,
+    Store
 } from 'lucide-react';
 import { SITE_DEVELOPER, SITE_SOCIAL_LINKS } from '@/lib/constants/siteBranding';
 
 const quickLinks = [
     { href: '/', label: 'হোম' },
+    { href: '/citizen', label: 'Citizen Center' },
     { href: '/area', label: 'এলাকা' },
     { href: '/news', label: 'নোটিশ' },
-    { href: '/roadmap', label: 'রোডম্যাপ' }
+    { href: '/business', label: 'ব্যবসা / SMS' },
+    { href: '/roadmap', label: 'রোডম্যাপ' },
+    { href: '/voice-guide', label: 'Voice Guide' }
+];
+
+const citizenLinks = [
+    { href: '/citizen', label: 'আবেদন ও SMS inbox', icon: Smartphone },
+    { href: '/citizen#complaint', label: 'অভিযোগ জানান', icon: BellRing },
+    { href: '/citizen#blood', label: 'Blood emergency', icon: Droplet },
+    { href: '/lost-found', label: 'হারানো-প্রাপ্তি claim', icon: HelpCircle }
 ];
 
 const serviceLinks = [
+    { href: '/services/market', label: 'ডিজি-বাজার', icon: Store },
     { href: '/services/blood', label: 'ব্লাড ব্যাংক', icon: Droplet },
     { href: '/services/emergency', label: 'জরুরি নম্বর', icon: Phone },
-    { href: '/services/e-up', label: 'ইউপি সেবা', icon: FileText }
+    { href: '/services/e-up', label: 'ইউপি সেবা', icon: FileText },
+    { href: '/services/fuel', label: 'ডিজি-ফুয়েল', icon: Fuel },
+    { href: '/services/e-clinic', label: 'ই-ক্লিনিক', icon: Activity },
+    { href: '/services/school', label: 'স্কুল / কলেজ', icon: School },
+    { href: '/services/learning', label: 'Learning Hub', icon: GraduationCap }
+];
+
+const platformLinks = [
+    { href: '/business', label: 'SMS business model' },
+    { href: '/future-ai', label: 'AI future plan' },
+    { href: '/campus', label: 'Campus demo' },
+    { href: '/services/vehicle-guard', label: 'Vehicle Guard' },
+    { href: '/services/land-guard', label: 'Land Guard' },
+    { href: '/services/donation', label: 'স্বচ্ছ দান' }
 ];
 
 const brandPaths = {
@@ -46,9 +82,31 @@ function BrandIcon({ name, size = 18 }) {
 }
 
 export default function SiteFooter() {
+    const pathname = usePathname();
+    const isActive = (href) => {
+        if (!href || href.startsWith('http') || href.startsWith('mailto:') || href.includes('#')) return false;
+        return pathname === href || (href !== '/' && pathname.startsWith(`${href}/`));
+    };
+    const textLinkClass = (href) => {
+        const active = isActive(href);
+        return `rounded-xl px-3 py-2 -mx-3 transition-all ${
+            active
+                ? 'bg-teal-400/15 text-teal-200 ring-1 ring-teal-300/15'
+                : 'text-slate-300 hover:bg-white/5 hover:text-teal-200'
+        }`;
+    };
+    const iconLinkClass = (href) => {
+        const active = isActive(href);
+        return `flex items-center gap-2 rounded-xl px-3 py-2 -mx-3 transition-all ${
+            active
+                ? 'bg-teal-400/15 text-teal-200 ring-1 ring-teal-300/15'
+                : 'text-slate-300 hover:bg-white/5 hover:text-teal-200'
+        }`;
+    };
+
     return (
         <footer className="mt-auto border-t border-slate-200 bg-slate-950 text-white">
-            <div className="mx-auto grid max-w-[1440px] gap-8 px-4 py-10 sm:px-8 lg:grid-cols-[1.1fr_0.65fr_0.72fr_0.9fr]">
+            <div className="mx-auto grid max-w-[1440px] gap-8 px-4 py-10 sm:px-8 lg:grid-cols-[1.15fr_0.72fr_0.78fr_0.78fr_0.82fr_0.9fr]">
                 <div>
                     <div className="mb-4 flex items-center gap-3">
                         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-500/15 text-teal-300 ring-1 ring-teal-300/20">
@@ -84,8 +142,20 @@ export default function SiteFooter() {
                     <h3 className="mb-4 text-sm font-black text-white">দ্রুত লিংক</h3>
                     <div className="grid gap-3 text-sm font-bold text-slate-300">
                         {quickLinks.map((item) => (
-                            <Link key={item.href} href={item.href} className="transition hover:text-teal-300">
+                            <Link key={item.href} href={item.href} aria-current={isActive(item.href) ? 'page' : undefined} className={textLinkClass(item.href)}>
                                 {item.label}
+                            </Link>
+                        ))}
+                    </div>
+                </div>
+
+                <div>
+                    <h3 className="mb-4 text-sm font-black text-white">নাগরিক কাজ</h3>
+                    <div className="grid gap-3 text-sm font-bold text-slate-300">
+                        {citizenLinks.map(({ href, label, icon: Icon }) => (
+                            <Link key={href} href={href} aria-current={isActive(href) ? 'page' : undefined} className={iconLinkClass(href)}>
+                                <Icon size={16} />
+                                {label}
                             </Link>
                         ))}
                     </div>
@@ -95,9 +165,21 @@ export default function SiteFooter() {
                     <h3 className="mb-4 text-sm font-black text-white">প্রয়োজনীয় সেবা</h3>
                     <div className="grid gap-3 text-sm font-bold text-slate-300">
                         {serviceLinks.map(({ href, label, icon: Icon }) => (
-                            <Link key={href} href={href} className="flex items-center gap-2 transition hover:text-teal-300">
+                            <Link key={href} href={href} aria-current={isActive(href) ? 'page' : undefined} className={iconLinkClass(href)}>
                                 <Icon size={16} />
                                 {label}
+                            </Link>
+                        ))}
+                    </div>
+                </div>
+
+                <div>
+                    <h3 className="mb-4 text-sm font-black text-white">আরও প্ল্যাটফর্ম</h3>
+                    <div className="grid gap-3 text-sm font-bold text-slate-300">
+                        {platformLinks.map((item) => (
+                            <Link key={item.href} href={item.href} aria-current={isActive(item.href) ? 'page' : undefined} className={iconLinkClass(item.href)}>
+                                <ShoppingBag size={15} />
+                                {item.label}
                             </Link>
                         ))}
                     </div>

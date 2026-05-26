@@ -1,5 +1,6 @@
 "use client";
 import { ChevronLeft, ChevronRight, MoreHorizontal } from 'lucide-react';
+import { menuStyles } from '@/components/common/menuStyles';
 
 export default function Pagination({ currentPage, totalCount, pageSize, onPageChange }) {
     const totalPages = Math.ceil(totalCount / pageSize);
@@ -59,11 +60,8 @@ export default function Pagination({ currentPage, totalCount, pageSize, onPageCh
                         <button
                             key={`page-${page}`}
                             onClick={() => onPageChange(page)}
-                            className={`min-w-[40px] h-10 rounded-xl text-sm font-black transition-all ${
-                                currentPage === page
-                                    ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20 ring-4 ring-slate-900/5'
-                                    : 'bg-white border border-slate-200 text-slate-500 hover:border-slate-300 hover:bg-slate-50'
-                            }`}
+                            aria-current={currentPage === page ? 'page' : undefined}
+                            className={`min-w-[40px] h-10 rounded-xl text-sm font-black transition-all ${menuStyles.tab(currentPage === page, 'teal')}`}
                         >
                             {toBn(page)}
                         </button>

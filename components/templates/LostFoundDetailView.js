@@ -32,9 +32,7 @@ export default function LostFoundDetailView({ post }) {
     };
     const c = colorMap[accentColor];
 
-    const sourceUrl = post.location_details?.slug
-        ? `/services/lost-found?u=${post.location_details.slug}`
-        : '/services/lost-found';
+    const sourceUrl = '/lost-found';
 
     const locationName = post.location_details?.name_bn || 'অজানা';
     const dateStr = new Date(post.created_at).toLocaleDateString('bn-BD', {

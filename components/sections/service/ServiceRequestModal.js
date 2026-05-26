@@ -92,22 +92,22 @@ export default function ServiceRequestModal({ householdId, serviceType, onClose 
     }
 
     return (
-        <div className="relative flex h-[100dvh] max-h-[100dvh] w-full max-w-xl flex-col overflow-hidden bg-white p-5 shadow-2xl sm:h-auto sm:max-h-[90vh] sm:rounded-[40px] sm:p-8 md:p-10">
-            <button onClick={onClose} className="absolute top-8 right-8 text-slate-400 hover:text-slate-600 transition-colors">
+        <div className="relative flex h-[100dvh] max-h-[100dvh] w-full max-w-xl flex-col overflow-hidden bg-white p-4 shadow-2xl sm:h-auto sm:max-h-[90vh] sm:rounded-[32px] sm:p-8 md:p-10">
+            <button onClick={onClose} className="absolute right-4 top-4 z-10 rounded-2xl border border-slate-200 bg-white p-2 text-slate-400 transition-colors hover:text-slate-600 sm:right-8 sm:top-8 sm:border-0 sm:bg-transparent">
                 <X size={24} />
             </button>
 
-            <div className="flex items-center gap-4 mb-8">
-                <div className="w-12 h-12 rounded-2xl bg-teal-50 flex items-center justify-center text-teal-600">
+            <div className="mb-5 flex items-start gap-3 pr-12 sm:mb-8 sm:items-center sm:gap-4 sm:pr-0">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-teal-50 text-teal-600 sm:h-12 sm:w-12">
                     <FileText size={24} />
                 </div>
-                <div>
-                    <h3 className="text-xl font-black text-slate-800">{serviceTitles[serviceType]}</h3>
+                <div className="min-w-0">
+                    <h3 className="break-words text-lg font-black leading-tight text-slate-800 sm:text-xl">{serviceTitles[serviceType]}</h3>
                     <p className="text-xs font-bold text-slate-400">সঠিক তথ্য দিয়ে আবেদন সম্পন্ন করুন</p>
                 </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="min-h-0 flex-1 space-y-6 overflow-y-auto p-0">
+            <form onSubmit={handleSubmit} className="custom-scrollbar min-h-0 flex-1 space-y-4 overflow-y-auto pb-3 sm:space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">আবেদনকারীর নাম</label>

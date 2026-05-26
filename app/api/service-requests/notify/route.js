@@ -24,7 +24,15 @@ export async function POST(request) {
 
         const { data: serviceRequest, error } = await supabaseAdmin
             .from('service_requests')
-            .select('id, applicant_name, contact_phone, collection_date')
+            .select(`
+                id,
+                applicant_name,
+                contact_phone,
+                collection_date,
+                household:households(
+                    ward:locations(parent_id)
+                )
+            `)
             .eq('id', requestId)
             .maybeSingle();
 
@@ -48,13 +56,71 @@ export async function POST(request) {
             .maybeSingle();
 
         if (!existingQueued) {
+            let queueStatus = 'queued';
+            let queueError = null;
+            const unionId = serviceRequest.household?.ward?.parent_id;
+
+            if (unionId) {
+                const { data: wallet } = await supabaseAdmin
+                    .from('sms_wallets')
+                    .upsert({ owner_type: 'location', owner_id: unionId }, { onConflict: 'owner_type,owner_id' })
+                    .select()
+                    .single();
+
+                if (!wallet || Number(wallet.balance || 0) < 1) {
+                    queueStatus = 'skipped';
+                    queueError = 'SMS balance is empty';
+                } else {
+                    const nextBalance = Number(wallet.balance || 0) - 1;
+                    const { data: smsMessage, error: paidQueueError } = await supabaseAdmin
+                        .from('sms_messages')
+                        .insert([{
+                            wallet_id: wallet.id,
+                            owner_type: 'location',
+                            owner_id: unionId,
+                            recipient_phone: serviceRequest.contact_phone,
+                            message,
+                            category: `service_${eventKey}`,
+                            source_type: 'service_request',
+                            source_id: serviceRequest.id
+                        }])
+                        .select()
+                        .single();
+
+                    if (paidQueueError) throw paidQueueError;
+
+                    const { error: walletUpdateError } = await supabaseAdmin
+                        .from('sms_wallets')
+                        .update({ balance: nextBalance, updated_at: new Date().toISOString() })
+                        .eq('id', wallet.id);
+                    if (walletUpdateError) throw walletUpdateError;
+
+                    const { error: txError } = await supabaseAdmin
+                        .from('sms_wallet_transactions')
+                        .insert([{
+                            wallet_id: wallet.id,
+                            transaction_type: 'usage',
+                            credits: -1,
+                            reference_type: 'sms_messages',
+                            reference_id: smsMessage.id,
+                            note: `Service request ${eventKey}`
+                        }]);
+                    if (txError) throw txError;
+                }
+            } else {
+                queueStatus = 'skipped';
+                queueError = 'Union wallet not found for request';
+            }
+
             const { error: smsError } = await supabaseAdmin
                 .from('service_request_sms')
                 .insert([{
                     service_request_id: requestId,
                     phone: serviceRequest.contact_phone,
                     event_key: eventKey,
-                    message
+                    message,
+                    status: queueStatus,
+                    error_message: queueError
                 }]);
 
             if (smsError) throw smsError;

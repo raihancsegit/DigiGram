@@ -849,7 +849,7 @@ export default function UnionPortalClient({ ctx, activeServices = [], chairman =
                                     </p>
                                 </div>
                                 <Link 
-                                    href={`/services/blood-bank?u=${union.slug}`}
+                                    href={`/services/blood?u=${union.slug}`}
                                     className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-slate-900 text-white text-sm font-black hover:bg-rose-600 transition-all active:scale-95 shadow-lg shadow-slate-200"
                                 >
                                     রক্তদাতার তালিকা দেখুন

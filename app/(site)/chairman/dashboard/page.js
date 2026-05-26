@@ -10,7 +10,7 @@ import {
     PlusCircle, Newspaper, LogOut, ShieldCheck, ArrowLeft, Settings, 
     MessageSquare, TrendingUp, Users, MapPin, CheckCircle2, UserCircle,
     ArrowUpRight, Sparkles, School, Building2, BookOpen, Phone, Search, HandHeart,
-    ChevronLeft, ChevronRight, ShoppingBag, FileText, Banknote, ClipboardCheck
+    ChevronLeft, ChevronRight, ShoppingBag, FileText, Banknote, ClipboardCheck, AlertTriangle
 } from 'lucide-react';
 import { performLogout, login } from '@/lib/store/features/authSlice';
 import { wardService } from '@/lib/services/wardService';
@@ -31,7 +31,10 @@ import UnionServiceManager from '@/components/sections/union/UnionServiceManager
 import UnionTaxDashboard from '@/components/sections/union/UnionTaxDashboard';
 import UnionCitizenQualityDashboard from '@/components/sections/union/UnionCitizenQualityDashboard';
 import UnionSmsOutbox from '@/components/sections/union/UnionSmsOutbox';
+import CitizenComplaintManager from '@/components/sections/citizen/CitizenComplaintManager';
 import { unionService } from '@/lib/services/unionService';
+import { menuStyles } from '@/components/common/menuStyles';
+import OfficerActionCenter from '@/components/common/OfficerActionCenter';
 
 export default function ChairmanDashboard() {
     const { user, isAuthenticated } = useSelector((state) => state.auth);
@@ -48,7 +51,10 @@ export default function ChairmanDashboard() {
     const [servicePage, setServicePage] = useState(1);
     const SERVICES_PER_PAGE = 6;
     const [activeServices, setActiveServices] = useState([]);
+    const [actionQueue, setActionQueue] = useState([]);
+    const [unionImpact, setUnionImpact] = useState({ wards: [], families: [], totals: {} });
     const [loading, setLoading] = useState(true);
+    const tabClass = (id, tone = 'teal') => `flex items-center gap-2 px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${menuStyles.tab(activeTab === id, tone)}`;
 
     useEffect(() => {
         if (!isAuthenticated || user?.role !== 'chairman') {
@@ -91,6 +97,12 @@ export default function ChairmanDashboard() {
 
             const services = await getActiveServices(user.access_scope_id);
             setActiveServices(services);
+
+            const queue = await loadUnionActionQueue(user.access_scope_id, wardsData.map((ward) => ward.id));
+            setActionQueue(queue);
+
+            const impact = await loadUnionImpactBoard(wardsData);
+            setUnionImpact(impact);
         } catch (err) {
             console.error(err);
         } finally {
@@ -150,6 +162,10 @@ export default function ChairmanDashboard() {
             };
         }, { population: 0, voters: 0, villages: 0, schools: 0, mosques: 0, madrassas: 0 });
     }, [wards, unionInfo]);
+
+    const handleActionSelect = (item) => {
+        if (item.tab) setActiveTab(item.tab);
+    };
 
     if (!isAuthenticated || !user || loading) {
         return (
@@ -226,26 +242,40 @@ export default function ChairmanDashboard() {
                         <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">{unionName} এডমিন</span>
                     </div>
                 </div>
+
+                <OfficerActionCenter
+                    title="আজকের ইউনিয়ন priority"
+                    subtitle="Citizen request, complaint, SMS ও tax কাজ এক নজরে দেখুন।"
+                    items={actionQueue}
+                    onSelect={handleActionSelect}
+                />
+
+                <UnionImpactBoard
+                    impact={unionImpact}
+                    onOpenQuality={() => setActiveTab('citizen-quality')}
+                    onOpenTax={() => setActiveTab('tax')}
+                    onOpenSms={() => setActiveTab('sms-outbox')}
+                />
                 
                 <div className="mb-8">
                     <div className="flex flex-wrap p-1.5 bg-slate-200/50 rounded-[24px] w-full gap-1">
                         <button 
                             onClick={() => setActiveTab('overview')}
-                            className={`flex items-center gap-2 px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${activeTab === 'overview' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            className={tabClass('overview', 'teal')}
                         >
                             <Settings size={16} className="sm:w-[18px] sm:h-[18px]" />
                             ওয়াড ওভারভিউ
                         </button>
                         <button 
                             onClick={() => setActiveTab('digital-services')}
-                            className={`flex items-center gap-2 px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${activeTab === 'digital-services' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            className={tabClass('digital-services', 'teal')}
                         >
                             <Sparkles size={16} className="sm:w-[18px] sm:h-[18px]" />
                             ডিজিটাল সেবাসমূহ
                         </button>
                         <button 
                             onClick={() => setActiveTab('news')}
-                            className={`flex items-center gap-2 px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${activeTab === 'news' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            className={tabClass('news', 'teal')}
                         >
                             <MessageSquare size={16} className="sm:w-[18px] sm:h-[18px]" />
                             ইউনিয়ন নিউজ
@@ -253,7 +283,7 @@ export default function ChairmanDashboard() {
                         
                         <button 
                             onClick={() => setActiveTab('emergency')}
-                            className={`flex items-center gap-2 px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${activeTab === 'emergency' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            className={tabClass('emergency', 'teal')}
                         >
                             <Phone size={16} className="sm:w-[18px] sm:h-[18px]" />
                             জরুরি হটলাইন
@@ -261,7 +291,7 @@ export default function ChairmanDashboard() {
 
                         <button 
                             onClick={() => setActiveTab('lost-found')}
-                            className={`flex items-center gap-2 px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${activeTab === 'lost-found' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            className={tabClass('lost-found', 'teal')}
                         >
                             <Search size={16} className="sm:w-[18px] sm:h-[18px]" />
                             হারানো ও প্রাপ্তি
@@ -269,7 +299,7 @@ export default function ChairmanDashboard() {
 
                         <button 
                             onClick={() => setActiveTab('donation')}
-                            className={`flex items-center gap-2 px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${activeTab === 'donation' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            className={tabClass('donation', 'teal')}
                         >
                             <HandHeart size={16} className="sm:w-[18px] sm:h-[18px]" />
                             স্বচ্ছ দান
@@ -277,7 +307,7 @@ export default function ChairmanDashboard() {
 
                         <button 
                             onClick={() => setActiveTab('service-requests')}
-                            className={`flex items-center gap-2 px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${activeTab === 'service-requests' ? 'bg-white text-teal-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            className={tabClass('service-requests', 'teal')}
                         >
                             <FileText size={16} className="sm:w-[18px] sm:h-[18px]" />
                             আবেদনসমূহ
@@ -285,7 +315,7 @@ export default function ChairmanDashboard() {
 
                         <button 
                             onClick={() => setActiveTab('tax')}
-                            className={`flex items-center gap-2 px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${activeTab === 'tax' ? 'bg-white text-teal-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            className={tabClass('tax', 'teal')}
                         >
                             <Banknote size={16} className="sm:w-[18px] sm:h-[18px]" />
                             কর
@@ -293,15 +323,23 @@ export default function ChairmanDashboard() {
 
                         <button 
                             onClick={() => setActiveTab('citizen-quality')}
-                            className={`flex items-center gap-2 px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${activeTab === 'citizen-quality' ? 'bg-white text-teal-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            className={tabClass('citizen-quality', 'teal')}
                         >
                             <ClipboardCheck size={16} className="sm:w-[18px] sm:h-[18px]" />
                             নাগরিক মান
                         </button>
 
                         <button 
+                            onClick={() => setActiveTab('complaints')}
+                            className={tabClass('complaints', 'rose')}
+                        >
+                            <AlertTriangle size={16} className="sm:w-[18px] sm:h-[18px]" />
+                            অভিযোগ
+                        </button>
+
+                        <button 
                             onClick={() => setActiveTab('sms-outbox')}
-                            className={`flex items-center gap-2 px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${activeTab === 'sms-outbox' ? 'bg-white text-teal-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            className={tabClass('sms-outbox', 'teal')}
                         >
                             <MessageSquare size={16} className="sm:w-[18px] sm:h-[18px]" />
                             SMS
@@ -309,7 +347,7 @@ export default function ChairmanDashboard() {
 
                         <button 
                             onClick={() => setActiveTab('market')}
-                            className={`flex items-center gap-2 px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${activeTab === 'market' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            className={tabClass('market', 'teal')}
                         >
                             <ShoppingBag size={16} className="sm:w-[18px] sm:h-[18px]" />
                             হাট বাজার
@@ -317,7 +355,7 @@ export default function ChairmanDashboard() {
 
                         <button 
                             onClick={() => setActiveTab('management')}
-                            className={`flex items-center gap-2 px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${activeTab === 'management' ? 'bg-white text-teal-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            className={tabClass('management', 'teal')}
                         >
                             <Settings size={16} className="sm:w-[18px] sm:h-[18px]" />
                             ম্যানেজমেন্ট
@@ -432,6 +470,10 @@ export default function ChairmanDashboard() {
                                 <UnionCitizenQualityDashboard unionId={user.access_scope_id} />
                             </div>
                         </motion.div>
+                    ) : activeTab === 'complaints' ? (
+                        <motion.div key="complaints" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
+                            <CitizenComplaintManager scopeType="union" scopeId={user.access_scope_id} title="ইউনিয়ন নাগরিক অভিযোগ" />
+                        </motion.div>
                     ) : activeTab === 'sms-outbox' ? (
                         <motion.div key="sms-outbox" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
                             <div className="bg-white rounded-[40px] p-6 md:p-12 border border-slate-200 shadow-sm">
@@ -467,6 +509,450 @@ export default function ChairmanDashboard() {
             </main>
         </div>
     );
+}
+
+function UnionImpactBoard({ impact, onOpenQuality, onOpenTax, onOpenSms }) {
+    const wards = impact?.wards || [];
+    const families = impact?.families || [];
+    const totals = impact?.totals || {};
+    const estimatedSmsCost = Math.max(0, (totals.priorityFamilies || 0) * 1);
+
+    if (wards.length === 0 && families.length === 0) return null;
+
+    return (
+        <section className="mb-8 rounded-[36px] border border-teal-100 bg-gradient-to-br from-teal-50 via-white to-amber-50 p-5 shadow-sm sm:p-6">
+            <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.24em] text-teal-700">Union Impact Board</p>
+                    <h2 className="text-2xl font-black text-slate-950">কোন ওয়ার্ডে আগে কাজ করলে সবচেয়ে বেশি উপকার হবে</h2>
+                    <p className="mt-1 text-sm font-bold text-slate-500">Household data, application, tax ও citizen gap একসাথে দেখে priority বানানো হয়েছে।</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                    <button onClick={onOpenQuality} className="rounded-2xl bg-slate-950 px-4 py-3 text-xs font-black text-white transition hover:bg-teal-700">
+                        Citizen Quality
+                    </button>
+                    <button onClick={onOpenTax} className="rounded-2xl bg-white px-4 py-3 text-xs font-black text-slate-700 ring-1 ring-slate-200 transition hover:bg-amber-50">
+                        Tax Follow-up
+                    </button>
+                    <button onClick={onOpenSms} className="rounded-2xl bg-teal-600 px-4 py-3 text-xs font-black text-white transition hover:bg-teal-700">
+                        SMS Campaign
+                    </button>
+                </div>
+            </div>
+
+            <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                {[
+                    ['Priority families', totals.priorityFamilies || 0, 'আজ follow-up দরকার'],
+                    ['Data gaps', totals.dataGaps || 0, 'NID/জন্ম/রক্ত তথ্য'],
+                    ['Health follow-up', totals.healthFollowUps || 0, 'শিশু/বয়স্ক/checkup'],
+                    ['Pending services', totals.pendingRequests || 0, 'চলমান আবেদন'],
+                    ['SMS estimate', estimatedSmsCost, 'প্রায় credit লাগবে']
+                ].map(([label, value, hint]) => (
+                    <div key={label} className="rounded-[24px] border border-white/80 bg-white/85 p-4 shadow-sm">
+                        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">{label}</p>
+                        <p className="mt-2 text-3xl font-black text-slate-950">{toBnDigits(value)}</p>
+                        <p className="mt-1 text-xs font-bold text-slate-500">{hint}</p>
+                    </div>
+                ))}
+            </div>
+
+            <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+                <div className="rounded-[28px] border border-white/80 bg-white p-4 shadow-sm">
+                    <div className="mb-4 flex items-center justify-between gap-3">
+                        <h3 className="text-lg font-black text-slate-900">Ward-wise ranking</h3>
+                        <span className="rounded-full bg-teal-50 px-3 py-1 text-[10px] font-black text-teal-700">{toBnDigits(wards.length)} ward</span>
+                    </div>
+                    <div className="space-y-3">
+                        {wards.slice(0, 6).map((ward, index) => (
+                            <div key={ward.id} className="rounded-3xl border border-slate-100 bg-slate-50/70 p-4">
+                                <div className="flex items-start justify-between gap-3">
+                                    <div>
+                                        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Rank {toBnDigits(index + 1)}</p>
+                                        <h4 className="mt-1 text-base font-black text-slate-950">{ward.name}</h4>
+                                    </div>
+                                    <span className={`rounded-2xl px-3 py-2 text-lg font-black ${ward.score >= 80 ? 'bg-rose-50 text-rose-700' : ward.score >= 40 ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>
+                                        {toBnDigits(ward.score)}
+                                    </span>
+                                </div>
+                                <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                                    {[
+                                        ['Family', ward.priorityFamilies],
+                                        ['Gap', ward.dataGaps],
+                                        ['Health', ward.healthFollowUps],
+                                        ['Service', ward.pendingRequests],
+                                        ['Tax', ward.dueTaxes]
+                                    ].map(([label, value]) => (
+                                        <div key={label} className="rounded-2xl bg-white px-3 py-2">
+                                            <p className="text-[9px] font-black uppercase text-slate-400">{label}</p>
+                                            <p className="text-sm font-black text-slate-800">{toBnDigits(value || 0)}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="rounded-[28px] border border-white/80 bg-white p-4 shadow-sm">
+                    <div className="mb-4 flex items-center justify-between gap-3">
+                        <h3 className="text-lg font-black text-slate-900">Top follow-up families</h3>
+                        <span className="rounded-full bg-amber-50 px-3 py-1 text-[10px] font-black text-amber-700">impact first</span>
+                    </div>
+                    <div className="space-y-3">
+                        {families.slice(0, 8).map((family) => (
+                            <div key={family.id} className="rounded-3xl border border-slate-100 p-4">
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="min-w-0">
+                                        <h4 className="truncate text-sm font-black text-slate-950">{family.owner_name}</h4>
+                                        <p className="text-xs font-bold text-slate-400">{family.wardName} · Holding {family.house_no || 'নেই'}</p>
+                                    </div>
+                                    <span className="rounded-xl bg-slate-950 px-2.5 py-1.5 text-xs font-black text-white">{toBnDigits(family.score)}</span>
+                                </div>
+                                <div className="mt-3 flex flex-wrap gap-1.5">
+                                    {family.reasons.slice(0, 3).map((reason) => (
+                                        <span key={reason} className="rounded-full bg-slate-50 px-2.5 py-1 text-[10px] font-black text-slate-600">{reason}</span>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                        {families.length === 0 && (
+                            <div className="rounded-3xl bg-emerald-50 p-4 text-sm font-bold text-emerald-700">এখন urgent family follow-up নেই।</div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </section>
+    );
+}
+
+async function loadUnionActionQueue(unionId, wardIds = []) {
+    if (!unionId) return [];
+
+    const [{ data: complaintRows }, { data: wallet }, { data: households }] = await Promise.all([
+        supabase
+            .from('citizen_complaints')
+            .select('id,priority,status,title,assigned_scope_type,assigned_scope_id,created_at')
+            .limit(150),
+        supabase
+            .from('sms_wallets')
+            .select('balance')
+            .eq('owner_type', 'location')
+            .eq('owner_id', unionId)
+            .maybeSingle(),
+        wardIds.length > 0
+            ? supabase.from('households').select('id').in('ward_id', wardIds).limit(1000)
+            : Promise.resolve({ data: [] })
+    ]);
+
+    const scopedComplaints = (complaintRows || []).filter((item) =>
+        (item.assigned_scope_type === 'union' && item.assigned_scope_id === unionId) ||
+        (item.assigned_scope_type === 'ward' && wardIds.includes(item.assigned_scope_id))
+    );
+    const urgentComplaints = scopedComplaints.filter((item) =>
+        ['urgent', 'emergency'].includes(item.priority) && !['resolved', 'closed'].includes(item.status)
+    );
+
+    const householdIds = (households || []).map((item) => item.id);
+    const [{ data: requestRows }, { data: taxRows }, { data: residentRows }] = householdIds.length > 0 ? await Promise.all([
+        supabase
+            .from('service_requests')
+            .select('id,status,request_type,collection_date,created_at')
+            .in('household_id', householdIds)
+            .limit(150),
+        supabase
+            .from('household_taxes')
+            .select('id,status,due_date,amount_due,amount_paid')
+            .in('household_id', householdIds)
+            .limit(150),
+        supabase
+            .from('residents')
+            .select('id,household_id,name,dob,gender,nid,birth_reg_no,blood_group,is_voter,marital_status,disability_status,occupation')
+            .in('household_id', householdIds)
+            .limit(2500)
+    ]) : [{ data: [] }, { data: [] }, { data: [] }];
+
+    const pendingRequests = (requestRows || []).filter((item) => ['pending', 'processing', 'ready'].includes(item.status));
+    const readyRequests = pendingRequests.filter((item) => item.status === 'ready' && !item.collection_date);
+    const dueTaxes = (taxRows || []).filter((item) => ['due', 'partial'].includes(item.status));
+    const smsBalance = Number(wallet?.balance || 0);
+    const benefitGaps = buildUnionBenefitGaps(residentRows || [], householdIds);
+
+    return [
+        benefitGaps.total > 0 && {
+            key: 'union-family-benefit-gaps',
+            type: 'benefit',
+            tone: benefitGaps.critical > 0 ? 'amber' : 'teal',
+            urgent: benefitGaps.critical > 0,
+            title: 'Citizen health & benefit detector',
+            text: `${toBnDigits(benefitGaps.total.toString())}টি citizen follow-up: NID ${toBnDigits(benefitGaps.missingNid.toString())}, জন্ম ${toBnDigits(benefitGaps.missingBirth.toString())}, স্বাস্থ্য ${toBnDigits(benefitGaps.healthFollowUps.toString())}, সম্ভাব্য ভাতা ${toBnDigits(benefitGaps.potentialBenefits.toString())}।`,
+            badge: `${toBnDigits(benefitGaps.households.toString())} family`,
+            actionLabel: 'Quality খুলুন',
+            tab: 'citizen-quality'
+        },
+        urgentComplaints.length > 0 && {
+            key: 'union-urgent-complaints',
+            type: 'complaint',
+            tone: 'rose',
+            urgent: true,
+            title: 'জরুরি citizen complaint',
+            text: `${toBnDigits(urgentComplaints.length.toString())}টি জরুরি complaint union/ward scope-এ আছে।`,
+            badge: `${toBnDigits(urgentComplaints.length.toString())} urgent`,
+            actionLabel: 'অভিযোগ খুলুন',
+            tab: 'complaints'
+        },
+        pendingRequests.length > 0 && {
+            key: 'union-service-requests',
+            type: 'service',
+            tone: readyRequests.length > 0 ? 'amber' : 'teal',
+            urgent: readyRequests.length > 0,
+            title: readyRequests.length > 0 ? 'Collection date সেট করুন' : 'সেবা আবেদন follow-up',
+            text: readyRequests.length > 0
+                ? `${toBnDigits(readyRequests.length.toString())}টি ready আবেদন collection date ছাড়া আছে।`
+                : `${toBnDigits(pendingRequests.length.toString())}টি আবেদন চলমান।`,
+            badge: `${toBnDigits(pendingRequests.length.toString())} request`,
+            actionLabel: 'আবেদন খুলুন',
+            tab: 'service-requests'
+        },
+        smsBalance <= 10 && {
+            key: 'union-sms-low',
+            type: 'sms',
+            tone: smsBalance <= 0 ? 'rose' : 'amber',
+            urgent: smsBalance <= 0,
+            title: smsBalance <= 0 ? 'SMS balance শেষ' : 'SMS balance কম',
+            text: `বর্তমান balance ${toBnDigits(smsBalance.toString())} credits। Citizen update আটকে যেতে পারে।`,
+            badge: `${toBnDigits(smsBalance.toString())} SMS`,
+            actionLabel: 'SMS খুলুন',
+            tab: 'sms-outbox'
+        },
+        dueTaxes.length > 0 && {
+            key: 'union-tax-due',
+            type: 'tax',
+            tone: 'amber',
+            title: 'Tax due follow-up',
+            text: `${toBnDigits(dueTaxes.length.toString())}টি household tax due/partial আছে।`,
+            badge: `${toBnDigits(dueTaxes.length.toString())} due`,
+            actionLabel: 'Tax খুলুন',
+            tab: 'tax'
+        }
+    ].filter(Boolean);
+}
+
+async function loadUnionImpactBoard(wards = []) {
+    const wardIds = wards.map((ward) => ward.id).filter(Boolean);
+    if (wardIds.length === 0) return { wards: [], families: [], totals: {} };
+
+    const wardNameById = wards.reduce((acc, ward) => {
+        acc[ward.id] = ward.name || ward.name_bn || ward.name_en || 'ওয়ার্ড';
+        return acc;
+    }, {});
+
+    const { data: households } = await supabase
+        .from('households')
+        .select('id,ward_id,owner_name,house_no,phone,created_at')
+        .in('ward_id', wardIds)
+        .limit(2500);
+
+    const householdRows = households || [];
+    const householdIds = householdRows.map((household) => household.id).filter(Boolean);
+    if (householdIds.length === 0) {
+        return {
+            wards: wards.map((ward) => ({ id: ward.id, name: wardNameById[ward.id], score: 0, priorityFamilies: 0, dataGaps: 0, healthFollowUps: 0, pendingRequests: 0, dueTaxes: 0 })),
+            families: [],
+            totals: { priorityFamilies: 0, dataGaps: 0, healthFollowUps: 0, pendingRequests: 0, dueTaxes: 0 }
+        };
+    }
+
+    const [{ data: residents }, { data: requests }, { data: taxes }] = await Promise.all([
+        supabase
+            .from('residents')
+            .select('id,household_id,name,dob,gender,nid,birth_reg_no,blood_group,marital_status,disability_status,occupation')
+            .in('household_id', householdIds)
+            .limit(6000),
+        supabase
+            .from('service_requests')
+            .select('id,household_id,status,priority,request_type,collection_date,created_at')
+            .in('household_id', householdIds)
+            .limit(2000),
+        supabase
+            .from('household_taxes')
+            .select('id,household_id,status,amount_due,amount_paid,due_date')
+            .in('household_id', householdIds)
+            .limit(2000)
+    ]);
+
+    const residentsByHouse = groupBy(residents || [], 'household_id');
+    const requestsByHouse = groupBy(requests || [], 'household_id');
+    const taxesByHouse = groupBy(taxes || [], 'household_id');
+    const wardStats = {};
+    const familyCards = [];
+
+    wardIds.forEach((wardId) => {
+        wardStats[wardId] = {
+            id: wardId,
+            name: wardNameById[wardId],
+            score: 0,
+            priorityFamilies: 0,
+            dataGaps: 0,
+            healthFollowUps: 0,
+            pendingRequests: 0,
+            dueTaxes: 0
+        };
+    });
+
+    householdRows.forEach((household) => {
+        const houseResidents = residentsByHouse[household.id] || [];
+        const houseRequests = requestsByHouse[household.id] || [];
+        const houseTaxes = taxesByHouse[household.id] || [];
+        const dataGaps = countResidentDataGaps(houseResidents);
+        const benefitCandidates = countBenefitCandidates(houseResidents);
+        const healthFollowUps = countHealthFollowUps(houseResidents);
+        const pendingRequests = houseRequests.filter((request) => ['pending', 'processing', 'ready'].includes(String(request.status || '').toLowerCase())).length;
+        const dueTaxes = houseTaxes.filter((tax) => ['due', 'partial', 'pending'].includes(String(tax.status || '').toLowerCase())).length;
+        const emptyHousehold = houseResidents.length === 0 ? 1 : 0;
+        const score = Math.min(99, (benefitCandidates * 18) + (healthFollowUps * 12) + (dataGaps * 9) + (pendingRequests * 10) + (dueTaxes * 7) + (emptyHousehold * 22));
+        const ward = wardStats[household.ward_id];
+
+        if (!ward) return;
+        ward.score += score;
+        ward.priorityFamilies += score > 0 ? 1 : 0;
+        ward.dataGaps += dataGaps + emptyHousehold;
+        ward.healthFollowUps += healthFollowUps;
+        ward.pendingRequests += pendingRequests;
+        ward.dueTaxes += dueTaxes;
+
+        if (score > 0) {
+            familyCards.push({
+                ...household,
+                wardName: ward.name,
+                score,
+                reasons: [
+                    benefitCandidates > 0 ? `${toBnDigits(benefitCandidates)} ভাতা/সহায়তা` : null,
+                    healthFollowUps > 0 ? `${toBnDigits(healthFollowUps)} health follow-up` : null,
+                    dataGaps > 0 ? `${toBnDigits(dataGaps)} তথ্য ঘাটতি` : null,
+                    pendingRequests > 0 ? `${toBnDigits(pendingRequests)} আবেদন` : null,
+                    dueTaxes > 0 ? `${toBnDigits(dueTaxes)} tax due` : null,
+                    emptyHousehold ? 'সদস্য নেই' : null
+                ].filter(Boolean)
+            });
+        }
+    });
+
+    const rankedWards = Object.values(wardStats)
+        .map((ward) => ({ ...ward, score: Math.min(99, ward.score) }))
+        .sort((a, b) => b.score - a.score);
+
+    const rankedFamilies = familyCards.sort((a, b) => b.score - a.score);
+    const totals = rankedWards.reduce((acc, ward) => ({
+        priorityFamilies: acc.priorityFamilies + ward.priorityFamilies,
+        dataGaps: acc.dataGaps + ward.dataGaps,
+        healthFollowUps: acc.healthFollowUps + ward.healthFollowUps,
+        pendingRequests: acc.pendingRequests + ward.pendingRequests,
+        dueTaxes: acc.dueTaxes + ward.dueTaxes
+    }), { priorityFamilies: 0, dataGaps: 0, healthFollowUps: 0, pendingRequests: 0, dueTaxes: 0 });
+
+    return { wards: rankedWards, families: rankedFamilies, totals };
+}
+
+function groupBy(rows = [], key) {
+    return rows.reduce((acc, row) => {
+        const value = row[key];
+        if (!value) return acc;
+        acc[value] = acc[value] || [];
+        acc[value].push(row);
+        return acc;
+    }, {});
+}
+
+function countResidentDataGaps(residents = []) {
+    return residents.reduce((total, resident) => {
+        const age = getUnionResidentAge(resident.dob);
+        return total
+            + (age !== null && age >= 18 && !resident.nid ? 1 : 0)
+            + (!resident.birth_reg_no ? 1 : 0)
+            + (!resident.blood_group ? 1 : 0);
+    }, 0);
+}
+
+function countBenefitCandidates(residents = []) {
+    return residents.reduce((total, resident) => {
+        const age = getUnionResidentAge(resident.dob);
+        return total + (isUnionBenefitPossible(resident, age) ? 1 : 0);
+    }, 0);
+}
+
+function countHealthFollowUps(residents = []) {
+    return residents.reduce((total, resident) => {
+        const age = getUnionResidentAge(resident.dob);
+        return total + (isUnionHealthFollowUpNeeded(resident, age) ? 1 : 0);
+    }, 0);
+}
+
+function getUnionResidentAge(dob) {
+    if (!dob) return null;
+    const birthDate = new Date(dob);
+    if (Number.isNaN(birthDate.getTime())) return null;
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) age -= 1;
+    return age;
+}
+
+function buildUnionBenefitGaps(residents = [], householdIds = []) {
+    const householdSet = new Set();
+    const householdsWithResidents = new Set(residents.map((item) => item.household_id).filter(Boolean));
+    let missingNid = 0;
+    let missingBirth = 0;
+    let missingBlood = 0;
+    let potentialBenefits = 0;
+    let healthFollowUps = 0;
+
+    residents.forEach((resident) => {
+        const age = getUnionResidentAge(resident.dob);
+        const nidMissing = age !== null && age >= 18 && !resident.nid;
+        const birthMissing = !resident.birth_reg_no;
+        const bloodMissing = !resident.blood_group;
+        const benefitPossible = isUnionBenefitPossible(resident, age);
+        const healthNeeded = isUnionHealthFollowUpNeeded(resident, age);
+        if (nidMissing) missingNid += 1;
+        if (birthMissing) missingBirth += 1;
+        if (bloodMissing) missingBlood += 1;
+        if (benefitPossible) potentialBenefits += 1;
+        if (healthNeeded) healthFollowUps += 1;
+        if (nidMissing || birthMissing || bloodMissing || benefitPossible || healthNeeded) householdSet.add(resident.household_id);
+    });
+
+    const emptyHouseholds = householdIds.filter((id) => !householdsWithResidents.has(id)).length;
+    return {
+        missingNid,
+        missingBirth,
+        missingBlood,
+        potentialBenefits,
+        healthFollowUps,
+        emptyHouseholds,
+        households: householdSet.size + emptyHouseholds,
+        critical: missingNid + missingBirth + emptyHouseholds,
+        total: missingNid + missingBirth + missingBlood + potentialBenefits + healthFollowUps + emptyHouseholds
+    };
+}
+
+function isUnionHealthFollowUpNeeded(resident, age) {
+    const disability = String(resident.disability_status || '').toLowerCase();
+    const disabled = disability && !['none', 'no', 'না', 'নেই', 'n/a'].includes(disability);
+    return (age !== null && (age <= 5 || age >= 60)) || disabled || !resident.blood_group;
+}
+
+function isUnionBenefitPossible(resident, age) {
+    const gender = String(resident.gender || '').toLowerCase();
+    const disability = String(resident.disability_status || '').toLowerCase();
+    const marital = String(resident.marital_status || '').toLowerCase();
+    const occupation = String(resident.occupation || '').toLowerCase();
+    const female = ['female', 'নারী', 'মহিলা'].includes(gender);
+    const elderly = age !== null && ((female && age >= 62) || (!female && age >= 65));
+    const disabled = disability && !['none', 'no', 'না', 'নেই', 'n/a'].includes(disability);
+    const widow = female && (marital.includes('widow') || marital.includes('বিধবা'));
+    const student = age !== null && age >= 5 && age <= 24 && (occupation.includes('student') || occupation.includes('ছাত্র') || occupation.includes('শিক্ষার্থী'));
+    return elderly || disabled || widow || student;
 }
 
 function SparklesIcon() {

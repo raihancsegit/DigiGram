@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { wardService } from '@/lib/services/wardService';
 import { getLocationBySlug } from '@/lib/services/hierarchyService';
 import { toBnDigits } from '@/lib/utils/format';
+import { menuStyles } from '@/components/common/menuStyles';
 
 export default function NewsLandingView() {
     const searchParams = useSearchParams();
@@ -169,10 +170,7 @@ export default function NewsLandingView() {
                                 <button
                                     key={cat}
                                     onClick={() => setActiveTab(cat)}
-                                    className={`flex items-center justify-between px-6 py-4 rounded-2xl font-black text-sm transition-all text-left whitespace-nowrap ${activeTab === cat
-                                        ? 'bg-teal-500 text-white shadow-lg shadow-teal-500/20 active:scale-95'
-                                        : 'bg-white border border-slate-100 text-slate-600 hover:bg-slate-50'
-                                        }`}
+                                    className={`flex items-center justify-between px-6 py-4 rounded-2xl font-black text-sm transition-all text-left whitespace-nowrap ${menuStyles.tab(activeTab === cat, 'teal')}`}
                                 >
                                     <span>{cat === 'All' ? 'সব খবর' : cat}</span>
                                     {activeTab === cat && <ChevronRight size={16} />}
@@ -326,11 +324,8 @@ export default function NewsLandingView() {
                                 <button
                                     key={i}
                                     onClick={() => setCurrentPage(i + 1)}
-                                    className={`w-12 h-12 rounded-xl font-black text-sm transition-all ${
-                                        currentPage === i + 1 
-                                        ? 'bg-teal-500 text-white shadow-lg shadow-teal-500/20' 
-                                        : 'bg-white border border-slate-100 text-slate-600 hover:bg-slate-50'
-                                    }`}
+                                    aria-current={currentPage === i + 1 ? 'page' : undefined}
+                                    className={`w-12 h-12 rounded-xl font-black text-sm transition-all ${menuStyles.tab(currentPage === i + 1, 'teal')}`}
                                 >
                                     {toBnDigits(i + 1)}
                                 </button>

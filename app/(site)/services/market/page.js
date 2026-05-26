@@ -1,5 +1,6 @@
 import { GlobalMarketDashboard } from './components/GlobalMarketDashboard';
 import { UnionMarketView } from './components/UnionMarketView';
+import RelatedServiceLinks from '@/components/common/RelatedServiceLinks';
 
 export default async function MarketPage(props) {
     const searchParams = await props.searchParams;
@@ -12,6 +13,12 @@ export default async function MarketPage(props) {
             ) : (
                 <GlobalMarketDashboard />
             )}
+            <RelatedServiceLinks
+                currentKey="market"
+                preset="market"
+                title="বাজারের সাথে related কাজ"
+                subtitle="দাম দেখা শেষে alert, Citizen Center, lost-found বা SMS business খুলুন।"
+            />
         </div>
     );
 }

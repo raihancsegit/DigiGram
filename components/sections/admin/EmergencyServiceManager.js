@@ -21,14 +21,6 @@ export default function EmergencyServiceManager({ locationId, isAdmin = false })
     const [editingContact, setEditingContact] = useState(null);
     const ITEMS_PER_PAGE = 5;
 
-    if (!locationId) {
-        return (
-            <div className="py-10 text-center text-slate-400 font-bold">
-                কোনো ইউনিয়ন সিলেক্ট করা হয়নি।
-            </div>
-        );
-    }
-    
     const [formData, setFormData] = useState({
         name: '',
         phone: '',
@@ -37,8 +29,17 @@ export default function EmergencyServiceManager({ locationId, isAdmin = false })
     });
 
     useEffect(() => {
+        if (!locationId) return;
         loadContacts();
     }, [locationId, currentPage]);
+
+    if (!locationId) {
+        return (
+            <div className="py-10 text-center text-slate-400 font-bold">
+                কোনো ইউনিয়ন সিলেক্ট করা হয়নি।
+            </div>
+        );
+    }
 
     const loadContacts = async () => {
         setLoading(true);

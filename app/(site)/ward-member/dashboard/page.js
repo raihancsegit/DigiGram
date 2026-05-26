@@ -7,15 +7,17 @@ import { useEffect, useState, useMemo, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-    PlusCircle, Newspaper, LogOut, ShieldCheck, ArrowLeft, Settings, 
-    MessageSquare, TrendingUp, ArrowUpRight, ArrowRight, Users, MapPin, School, Building2, BookOpen, Home
+import {
+    PlusCircle, Newspaper, LogOut, ShieldCheck, ArrowLeft, Settings,
+    MessageSquare, TrendingUp, ArrowUpRight, ArrowRight, Users, MapPin, School, Building2, BookOpen, Home, AlertTriangle, Megaphone
 } from 'lucide-react';
 import { performLogout, login } from '@/lib/store/features/authSlice';
 import WardNewsForm from '@/components/sections/ward/WardNewsForm';
 import WardManagementSection from '@/components/sections/ward/WardManagementSection';
 import WardHouseholdManager from '@/components/sections/ward/WardHouseholdManager';
 import WardServiceRequestManager from '@/components/sections/ward/WardServiceRequestManager';
+import CitizenComplaintManager from '@/components/sections/citizen/CitizenComplaintManager';
+import UnionSmsOutbox from '@/components/sections/union/UnionSmsOutbox';
 import { wardService } from '@/lib/services/wardService';
 import { getActiveServices } from '@/lib/services/hierarchyService';
 import { authService } from '@/lib/services/authService';
@@ -23,6 +25,8 @@ import { supabase } from '@/lib/utils/supabase';
 import { toBnDigits, parseBnInt } from '@/lib/utils/format';
 import { paths } from '@/lib/constants/paths';
 import NotificationBell from '@/components/ui/NotificationBell';
+import { menuStyles } from '@/components/common/menuStyles';
+import OfficerActionCenter from '@/components/common/OfficerActionCenter';
 
 export default function WardMemberDashboard() {
     const { user, isAuthenticated } = useSelector((state) => state.auth);
@@ -34,8 +38,10 @@ export default function WardMemberDashboard() {
     const [villages, setVillages] = useState([]);
     const [volunteers, setVolunteers] = useState([]);
     const [activeServices, setActiveServices] = useState([]);
+    const [actionQueue, setActionQueue] = useState([]);
     const [loading, setLoading] = useState(true);
     const [authChecked, setAuthChecked] = useState(false);
+    const tabClass = (id, tone = 'teal') => `flex items-center gap-2 px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${menuStyles.tab(activeTab === id, tone)}`;
 
     const loadWardData = useCallback(async (currentUser = user) => {
         if (!currentUser || currentUser.role !== 'ward_member') return;
@@ -71,6 +77,8 @@ export default function WardMemberDashboard() {
                 const services = await getActiveServices(ward.parent_id);
                 setActiveServices(services);
             }
+            const queue = await loadWardActionQueue(currentUser.access_scope_id);
+            setActionQueue(queue);
         } catch (err) {
             console.error(err);
         } finally {
@@ -159,6 +167,10 @@ export default function WardMemberDashboard() {
     }, [villages, wardInfo]);
 
     const volunteerCount = volunteers.length;
+
+    const handleActionSelect = (item) => {
+        if (item.tab) setActiveTab(item.tab);
+    };
 
     const handleDeleteNews = async (newsId) => {
         if(!confirm('আপনি কি সত্যিই এই খবরটি মুছতে চান?')) return;
@@ -406,40 +418,61 @@ export default function WardMemberDashboard() {
                     </div>
                 </div>
 
+                <OfficerActionCenter
+                    title="আজকের ওয়ার্ড priority"
+                    subtitle="জরুরি complaint, pending আবেদন ও tax follow-up আগে দেখুন।"
+                    items={actionQueue}
+                    onSelect={handleActionSelect}
+                />
+
                 {/* Tab Switcher - Scrollable on Mobile */}
                 <div className="mb-8">
                     <div className="flex flex-wrap p-1.5 bg-slate-200/50 rounded-[24px] w-full gap-1">
                         <button 
                             onClick={() => setActiveTab('news')}
-                            className={`flex items-center gap-2 px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${activeTab === 'news' ? 'bg-white text-teal-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            className={tabClass('news')}
                         >
                             <MessageSquare size={16} className="sm:w-[18px] sm:h-[18px]" />
                             নিউজ ও আপডেট
                         </button>
                         <button 
                             onClick={() => setActiveTab('services')}
-                            className={`flex items-center gap-2 px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${activeTab === 'services' ? 'bg-white text-teal-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            className={tabClass('services')}
                         >
                             <ShieldCheck size={16} className="sm:w-[18px] sm:h-[18px]" />
                             ডিজিটাল সেবাসমূহ
                         </button>
                         <button 
                             onClick={() => setActiveTab('requests')}
-                            className={`flex items-center gap-2 px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${activeTab === 'requests' ? 'bg-white text-teal-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            className={tabClass('requests')}
                         >
                             <Newspaper size={16} className="sm:w-[18px] sm:h-[18px]" />
                             আবেদনসমূহ
                         </button>
                         <button 
+                            onClick={() => setActiveTab('complaints')}
+                            className={tabClass('complaints', 'rose')}
+                        >
+                            <AlertTriangle size={16} className="sm:w-[18px] sm:h-[18px]" />
+                            অভিযোগ
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('broadcast')}
+                            className={tabClass('broadcast')}
+                        >
+                            <Megaphone size={16} className="sm:w-[18px] sm:h-[18px]" />
+                            জরুরি Broadcast
+                        </button>
+                        <button
                             onClick={() => setActiveTab('households')}
-                            className={`flex items-center gap-2 px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${activeTab === 'households' ? 'bg-white text-teal-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            className={tabClass('households')}
                         >
                             <Home size={16} className="sm:w-[18px] sm:h-[18px]" />
                             হাউসহোল্ড ম্যানেজমেন্ট
                         </button>
                         <button 
                             onClick={() => setActiveTab('management')}
-                            className={`flex items-center gap-2 px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${activeTab === 'management' ? 'bg-white text-teal-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            className={tabClass('management')}
                         >
                             <Settings size={16} className="sm:w-[18px] sm:h-[18px]" />
                             ওয়াড ম্যানেজমেন্ট
@@ -578,6 +611,24 @@ export default function WardMemberDashboard() {
                                 <WardServiceRequestManager wardId={user.access_scope_id} />
                             </div>
                         </motion.div>
+                    ) : activeTab === 'complaints' ? (
+                        <motion.div 
+                            key="complaints"
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: 20 }}
+                        >
+                            <CitizenComplaintManager scopeType="ward" scopeId={user.access_scope_id} title="ওয়ার্ড নাগরিক অভিযোগ" />
+                        </motion.div>
+                    ) : activeTab === 'broadcast' ? (
+                        <motion.div
+                            key="broadcast"
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: 20 }}
+                        >
+                            <UnionSmsOutbox unionId={user.access_scope_id} />
+                        </motion.div>
                     ) : activeTab === 'management' ? (
                         <motion.div 
                             key="management"
@@ -622,6 +673,157 @@ export default function WardMemberDashboard() {
             </main>
         </div>
     );
+}
+
+async function loadWardActionQueue(wardId) {
+    if (!wardId) return [];
+
+    const [{ data: complaintRows }, { data: households }] = await Promise.all([
+        supabase
+            .from('citizen_complaints')
+            .select('id,priority,status,title,created_at')
+            .eq('assigned_scope_type', 'ward')
+            .eq('assigned_scope_id', wardId)
+            .limit(80),
+        supabase
+            .from('households')
+            .select('id')
+            .eq('ward_id', wardId)
+            .limit(500)
+    ]);
+
+    const householdIds = (households || []).map((item) => item.id);
+    const [{ data: requestRows }, { data: taxRows }, { data: residentRows }] = householdIds.length > 0 ? await Promise.all([
+        supabase
+            .from('service_requests')
+            .select('id,status,request_type,collection_date,created_at')
+            .in('household_id', householdIds)
+            .limit(100),
+        supabase
+            .from('household_taxes')
+            .select('id,status,due_date,amount_due,amount_paid')
+            .in('household_id', householdIds)
+            .limit(100),
+        supabase
+            .from('residents')
+            .select('id,household_id,name,dob,gender,nid,birth_reg_no,blood_group,is_voter,marital_status,disability_status,occupation')
+            .in('household_id', householdIds)
+            .limit(1000)
+    ]) : [{ data: [] }, { data: [] }, { data: [] }];
+
+    const urgentComplaints = (complaintRows || []).filter((item) =>
+        ['urgent', 'emergency'].includes(item.priority) && !['resolved', 'closed'].includes(item.status)
+    );
+    const pendingRequests = (requestRows || []).filter((item) => ['pending', 'processing', 'ready'].includes(item.status));
+    const readyRequests = pendingRequests.filter((item) => item.status === 'ready' && !item.collection_date);
+    const dueTaxes = (taxRows || []).filter((item) => ['due', 'partial'].includes(item.status));
+    const benefitGaps = buildBenefitGaps(residentRows || [], householdIds);
+
+    return [
+        benefitGaps.total > 0 && {
+            key: 'ward-family-benefit-gaps',
+            type: 'benefit',
+            tone: benefitGaps.critical > 0 ? 'amber' : 'teal',
+            urgent: benefitGaps.critical > 0,
+            title: 'Family benefit follow-up',
+            text: `${toBnDigits(benefitGaps.total.toString())}টি follow-up: NID ${toBnDigits(benefitGaps.missingNid.toString())}, জন্ম ${toBnDigits(benefitGaps.missingBirth.toString())}, সম্ভাব্য ভাতা ${toBnDigits(benefitGaps.potentialBenefits.toString())}।`,
+            badge: `${toBnDigits(benefitGaps.households.toString())} family`,
+            actionLabel: 'Household খুলুন',
+            tab: 'households'
+        },
+        urgentComplaints.length > 0 && {
+            key: 'ward-urgent-complaints',
+            type: 'complaint',
+            tone: 'rose',
+            urgent: true,
+            title: 'জরুরি complaint',
+            text: `${toBnDigits(urgentComplaints.length.toString())}টি জরুরি complaint review দরকার।`,
+            badge: `${toBnDigits(urgentComplaints.length.toString())} pending`,
+            actionLabel: 'অভিযোগ খুলুন',
+            tab: 'complaints'
+        },
+        pendingRequests.length > 0 && {
+            key: 'ward-pending-requests',
+            type: 'service',
+            tone: readyRequests.length > 0 ? 'amber' : 'teal',
+            urgent: readyRequests.length > 0,
+            title: readyRequests.length > 0 ? 'Collection date বাকি' : 'সেবা আবেদন pending',
+            text: readyRequests.length > 0
+                ? `${toBnDigits(readyRequests.length.toString())}টি ready আবেদন collection date চায়।`
+                : `${toBnDigits(pendingRequests.length.toString())}টি আবেদন follow-up দরকার।`,
+            badge: `${toBnDigits(pendingRequests.length.toString())} request`,
+            actionLabel: 'আবেদন খুলুন',
+            tab: 'requests'
+        },
+        dueTaxes.length > 0 && {
+            key: 'ward-tax-due',
+            type: 'tax',
+            tone: 'amber',
+            title: 'Tax follow-up',
+            text: `${toBnDigits(dueTaxes.length.toString())}টি household tax due/partial আছে।`,
+            badge: `${toBnDigits(dueTaxes.length.toString())} due`,
+            actionLabel: 'Household',
+            tab: 'households'
+        }
+    ].filter(Boolean);
+}
+
+function getResidentAge(dob) {
+    if (!dob) return null;
+    const birthDate = new Date(dob);
+    if (Number.isNaN(birthDate.getTime())) return null;
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) age -= 1;
+    return age;
+}
+
+function buildBenefitGaps(residents = [], householdIds = []) {
+    const householdSet = new Set();
+    const householdsWithResidents = new Set(residents.map((item) => item.household_id).filter(Boolean));
+    let missingNid = 0;
+    let missingBirth = 0;
+    let missingBlood = 0;
+    let potentialBenefits = 0;
+
+    residents.forEach((resident) => {
+        const age = getResidentAge(resident.dob);
+        const nidMissing = age !== null && age >= 18 && !resident.nid;
+        const birthMissing = !resident.birth_reg_no;
+        const bloodMissing = !resident.blood_group;
+        const benefitPossible = isBenefitPossible(resident, age);
+        if (nidMissing) missingNid += 1;
+        if (birthMissing) missingBirth += 1;
+        if (bloodMissing) missingBlood += 1;
+        if (benefitPossible) potentialBenefits += 1;
+        if (nidMissing || birthMissing || bloodMissing || benefitPossible) householdSet.add(resident.household_id);
+    });
+
+    const emptyHouseholds = householdIds.filter((id) => !householdsWithResidents.has(id)).length;
+    return {
+        missingNid,
+        missingBirth,
+        missingBlood,
+        potentialBenefits,
+        emptyHouseholds,
+        households: householdSet.size + emptyHouseholds,
+        critical: missingNid + missingBirth + emptyHouseholds,
+        total: missingNid + missingBirth + missingBlood + potentialBenefits + emptyHouseholds
+    };
+}
+
+function isBenefitPossible(resident, age) {
+    const gender = String(resident.gender || '').toLowerCase();
+    const disability = String(resident.disability_status || '').toLowerCase();
+    const marital = String(resident.marital_status || '').toLowerCase();
+    const occupation = String(resident.occupation || '').toLowerCase();
+    const female = ['female', 'নারী', 'মহিলা'].includes(gender);
+    const elderly = age !== null && ((female && age >= 62) || (!female && age >= 65));
+    const disabled = disability && !['none', 'no', 'না', 'নেই', 'n/a'].includes(disability);
+    const widow = female && (marital.includes('widow') || marital.includes('বিধবা'));
+    const student = age !== null && age >= 5 && age <= 24 && (occupation.includes('student') || occupation.includes('ছাত্র') || occupation.includes('শিক্ষার্থী'));
+    return elderly || disabled || widow || student;
 }
 
 function SparklesIcon() {
