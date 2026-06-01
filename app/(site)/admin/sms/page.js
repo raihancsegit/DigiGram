@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import { smsService } from '@/lib/services/smsService';
 import { toBnDigits } from '@/lib/utils/format';
+import SmsAutoFollowUpRules from '@/components/sections/sms/SmsAutoFollowUpRules';
+import SmsDeliveryReport from '@/components/sections/sms/SmsDeliveryReport';
 
 function money(value) {
     return `৳ ${toBnDigits(Number(value || 0).toLocaleString('bn-BD'))}`;
@@ -140,7 +142,7 @@ export default function AdminSmsPage() {
                     ['recharge', 'Recharge Approval', Clock3],
                     ['wallets', 'Wallets', WalletCards],
                     ['packages', 'Packages', PackagePlus],
-                    ['messages', 'SMS Queue', Send],
+                    ['messages', 'Delivery Report', Send],
                     ['gateway', 'Gateway', MessageSquare]
                 ].map(([key, label, Icon]) => (
                     <button
@@ -204,6 +206,11 @@ export default function AdminSmsPage() {
                     </div>
                 )}
             </section>
+
+            <SmsAutoFollowUpRules
+                title="Platform Auto Follow-up Rules"
+                subtitle="DigiGram-এর citizen service, tax, school, support desk ও emergency broadcast কোন event-এ SMS চালাবে তার operational map।"
+            />
 
             {activeTab === 'insights' && (
                 <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
@@ -464,7 +471,13 @@ export default function AdminSmsPage() {
 
             {activeTab === 'messages' && (
                 <section className="rounded-[32px] border border-slate-200 bg-white p-5 sm:p-6">
-                    <h2 className="mb-5 text-2xl font-black text-slate-900">Recent SMS Queue</h2>
+                    <SmsDeliveryReport
+                        messages={overview?.messages || []}
+                        title="Platform SMS Delivery Report"
+                        subtitle="সব wallet/source মিলিয়ে recent SMS status, delivery rate এবং failed queue দেখুন।"
+                        onRefresh={load}
+                    />
+                    <h2 className="mb-5 mt-6 text-2xl font-black text-slate-900">Recent SMS Queue</h2>
                     <div className="divide-y divide-slate-100 overflow-hidden rounded-3xl border border-slate-100">
                         {(overview?.messages || []).length === 0 ? (
                             <EmptyState text="এখনও SMS queue হয়নি।" />

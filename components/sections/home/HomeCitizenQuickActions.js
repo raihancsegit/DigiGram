@@ -3,10 +3,14 @@
 import Link from 'next/link';
 import {
     BellRing,
+    BriefcaseBusiness,
+    CalendarCheck,
     ClipboardCheck,
     Droplets,
     FileSearch,
+    HeartPulse,
     HelpCircle,
+    IdCard,
     MessageSquareWarning,
     ShoppingBag,
     Smartphone,
@@ -55,6 +59,34 @@ const ACTIONS = [
         href: '/citizen',
         icon: BellRing,
         color: 'bg-cyan-50 text-cyan-700 border-cyan-100'
+    },
+    {
+        title: 'অফিস serial',
+        text: 'চেয়ারম্যান/সচিব/মেম্বারের কাছে যাওয়ার আগে appointment ticket পাঠান।',
+        href: '/citizen#appointment',
+        icon: CalendarCheck,
+        color: 'bg-violet-50 text-violet-700 border-violet-100'
+    },
+    {
+        title: 'Household status',
+        text: 'পরিবারের NID, জন্ম নিবন্ধন, voter, blood ও tax status এক জায়গায়।',
+        href: '/citizen',
+        icon: IdCard,
+        color: 'bg-emerald-50 text-emerald-700 border-emerald-100'
+    },
+    {
+        title: 'Health follow-up',
+        text: 'টিকা, checkup, blood group ও নারী/শিশু স্বাস্থ্য camp update।',
+        href: '/services/e-clinic',
+        icon: HeartPulse,
+        color: 'bg-pink-50 text-pink-700 border-pink-100'
+    },
+    {
+        title: 'Local business',
+        text: 'দোকান, service provider, market demand ও SMS alert business route।',
+        href: '/services/market',
+        icon: BriefcaseBusiness,
+        color: 'bg-lime-50 text-lime-700 border-lime-100'
     }
 ];
 

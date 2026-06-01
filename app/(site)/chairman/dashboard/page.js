@@ -32,6 +32,8 @@ import UnionTaxDashboard from '@/components/sections/union/UnionTaxDashboard';
 import UnionCitizenQualityDashboard from '@/components/sections/union/UnionCitizenQualityDashboard';
 import UnionSmsOutbox from '@/components/sections/union/UnionSmsOutbox';
 import CitizenComplaintManager from '@/components/sections/citizen/CitizenComplaintManager';
+import CitizenAppointmentManager from '@/components/sections/citizen/CitizenAppointmentManager';
+import CitizenLifeSupportManager from '@/components/sections/citizen/CitizenLifeSupportManager';
 import { unionService } from '@/lib/services/unionService';
 import { menuStyles } from '@/components/common/menuStyles';
 import OfficerActionCenter from '@/components/common/OfficerActionCenter';
@@ -166,6 +168,25 @@ export default function ChairmanDashboard() {
     const handleActionSelect = (item) => {
         if (item.tab) setActiveTab(item.tab);
     };
+
+    const unionSmsTargetScopes = useMemo(() => {
+        const unionLabel = unionName || 'পুরো ইউনিয়ন';
+        return [
+            { id: user?.access_scope_id, label: `${unionLabel} - সব ওয়ার্ড`, type: 'union' },
+            ...(wards || []).flatMap((ward) => [
+                {
+                    id: ward.id,
+                    label: ward.name_bn || ward.name || ward.name_en || 'ওয়ার্ড',
+                    type: 'ward'
+                },
+                ...((ward.villages || []).map((village) => ({
+                    id: village.id,
+                    label: `${ward.name_bn || ward.name || 'ওয়ার্ড'} / ${village.bn_name || village.name_bn || village.name || 'গ্রাম'}`,
+                    type: 'village'
+                })))
+            ])
+        ].filter((item) => item.id);
+    }, [user?.access_scope_id, unionName, wards]);
 
     if (!isAuthenticated || !user || loading) {
         return (
@@ -472,12 +493,22 @@ export default function ChairmanDashboard() {
                         </motion.div>
                     ) : activeTab === 'complaints' ? (
                         <motion.div key="complaints" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
-                            <CitizenComplaintManager scopeType="union" scopeId={user.access_scope_id} title="ইউনিয়ন নাগরিক অভিযোগ" />
+                            <div className="space-y-8">
+                                <CitizenAppointmentManager scopeType="union" scopeId={user.access_scope_id} title="ইউনিয়ন office serial queue" />
+                                <CitizenLifeSupportManager scopeType="union" scopeId={user.access_scope_id} title="ইউনিয়ন daily life support desk" />
+                                <CitizenComplaintManager scopeType="union" scopeId={user.access_scope_id} title="ইউনিয়ন নাগরিক অভিযোগ" />
+                            </div>
                         </motion.div>
                     ) : activeTab === 'sms-outbox' ? (
                         <motion.div key="sms-outbox" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
                             <div className="bg-white rounded-[40px] p-6 md:p-12 border border-slate-200 shadow-sm">
-                                <UnionSmsOutbox unionId={user.access_scope_id} />
+                                <UnionSmsOutbox
+                                    unionId={user.access_scope_id}
+                                    heading="Union SMS Broadcast & Profit Center"
+                                    description="পুরো ইউনিয়ন, নির্দিষ্ট ওয়ার্ড বা নির্দিষ্ট গ্রামে জরুরি broadcast, citizen follow-up, service ready ও tax reminder পাঠান।"
+                                    ownerLabel={unionName || 'ইউনিয়ন'}
+                                    targetScopes={unionSmsTargetScopes}
+                                />
                             </div>
                         </motion.div>
                     ) : activeTab === 'management' ? (
@@ -628,10 +659,24 @@ function UnionImpactBoard({ impact, onOpenQuality, onOpenTax, onOpenSms }) {
 async function loadUnionActionQueue(unionId, wardIds = []) {
     if (!unionId) return [];
 
-    const [{ data: complaintRows }, { data: wallet }, { data: households }] = await Promise.all([
+    const [
+        { data: complaintRows },
+        { data: appointmentRows },
+        { data: lifeSupportRows },
+        { data: wallet },
+        { data: households }
+    ] = await Promise.all([
         supabase
             .from('citizen_complaints')
             .select('id,priority,status,title,assigned_scope_type,assigned_scope_id,created_at')
+            .limit(150),
+        supabase
+            .from('citizen_appointments')
+            .select('id,priority,status,title,assigned_scope_type,assigned_scope_id,scheduled_at,serial_no,created_at')
+            .limit(150),
+        supabase
+            .from('citizen_life_support_cases')
+            .select('id,case_type,priority,status,title,assigned_scope_type,assigned_scope_id,scheduled_at,created_at')
             .limit(150),
         supabase
             .from('sms_wallets')
@@ -648,9 +693,21 @@ async function loadUnionActionQueue(unionId, wardIds = []) {
         (item.assigned_scope_type === 'union' && item.assigned_scope_id === unionId) ||
         (item.assigned_scope_type === 'ward' && wardIds.includes(item.assigned_scope_id))
     );
+    const scopedAppointments = (appointmentRows || []).filter((item) =>
+        (item.assigned_scope_type === 'union' && item.assigned_scope_id === unionId) ||
+        (item.assigned_scope_type === 'ward' && wardIds.includes(item.assigned_scope_id))
+    );
+    const scopedLifeSupport = (lifeSupportRows || []).filter((item) =>
+        (item.assigned_scope_type === 'union' && item.assigned_scope_id === unionId) ||
+        (item.assigned_scope_type === 'ward' && wardIds.includes(item.assigned_scope_id))
+    );
     const urgentComplaints = scopedComplaints.filter((item) =>
         ['urgent', 'emergency'].includes(item.priority) && !['resolved', 'closed'].includes(item.status)
     );
+    const openAppointments = scopedAppointments.filter((item) => !['completed', 'rejected', 'no_show'].includes(item.status));
+    const unscheduledAppointments = openAppointments.filter((item) => !item.scheduled_at);
+    const openLifeSupport = scopedLifeSupport.filter((item) => !['completed', 'rejected'].includes(item.status));
+    const urgentLifeSupport = openLifeSupport.filter((item) => ['urgent', 'emergency'].includes(item.priority));
 
     const householdIds = (households || []).map((item) => item.id);
     const [{ data: requestRows }, { data: taxRows }, { data: residentRows }] = householdIds.length > 0 ? await Promise.all([
@@ -698,6 +755,30 @@ async function loadUnionActionQueue(unionId, wardIds = []) {
             text: `${toBnDigits(urgentComplaints.length.toString())}টি জরুরি complaint union/ward scope-এ আছে।`,
             badge: `${toBnDigits(urgentComplaints.length.toString())} urgent`,
             actionLabel: 'অভিযোগ খুলুন',
+            tab: 'complaints'
+        },
+        openAppointments.length > 0 && {
+            key: 'union-appointments',
+            type: 'appointment',
+            tone: unscheduledAppointments.length > 0 ? 'amber' : 'teal',
+            urgent: unscheduledAppointments.length > 0,
+            title: unscheduledAppointments.length > 0 ? 'Office serial schedule বাকি' : 'Office serial queue',
+            text: unscheduledAppointments.length > 0
+                ? `${toBnDigits(unscheduledAppointments.length.toString())}টি citizen appointment schedule ছাড়া আছে।`
+                : `${toBnDigits(openAppointments.length.toString())}টি appointment চলমান।`,
+            badge: `${toBnDigits(openAppointments.length.toString())} serial`,
+            actionLabel: 'Serial খুলুন',
+            tab: 'complaints'
+        },
+        openLifeSupport.length > 0 && {
+            key: 'union-life-support',
+            type: 'support',
+            tone: urgentLifeSupport.length > 0 ? 'rose' : 'teal',
+            urgent: urgentLifeSupport.length > 0,
+            title: urgentLifeSupport.length > 0 ? 'জরুরি life support' : 'Daily life support desk',
+            text: `${toBnDigits(openLifeSupport.length.toString())}টি document/benefit/health/job/farmer support request খোলা আছে।`,
+            badge: `${toBnDigits(openLifeSupport.length.toString())} support`,
+            actionLabel: 'Support খুলুন',
             tab: 'complaints'
         },
         pendingRequests.length > 0 && {

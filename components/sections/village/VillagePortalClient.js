@@ -223,13 +223,13 @@ export default function VillagePortalClient({ ctx, ward, village }) {
     return (
         <div className="bg-slate-50/50 min-h-screen">
             {/* Hero Background with Nature-inspired Gradient */}
-            <div className="relative pt-4 md:pt-10 pb-12 md:pb-48 px-3 md:px-6 bg-slate-900 border-b border-emerald-500/20 rounded-b-[32px] md:rounded-b-[80px]">
-                {/* Background Blobs - Wrapped to prevent overflow */}
+            <div className="relative pt-4 md:pt-10 pb-12 md:pb-48 px-3 md:px-6 bg-[linear-gradient(135deg,#052e1f_0%,#0f5132_48%,#6b4f13_100%)] border-b border-amber-300/25 rounded-b-[32px] md:rounded-b-[80px]">
+                {/* Village field-and-community background */}
                 <div className="absolute inset-0 overflow-hidden rounded-b-[32px] md:rounded-b-[80px] pointer-events-none">
-                    <div className="absolute inset-0 opacity-40">
-                        <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500 rounded-full blur-[120px] translate-x-1/3 -translate-y-1/4" />
-                        <div className="absolute bottom-0 left-0 w-96 h-96 bg-amber-500 rounded-full blur-[120px] -translate-x-1/3 translate-y-1/4" />
-                    </div>
+                    <div className="absolute inset-x-0 bottom-0 h-2/5 bg-[repeating-linear-gradient(115deg,rgba(250,204,21,0.16)_0px,rgba(250,204,21,0.16)_2px,transparent_2px,transparent_34px)]" />
+                    <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(16,185,129,0.14),transparent_42%,rgba(251,191,36,0.14))]" />
+                    <div className="absolute left-0 bottom-0 h-28 w-full bg-[linear-gradient(0deg,rgba(3,46,31,0.78),transparent)]" />
+                    <div className="absolute right-8 top-10 h-28 w-48 rounded-[28px] border border-amber-200/10 bg-amber-300/5 rotate-3" />
                 </div>
 
                 <div className="max-w-[1200px] mx-auto relative z-10">
@@ -289,7 +289,7 @@ export default function VillagePortalClient({ ctx, ward, village }) {
                                 initial={{ scale: 0.9, opacity: 0 }}
                                 animate={{ scale: 1, opacity: 1 }}
                                 transition={{ delay: 0.2 }}
-                                className="hidden lg:block shrink-0 p-6 rounded-[32px] bg-white/[0.05] backdrop-blur-xl border border-white/10 w-72 shadow-2xl relative overflow-hidden group"
+                                className="hidden lg:block shrink-0 p-6 rounded-[40px] bg-emerald-950/30 backdrop-blur-xl border border-amber-200/15 w-72 shadow-2xl shadow-emerald-950/40 relative overflow-hidden group"
                             >
                                 <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none group-hover:scale-110 transition-transform">
                                     <Phone size={100} className="text-white" />
@@ -329,7 +329,7 @@ export default function VillagePortalClient({ ctx, ward, village }) {
                                     animate={{ opacity: 1, scale: 1 }}
                                     transition={{ delay: i * 0.05 + 0.3 }}
                                     key={i} 
-                                    className="flex flex-col items-center text-center p-4 rounded-[32px] bg-white/[0.04] backdrop-blur-xl border border-white/5 hover:bg-white/[0.1] hover:border-emerald-500/30 hover:-translate-y-1 transition-all duration-300 group"
+                                    className="flex flex-col items-center text-center p-4 rounded-[32px] bg-emerald-950/25 backdrop-blur-xl border border-amber-200/10 hover:bg-emerald-500/[0.12] hover:border-amber-200/30 hover:-translate-y-1 transition-all duration-300 group"
                                 >
                                     <div className={`w-12 h-12 rounded-[22px] ${s.bg} flex items-center justify-center mb-3 group-hover:scale-110 group-hover:rotate-3 transition-transform shadow-lg shadow-black/20`}>
                                         <s.icon className={`${s.color}`} size={20} />

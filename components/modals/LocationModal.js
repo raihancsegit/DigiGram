@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { X, ChevronLeft, ChevronRight, MapPin, Loader2, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { toggleModal, setStepData, goBack } from "@/lib/store/features/locationSlice";
-import { getDistricts, getChildLocationsByType } from "@/lib/services/hierarchyService";
+import { getDistricts, getChildLocationsByType, getLocationBySlug } from "@/lib/services/hierarchyService";
 import { useState, useEffect } from "react";
 import { paths } from "@/lib/constants/paths";
 import ModalPortal from "@/components/common/ModalPortal";
@@ -49,6 +49,19 @@ export default function LocationModal() {
         setLoading(false);
     };
 
+    const loadWardsForSelectedUnion = async () => {
+        if (selected.unionId) {
+            await loadWards(selected.unionId);
+            return;
+        }
+        if (!selected.unionSlug) return;
+        setLoading(true);
+        const selectedUnion = await getLocationBySlug(selected.unionSlug);
+        const data = selectedUnion?.id ? await getChildLocationsByType(selectedUnion.id, 'ward') : [];
+        setWards(data);
+        setLoading(false);
+    };
+
     useEffect(() => {
         if (!isOpen) return;
         if (step === 1) {
@@ -57,11 +70,10 @@ export default function LocationModal() {
             loadUpazilas(selected.districtId);
         } else if (step === 3 && selected.upazilaId) {
             loadUnions(selected.upazilaId);
-        } else if (step === 4 && selected.unionSlug) {
-            const selectedUnion = unions.find((u) => u.slug === selected.unionSlug);
-            if (selectedUnion) loadWards(selectedUnion.id);
+        } else if (step === 4 && (selected.unionId || selected.unionSlug)) {
+            loadWardsForSelectedUnion();
         }
-    }, [isOpen, step, selected.districtId, selected.upazilaId, selected.unionSlug, unions]);
+    }, [isOpen, step, selected.districtId, selected.upazilaId, selected.unionId, selected.unionSlug]);
 
     const handleSelect = async (item) => {
         if (step === 1) {
@@ -69,7 +81,7 @@ export default function LocationModal() {
         } else if (step === 2) {
             dispatch(setStepData({ level: "upazila", value: item.name_bn, upazilaId: item.id }));
         } else if (step === 3) {
-            dispatch(setStepData({ level: "union", value: item.name_bn, unionSlug: item.slug }));
+            dispatch(setStepData({ level: "union", value: item.name_bn, unionId: item.id, unionSlug: item.slug }));
         } else if (step === 4) {
             dispatch(setStepData({ level: "ward", value: item.name_bn, wardId: item.id }));
             dispatch(toggleModal());
@@ -140,7 +152,7 @@ export default function LocationModal() {
                         <div className="flex items-center justify-between mb-4">
                             <div>
                                 <p className="text-xs font-extrabold uppercase tracking-wider text-[color:var(--dg-teal)] mb-1">
-                                    ধাপ {step} / 8
+                                    ধাপ {step} / 4
                                 </p>
                                 <p className="text-sm font-bold text-slate-600">{title} বেছে নিন</p>
                             </div>

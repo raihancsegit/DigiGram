@@ -17,6 +17,8 @@ import WardManagementSection from '@/components/sections/ward/WardManagementSect
 import WardHouseholdManager from '@/components/sections/ward/WardHouseholdManager';
 import WardServiceRequestManager from '@/components/sections/ward/WardServiceRequestManager';
 import CitizenComplaintManager from '@/components/sections/citizen/CitizenComplaintManager';
+import CitizenAppointmentManager from '@/components/sections/citizen/CitizenAppointmentManager';
+import CitizenLifeSupportManager from '@/components/sections/citizen/CitizenLifeSupportManager';
 import UnionSmsOutbox from '@/components/sections/union/UnionSmsOutbox';
 import { wardService } from '@/lib/services/wardService';
 import { getActiveServices } from '@/lib/services/hierarchyService';
@@ -171,6 +173,18 @@ export default function WardMemberDashboard() {
     const handleActionSelect = (item) => {
         if (item.tab) setActiveTab(item.tab);
     };
+
+    const wardSmsTargetScopes = useMemo(() => {
+        const wardLabel = wardInfo?.name_bn || wardInfo?.name || 'পুরো ওয়ার্ড';
+        return [
+            { id: user?.access_scope_id, label: `${wardLabel} - সব গ্রাম`, type: 'ward' },
+            ...(villages || []).map((village) => ({
+                id: village.id,
+                label: village.bn_name || village.name_bn || village.name || 'গ্রাম',
+                type: 'village'
+            }))
+        ].filter((item) => item.id);
+    }, [user?.access_scope_id, villages, wardInfo]);
 
     const handleDeleteNews = async (newsId) => {
         if(!confirm('আপনি কি সত্যিই এই খবরটি মুছতে চান?')) return;
@@ -470,6 +484,13 @@ export default function WardMemberDashboard() {
                             <Home size={16} className="sm:w-[18px] sm:h-[18px]" />
                             হাউসহোল্ড ম্যানেজমেন্ট
                         </button>
+                        <button
+                            onClick={() => setActiveTab('household-field')}
+                            className={tabClass('household-field')}
+                        >
+                            <Home size={16} className="sm:w-[18px] sm:h-[18px]" />
+                            Priority Field Mode
+                        </button>
                         <button 
                             onClick={() => setActiveTab('management')}
                             className={tabClass('management')}
@@ -618,7 +639,11 @@ export default function WardMemberDashboard() {
                             animate={{ opacity: 1, x: 0 }}
                             exit={{ opacity: 0, x: 20 }}
                         >
-                            <CitizenComplaintManager scopeType="ward" scopeId={user.access_scope_id} title="ওয়ার্ড নাগরিক অভিযোগ" />
+                            <div className="space-y-8">
+                                <CitizenAppointmentManager scopeType="ward" scopeId={user.access_scope_id} title="ওয়ার্ড office serial queue" />
+                                <CitizenLifeSupportManager scopeType="ward" scopeId={user.access_scope_id} title="ওয়ার্ড daily life support desk" />
+                                <CitizenComplaintManager scopeType="ward" scopeId={user.access_scope_id} title="ওয়ার্ড নাগরিক অভিযোগ" />
+                            </div>
                         </motion.div>
                     ) : activeTab === 'broadcast' ? (
                         <motion.div
@@ -627,7 +652,33 @@ export default function WardMemberDashboard() {
                             animate={{ opacity: 1, x: 0 }}
                             exit={{ opacity: 0, x: 20 }}
                         >
-                            <UnionSmsOutbox unionId={user.access_scope_id} />
+                            <UnionSmsOutbox
+                                unionId={user.access_scope_id}
+                                heading="Ward SMS Broadcast & Follow-up"
+                                description="এই ওয়ার্ডের সব পরিবার বা নির্দিষ্ট গ্রামের নাগরিকদের জরুরি বার্তা, service update, tax reminder ও citizen score follow-up পাঠান।"
+                                ownerLabel={wardInfo?.name_bn || wardInfo?.name || 'ওয়ার্ড'}
+                                targetScopes={wardSmsTargetScopes}
+                            />
+                        </motion.div>
+                    ) : activeTab === 'household-field' ? (
+                        <motion.div
+                            key="household-field"
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: 20 }}
+                        >
+                            <div className="bg-white rounded-[40px] p-6 md:p-12 border border-slate-200 shadow-sm">
+                                <div className="flex items-center gap-4 mb-10">
+                                    <div className="w-14 h-14 rounded-3xl bg-slate-950 flex items-center justify-center text-teal-300 shadow-xl shrink-0">
+                                        <Home size={28} />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-2xl font-black text-slate-800 leading-tight">Household Priority & Mobile Field Mode</h3>
+                                        <p className="text-sm font-bold text-slate-400 mt-1">NID, জন্ম নিবন্ধন, blood group, tax, service request ও support candidate একসাথে দেখে মাঠে দ্রুত কাজ করুন।</p>
+                                    </div>
+                                </div>
+                                <WardHouseholdManager wardId={user.access_scope_id} initialHouseholdMode="field" />
+                            </div>
                         </motion.div>
                     ) : activeTab === 'management' ? (
                         <motion.div 
@@ -678,10 +729,27 @@ export default function WardMemberDashboard() {
 async function loadWardActionQueue(wardId) {
     if (!wardId) return [];
 
-    const [{ data: complaintRows }, { data: households }] = await Promise.all([
+    const [
+        { data: complaintRows },
+        { data: appointmentRows },
+        { data: lifeSupportRows },
+        { data: households }
+    ] = await Promise.all([
         supabase
             .from('citizen_complaints')
             .select('id,priority,status,title,created_at')
+            .eq('assigned_scope_type', 'ward')
+            .eq('assigned_scope_id', wardId)
+            .limit(80),
+        supabase
+            .from('citizen_appointments')
+            .select('id,priority,status,title,scheduled_at,serial_no,created_at')
+            .eq('assigned_scope_type', 'ward')
+            .eq('assigned_scope_id', wardId)
+            .limit(80),
+        supabase
+            .from('citizen_life_support_cases')
+            .select('id,case_type,priority,status,title,scheduled_at,created_at')
             .eq('assigned_scope_type', 'ward')
             .eq('assigned_scope_id', wardId)
             .limit(80),
@@ -714,6 +782,10 @@ async function loadWardActionQueue(wardId) {
     const urgentComplaints = (complaintRows || []).filter((item) =>
         ['urgent', 'emergency'].includes(item.priority) && !['resolved', 'closed'].includes(item.status)
     );
+    const openAppointments = (appointmentRows || []).filter((item) => !['completed', 'rejected', 'no_show'].includes(item.status));
+    const unscheduledAppointments = openAppointments.filter((item) => !item.scheduled_at);
+    const openLifeSupport = (lifeSupportRows || []).filter((item) => !['completed', 'rejected'].includes(item.status));
+    const urgentLifeSupport = openLifeSupport.filter((item) => ['urgent', 'emergency'].includes(item.priority));
     const pendingRequests = (requestRows || []).filter((item) => ['pending', 'processing', 'ready'].includes(item.status));
     const readyRequests = pendingRequests.filter((item) => item.status === 'ready' && !item.collection_date);
     const dueTaxes = (taxRows || []).filter((item) => ['due', 'partial'].includes(item.status));
@@ -740,6 +812,30 @@ async function loadWardActionQueue(wardId) {
             text: `${toBnDigits(urgentComplaints.length.toString())}টি জরুরি complaint review দরকার।`,
             badge: `${toBnDigits(urgentComplaints.length.toString())} pending`,
             actionLabel: 'অভিযোগ খুলুন',
+            tab: 'complaints'
+        },
+        openAppointments.length > 0 && {
+            key: 'ward-appointments',
+            type: 'appointment',
+            tone: unscheduledAppointments.length > 0 ? 'amber' : 'teal',
+            urgent: unscheduledAppointments.length > 0,
+            title: unscheduledAppointments.length > 0 ? 'Office serial schedule বাকি' : 'Office serial queue',
+            text: unscheduledAppointments.length > 0
+                ? `${toBnDigits(unscheduledAppointments.length.toString())}টি citizen appointment schedule ছাড়া আছে।`
+                : `${toBnDigits(openAppointments.length.toString())}টি appointment চলমান।`,
+            badge: `${toBnDigits(openAppointments.length.toString())} serial`,
+            actionLabel: 'Serial খুলুন',
+            tab: 'complaints'
+        },
+        openLifeSupport.length > 0 && {
+            key: 'ward-life-support',
+            type: 'support',
+            tone: urgentLifeSupport.length > 0 ? 'rose' : 'teal',
+            urgent: urgentLifeSupport.length > 0,
+            title: urgentLifeSupport.length > 0 ? 'জরুরি life support' : 'Daily life support desk',
+            text: `${toBnDigits(openLifeSupport.length.toString())}টি document/benefit/health/job/farmer support request খোলা আছে।`,
+            badge: `${toBnDigits(openLifeSupport.length.toString())} support`,
+            actionLabel: 'Support খুলুন',
             tab: 'complaints'
         },
         pendingRequests.length > 0 && {

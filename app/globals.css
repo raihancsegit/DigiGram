@@ -26,6 +26,41 @@ body {
   background-color: var(--dg-page-b);
   font-family: var(--dg-font);
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(15, 23, 42, 0.22) transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(15, 23, 42, 0.22);
+  border-radius: 999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(15, 23, 42, 0.36);
+}
+
+.no-scrollbar,
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar,
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
 }
 @keyframes schoolNoticeMarquee {
   from {

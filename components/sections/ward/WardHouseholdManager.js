@@ -7,7 +7,7 @@ import {
     Home, Users, MapPin, UserCheck, Plus, Search, 
     ChevronRight, ChevronLeft, Save, Trash2, Edit3, CheckCircle2, CheckCircle, AlertCircle, Loader2,
     ArrowLeft, ArrowRight, Map as MapIcon, Info, Filter, X, Shield, Hash, Fingerprint, Baby, HeartPulse, Phone, HandHeart, GraduationCap,
-    Clock3, FileText, WalletCards, Activity, Stethoscope
+    Clock3, FileText, WalletCards, Activity, Stethoscope, Smartphone, Navigation, MessageSquare
 } from 'lucide-react';
 import { householdService } from '@/lib/services/householdService';
 import { adminService } from '@/lib/services/adminService';
@@ -21,7 +21,7 @@ import toast from 'react-hot-toast';
 const inputStyles = "w-full px-5 py-4 rounded-[20px] bg-slate-50 border border-slate-100 focus:bg-white focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 outline-none transition-all font-bold text-slate-700 text-sm";
 const labelStyles = "text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1 mb-1.5 block";
 
-export default function WardHouseholdManager({ wardId, assignedVillage = null, volunteerMode = false }) {
+export default function WardHouseholdManager({ wardId, assignedVillage = null, volunteerMode = false, initialHouseholdMode = 'all' }) {
     const { user } = useSelector((state) => state.auth);
     const isAssignedVillageMode = volunteerMode || Boolean(assignedVillage?.id);
     const [villages, setVillages] = useState([]);
@@ -30,6 +30,7 @@ export default function WardHouseholdManager({ wardId, assignedVillage = null, v
     const [currentPage, setCurrentPage] = useState(1);
     const [searchQuery, setSearchQuery] = useState('');
     const [followUpFilter, setFollowUpFilter] = useState('all');
+    const [householdMode, setHouseholdMode] = useState(initialHouseholdMode);
     const ITEMS_PER_PAGE = 24;
     const [loading, setLoading] = useState(true);
     const [activeView, setActiveView] = useState(isAssignedVillageMode ? 'houses' : 'villages');
@@ -103,6 +104,10 @@ export default function WardHouseholdManager({ wardId, assignedVillage = null, v
     useEffect(() => {
         loadInitialData();
     }, [loadInitialData]);
+
+    useEffect(() => {
+        setHouseholdMode(initialHouseholdMode);
+    }, [initialHouseholdMode]);
 
     useEffect(() => {
         if (!isAssignedVillageMode || !assignedVillage) return;
@@ -520,6 +525,107 @@ export default function WardHouseholdManager({ wardId, assignedVillage = null, v
                                 })()}
                             </div>
                         </div>
+
+                        <div className="rounded-[30px] border border-slate-200 bg-white p-3 shadow-sm">
+                            <div className="grid gap-2 sm:grid-cols-3">
+                                {[
+                                    { id: 'all', label: 'সকল বাড়ি', hint: 'গ্রামভিত্তিক পূর্ণ তালিকা', Icon: Home },
+                                    { id: 'priority', label: 'Priority List', hint: 'যে পরিবার আগে follow-up দরকার', Icon: AlertCircle },
+                                    { id: 'field', label: 'Mobile Officer Mode', hint: 'মাঠে দ্রুত Call/SMS/Map/Update', Icon: Smartphone }
+                                ].map((mode) => {
+                                    const isActive = householdMode === mode.id;
+                                    return (
+                                        <button
+                                            key={mode.id}
+                                            type="button"
+                                            onClick={() => setHouseholdMode(mode.id)}
+                                            className={`flex items-center gap-3 rounded-[24px] border p-4 text-left transition-all ${
+                                                isActive
+                                                    ? 'border-teal-200 bg-slate-950 text-white shadow-lg shadow-slate-200'
+                                                    : 'border-slate-100 bg-slate-50 text-slate-700 hover:border-teal-200 hover:bg-teal-50'
+                                            }`}
+                                        >
+                                            <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${isActive ? 'bg-teal-500 text-white' : 'bg-white text-teal-600'}`}>
+                                                <mode.Icon size={20} />
+                                            </span>
+                                            <span className="min-w-0">
+                                                <span className="block text-sm font-black">{mode.label}</span>
+                                                <span className={`mt-0.5 block text-[11px] font-bold ${isActive ? 'text-slate-300' : 'text-slate-400'}`}>{mode.hint}</span>
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {householdMode === 'field' && (
+                            <section className="rounded-[32px] border border-teal-100 bg-gradient-to-br from-slate-950 via-slate-900 to-teal-950 p-4 text-white shadow-xl shadow-teal-900/10 sm:p-6">
+                                <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                                    <div>
+                                        <p className="text-[10px] font-black uppercase tracking-[0.28em] text-teal-300">Field Mode</p>
+                                        <h4 className="text-2xl font-black">আজ মাঠে যাদের আগে ধরবেন</h4>
+                                        <p className="mt-1 text-sm font-bold text-slate-300">Priority score অনুযায়ী পরিবার সাজানো। ফোনে use করার জন্য action button বড় রাখা হয়েছে।</p>
+                                    </div>
+                                    <span className="w-fit rounded-full bg-white/10 px-4 py-2 text-xs font-black text-teal-100">
+                                        {toBnDigits(priorityFamilies.length)} পরিবার priority
+                                    </span>
+                                </div>
+                                {priorityFamilies.length === 0 ? (
+                                    <div className="rounded-[28px] border border-white/10 bg-white/5 p-5 text-sm font-bold text-teal-100">
+                                        এই গ্রামে এখন বড় data gap নেই। নতুন বাড়ি/সদস্য এন্ট্রি করলে priority নিজে থেকে update হবে।
+                                    </div>
+                                ) : (
+                                    <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
+                                        {priorityFamilies.slice(0, 12).map((family, index) => {
+                                            const house = family.house;
+                                            const phone = getHouseholdPhone(house);
+                                            const mapHref = getHouseholdMapHref(house);
+                                            return (
+                                                <div key={house.id} className="rounded-[28px] border border-white/10 bg-white/10 p-4 backdrop-blur">
+                                                    <div className="mb-4 flex items-start justify-between gap-3">
+                                                        <div className="min-w-0">
+                                                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-teal-200">#{toBnDigits(index + 1)} priority</p>
+                                                            <h5 className="mt-1 truncate text-lg font-black">{house.owner_name || 'নাম নেই'}</h5>
+                                                            <p className="text-xs font-bold text-slate-300">Holding: {house.house_no || 'নেই'} · সদস্য {toBnDigits(house.stats?.total_members || house.residents?.length || 0)}</p>
+                                                        </div>
+                                                        <span className="rounded-2xl bg-amber-400 px-3 py-2 text-lg font-black text-slate-950">{toBnDigits(family.score)}</span>
+                                                    </div>
+                                                    <div className="mb-4 flex flex-wrap gap-1.5">
+                                                        {family.reasons.slice(0, 4).map((reason) => (
+                                                            <span key={reason} className="rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-black text-slate-100">
+                                                                {reason}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        <button type="button" onClick={() => setSelectedHouseholdForLocker(house)} className="rounded-2xl bg-teal-400 px-3 py-3 text-xs font-black text-slate-950 transition hover:bg-white">
+                                                            Open
+                                                        </button>
+                                                        <button type="button" onClick={(event) => handleEditHousehold(event, house)} className="rounded-2xl bg-white/10 px-3 py-3 text-xs font-black text-white transition hover:bg-white/20">
+                                                            Update
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => family.followUps?.[0] && handleSendFollowUpSms(family.followUps[0])}
+                                                            disabled={!family.followUps?.[0]?.phone || sendingReminderKey === family.followUps?.[0]?.key}
+                                                            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-amber-400 px-3 py-3 text-xs font-black text-slate-950 transition hover:bg-amber-300 disabled:pointer-events-none disabled:bg-white/5 disabled:text-slate-500"
+                                                        >
+                                                            <MessageSquare size={14} /> SMS
+                                                        </button>
+                                                        <a href={phone ? `tel:${phone}` : undefined} aria-disabled={!phone} className={`inline-flex items-center justify-center gap-2 rounded-2xl px-3 py-3 text-xs font-black transition ${phone ? 'bg-white text-slate-950 hover:bg-teal-100' : 'pointer-events-none bg-white/5 text-slate-500'}`}>
+                                                            <Phone size={14} /> Call
+                                                        </a>
+                                                        <a href={mapHref || undefined} target="_blank" rel="noreferrer" aria-disabled={!mapHref} className={`inline-flex items-center justify-center gap-2 rounded-2xl px-3 py-3 text-xs font-black transition ${mapHref ? 'bg-white/10 text-white hover:bg-white/20' : 'pointer-events-none bg-white/5 text-slate-500'}`}>
+                                                            <Navigation size={14} /> Map
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </section>
+                        )}
 
                         <section className="rounded-[32px] border border-amber-100 bg-amber-50/70 p-5 sm:p-6">
                             <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
@@ -1031,7 +1137,7 @@ export default function WardHouseholdManager({ wardId, assignedVillage = null, v
             {/* Household Entry Modal */}
             {showHouseModal && (
                 <ModalPortal>
-                    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
+                    <div className="fixed inset-0 z-[99999] flex items-stretch justify-center overflow-hidden p-0 sm:items-center sm:p-4">
                         <motion.div 
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
@@ -1043,7 +1149,7 @@ export default function WardHouseholdManager({ wardId, assignedVillage = null, v
                             initial={{ opacity: 0, scale: 0.95, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                            className="relative flex h-full w-full items-stretch justify-center sm:h-auto sm:max-w-4xl sm:items-center"
+                            className="relative flex h-full min-h-0 w-full min-w-0 items-stretch justify-center sm:h-auto sm:max-w-4xl sm:items-center"
                         >
                             <HouseholdEntryForm 
                                 wardId={wardId}
@@ -1099,6 +1205,17 @@ export default function WardHouseholdManager({ wardId, assignedVillage = null, v
     );
 }
 
+function getHouseholdPhone(house) {
+    return String(house?.phone || house?.owner_phone || '').replace(/[^\d+]/g, '');
+}
+
+function getHouseholdMapHref(house) {
+    const lat = house?.lat ?? house?.latitude ?? house?.gps_lat;
+    const lng = house?.lng ?? house?.longitude ?? house?.gps_lng;
+    if (!lat || !lng) return '';
+    return `https://www.google.com/maps?q=${lat},${lng}`;
+}
+
 function getResidentAge(dob) {
     if (!dob) return null;
     const birthDate = new Date(dob);
@@ -1139,6 +1256,7 @@ function buildHouseholdPriorityCards(households = [], followUpItems = []) {
 
         return {
             house,
+            followUps,
             score,
             reasons,
             timeline,

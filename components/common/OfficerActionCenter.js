@@ -6,6 +6,7 @@ import {
     ArrowRight,
     Banknote,
     Bell,
+    CalendarCheck,
     CheckCircle2,
     ClipboardList,
     FileText,
@@ -17,11 +18,13 @@ import {
 import { toBnDigits } from '@/lib/utils/format';
 
 const ICONS = {
+    appointment: CalendarCheck,
     benefit: Users,
     complaint: MessageSquareWarning,
     health: HeartPulse,
     service: FileText,
     sms: Bell,
+    support: ShieldCheck,
     tax: Banknote,
     default: ShieldCheck
 };

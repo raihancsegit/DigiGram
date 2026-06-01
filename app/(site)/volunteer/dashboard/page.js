@@ -183,6 +183,7 @@ export default function VolunteerDashboard() {
                             { id: 'households', label: 'বাড়ি এন্ট্রি', icon: Home },
                             { id: 'news', label: 'খবর ও নোটিশ', icon: Newspaper },
                             { id: 'management', label: 'গ্রাম তথ্য', icon: Settings },
+                            { id: 'field', label: 'Field Mode', icon: MoveUpRight },
                         ].map((tab) => {
                             const isActive = activeTab === tab.id;
                             return (
@@ -323,6 +324,37 @@ export default function VolunteerDashboard() {
                                             wardId={villageData?.ward?.id}
                                             assignedVillage={householdVillage}
                                             volunteerMode={true}
+                                        />
+                                    </div>
+                                </div>
+                            </motion.div>
+                        ) : activeTab === 'field' ? (
+                            <motion.div
+                                key="field"
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -20 }}
+                            >
+                                <div className="bg-white rounded-[40px] border border-slate-200/60 shadow-xl shadow-slate-200/40 overflow-hidden">
+                                    <div className="px-6 md:px-10 py-8 bg-slate-950 text-white border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+                                        <div className="flex items-center gap-5">
+                                            <div className="w-16 h-16 rounded-[24px] bg-teal-400 flex items-center justify-center text-slate-950 shadow-xl shadow-teal-900/30 shrink-0">
+                                                <MoveUpRight size={28} />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-2xl font-black leading-tight">Mobile Field Mode</h3>
+                                                <p className="text-sm font-bold text-slate-300 mt-1">
+                                                    {householdVillage?.bn_name || village?.name_bn} গ্রামের priority family, SMS, call, map ও quick update এক জায়গায়।
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="p-4 md:p-8">
+                                        <WardHouseholdManager
+                                            wardId={villageData?.ward?.id}
+                                            assignedVillage={householdVillage}
+                                            volunteerMode={true}
+                                            initialHouseholdMode="field"
                                         />
                                     </div>
                                 </div>

@@ -33,10 +33,14 @@ async function getLocationScope(ownerId) {
         .eq('id', ownerId)
         .maybeSingle();
 
+    if (data?.type === 'village') return 'village';
     return data?.type === 'ward' ? 'ward' : 'union';
 }
 
 function applyHouseholdScope(query, ownerId, scope, relation = 'household') {
+    if (scope === 'village') {
+        return relation ? query.eq(`${relation}.location_village_id`, ownerId) : query.eq('location_village_id', ownerId);
+    }
     if (scope === 'ward') {
         return relation ? query.eq(`${relation}.ward_id`, ownerId) : query.eq('ward_id', ownerId);
     }
@@ -49,7 +53,7 @@ async function getLocationRecipients(ownerId, targetType) {
     if (targetType === 'service_applicants') {
         const query = supabaseAdmin
             .from('service_requests')
-            .select('id, applicant_name, contact_phone, household:households!inner(ward_id, ward:locations!inner(parent_id))')
+            .select('id, applicant_name, contact_phone, household:households!inner(ward_id, location_village_id, ward:locations!inner(parent_id))')
             .not('contact_phone', 'is', null)
             .order('created_at', { ascending: false })
             .limit(1000);
@@ -66,7 +70,7 @@ async function getLocationRecipients(ownerId, targetType) {
         const statuses = targetType === 'service_ready' ? ['ready'] : ['pending', 'processing'];
         const query = supabaseAdmin
             .from('service_requests')
-            .select('id, applicant_name, contact_phone, status, household:households!inner(ward_id, ward:locations!inner(parent_id))')
+            .select('id, applicant_name, contact_phone, status, household:households!inner(ward_id, location_village_id, ward:locations!inner(parent_id))')
             .in('status', statuses)
             .not('contact_phone', 'is', null)
             .order('created_at', { ascending: false })
@@ -83,7 +87,7 @@ async function getLocationRecipients(ownerId, targetType) {
     if (targetType === 'tax_due') {
         const query = supabaseAdmin
             .from('household_taxes')
-            .select('id, status, household:households!inner(owner_name, phone, ward_id, ward:locations!inner(parent_id))')
+            .select('id, status, household:households!inner(owner_name, phone, ward_id, location_village_id, ward:locations!inner(parent_id))')
             .in('status', ['due', 'partial', 'pending'])
             .order('created_at', { ascending: false })
             .limit(1500);
@@ -99,7 +103,7 @@ async function getLocationRecipients(ownerId, targetType) {
     if (['missing_nid', 'missing_birth', 'benefit_candidates', 'women_support', 'widow_support', 'maternity_support', 'health_checkup', 'low_completeness', 'emergency_broadcast'].includes(targetType)) {
         const query = supabaseAdmin
             .from('residents')
-            .select('id, name, dob, gender, nid, birth_reg_no, blood_group, marital_status, disability_status, occupation, household:households!inner(owner_name, phone, ward_id, ward:locations!inner(parent_id))')
+            .select('id, name, dob, gender, nid, birth_reg_no, blood_group, marital_status, disability_status, occupation, household:households!inner(owner_name, phone, ward_id, location_village_id, ward:locations!inner(parent_id))')
             .limit(4000);
         const { data, error } = await applyHouseholdScope(query, ownerId, scope);
         if (error) throw error;
@@ -127,7 +131,7 @@ async function getLocationRecipients(ownerId, targetType) {
 
     const query = supabaseAdmin
         .from('households')
-        .select('id, owner_name, phone, ward_id, ward:locations!inner(parent_id)')
+        .select('id, owner_name, phone, ward_id, location_village_id, ward:locations!inner(parent_id)')
         .not('phone', 'is', null)
         .order('created_at', { ascending: false })
         .limit(2000);
@@ -225,7 +229,8 @@ export async function POST(request) {
             templateId,
             title,
             message,
-            category = 'campaign'
+            category = 'campaign',
+            targetOwnerId = ownerId
         } = body;
 
         if (!ownerType || !ownerId || !message) {
@@ -234,7 +239,7 @@ export async function POST(request) {
 
         const recipients = ownerType === 'institution'
             ? await getInstitutionRecipients(ownerId)
-            : await getLocationRecipients(ownerId, targetType);
+            : await getLocationRecipients(targetOwnerId, targetType);
 
         if (recipients.length === 0) {
             return NextResponse.json({ error: 'No valid recipients found for this target' }, { status: 400 });
@@ -323,6 +328,7 @@ export async function GET(request) {
         const { searchParams } = new URL(request.url);
         const ownerType = searchParams.get('ownerType');
         const ownerId = searchParams.get('ownerId');
+        const targetOwnerId = searchParams.get('targetOwnerId') || ownerId;
         const targetType = searchParams.get('targetType') || 'all_households';
 
         if (!ownerType || !ownerId) {
@@ -331,12 +337,13 @@ export async function GET(request) {
 
         const recipients = ownerType === 'institution'
             ? await getInstitutionRecipients(ownerId)
-            : await getLocationRecipients(ownerId, targetType);
+            : await getLocationRecipients(targetOwnerId, targetType);
 
         return NextResponse.json({
             success: true,
             data: {
                 targetType,
+                targetOwnerId,
                 recipientCount: recipients.length,
                 estimatedCredits: recipients.length,
                 sample: recipients.slice(0, 5)

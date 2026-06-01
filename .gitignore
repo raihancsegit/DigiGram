@@ -41,3 +41,7 @@ yarn-error.log*
 next-env.d.ts
 
 .env.local
+
+# Local machine/runtime files that do not belong to the Next.js app
+php.ini
+dev-server*.log

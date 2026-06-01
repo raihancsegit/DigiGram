@@ -234,13 +234,13 @@ export default function WardPortalClient({ ctx, ward: initialWard }) {
     return (
         <div className="bg-slate-50 min-h-screen">
             {/* Hero Section */}
-            <div className="relative pt-4 md:pt-10 pb-20 md:pb-40 px-3 md:px-6 bg-slate-900 border-b border-slate-800 rounded-b-[32px] md:rounded-b-[80px]">
-                {/* Background Blobs - Wrapped to prevent overflow */}
+            <div className="relative pt-4 md:pt-10 pb-20 md:pb-40 px-3 md:px-6 bg-[linear-gradient(135deg,#0f172a_0%,#14213d_48%,#0f3f5d_100%)] border-b border-sky-500/20 rounded-b-[32px] md:rounded-b-[80px]">
+                {/* Administrative command-grid background */}
                 <div className="absolute inset-0 overflow-hidden rounded-b-[32px] md:rounded-b-[80px] pointer-events-none">
-                    <div className="absolute inset-0 opacity-40">
-                        <div className="absolute top-0 right-0 w-96 h-96 bg-teal-500 rounded-full blur-[120px] translate-x-1/3 -translate-y-1/4" />
-                        <div className="absolute bottom-0 left-0 w-96 h-96 bg-sky-500 rounded-full blur-[120px] -translate-x-1/3 translate-y-1/4" />
-                    </div>
+                    <div className="absolute inset-0 bg-[linear-gradient(rgba(56,189,248,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(45,212,191,0.07)_1px,transparent_1px)] bg-[size:48px_48px] opacity-60" />
+                    <div className="absolute inset-y-0 right-0 w-1/2 bg-[linear-gradient(120deg,transparent_0%,rgba(14,165,233,0.18)_45%,rgba(15,23,42,0.1)_100%)]" />
+                    <div className="absolute left-0 top-0 h-full w-24 bg-sky-400/10" />
+                    <div className="absolute bottom-0 left-0 h-1/3 w-full bg-[linear-gradient(0deg,rgba(15,23,42,0.62),transparent)]" />
                 </div>
                 
                 <div className="max-w-[1200px] mx-auto relative z-10">
@@ -308,7 +308,7 @@ export default function WardPortalClient({ ctx, ward: initialWard }) {
                                 initial={{ scale: 0.9, opacity: 0 }}
                                 animate={{ scale: 1, opacity: 1 }}
                                 transition={{ delay: 0.2 }}
-                                className="hidden lg:block shrink-0 p-6 rounded-[32px] bg-white/[0.05] backdrop-blur-xl border border-white/10 w-72 shadow-2xl relative overflow-hidden group"
+                                className="hidden lg:block shrink-0 p-6 rounded-[32px] bg-sky-950/35 backdrop-blur-xl border border-sky-300/15 w-72 shadow-2xl shadow-sky-950/40 relative overflow-hidden group"
                             >
                                 <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none group-hover:scale-110 transition-transform">
                                     <Phone size={100} className="text-white" />
@@ -348,7 +348,7 @@ export default function WardPortalClient({ ctx, ward: initialWard }) {
                                     animate={{ opacity: 1, scale: 1 }}
                                     transition={{ delay: i * 0.05 + 0.3 }}
                                     key={i} 
-                                    className="flex flex-col items-center text-center p-4 rounded-[28px] bg-white/[0.03] backdrop-blur-xl border border-white/5 hover:bg-white/[0.08] hover:border-white/15 hover:-translate-y-1 transition-all duration-300 group"
+                                    className="flex flex-col items-center text-center p-4 rounded-[18px] bg-sky-950/25 backdrop-blur-xl border border-sky-300/10 hover:bg-sky-500/10 hover:border-sky-300/30 hover:-translate-y-1 transition-all duration-300 group"
                                 >
                                     <div className={`w-12 h-12 rounded-2xl ${s.bg} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform shadow-lg shadow-black/20`}>
                                         <s.icon className={`${s.color}`} size={20} />
