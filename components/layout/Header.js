@@ -106,6 +106,20 @@ export default function Header() {
 
     const dateStr = currentTime.toLocaleDateString('bn-BD', { day: 'numeric', month: 'long' });
     const timeStr = currentTime.toLocaleTimeString('bn-BD', { hour: '2-digit', minute: '2-digit' });
+    const selectedLocationTitle = selected.union || 'এলাকা নির্বাচন';
+    const selectedLocationMeta = selected.ward
+        ? `${selected.ward} নং ওয়ার্ড`
+        : selected.upazila
+            ? `${selected.upazila} উপজেলা`
+            : 'আপনার ইউনিয়ন ও ওয়ার্ড বেছে নিন';
+    const selectedLocationHref = selected.unionSlug ? paths.unionPortal(selected.unionSlug) : '#';
+    const openLocationPicker = () => dispatch(openModal());
+    const handleLocationLinkClick = (e) => {
+        if (!selected.unionSlug) {
+            e.preventDefault();
+            openLocationPicker();
+        }
+    };
 
     const handleLogout = async () => {
         await dispatch(performLogout());
@@ -415,23 +429,19 @@ export default function Header() {
 
                             {/* Advanced Location Picker - Split Logic */}
                             {mounted && (
-                                <div className={`hidden sm:flex items-center rounded-full border transition-all h-9 sm:h-12 overflow-hidden shadow-sm w-fit min-w-[110px] sm:min-w-[180px] max-w-[260px] ${
+                                <div className={`hidden sm:flex items-center rounded-full border transition-all h-11 sm:h-12 overflow-hidden shadow-sm w-fit min-w-[190px] max-w-[280px] ${
                                     isScrolled 
-                                    ? 'bg-white/5 border-white/10' 
-                                    : 'bg-white border-slate-200'
+                                    ? 'bg-white/5 border-white/10 shadow-teal-950/20' 
+                                    : 'bg-white border-slate-200 shadow-slate-200/70'
                                 }`}>
                                     {/* Left Part: Navigation Link */}
                                     <Link
-                                        href={selected.unionSlug ? `/u/${selected.unionSlug}` : '#'}
-                                        onClick={(e) => {
-                                            if (!selected.unionSlug) {
-                                                e.preventDefault();
-                                                dispatch(openModal());
-                                            }
-                                        }}
-                                        className={`flex items-center gap-1.5 sm:gap-2.5 px-2 sm:px-4 h-full transition-all hover:bg-slate-50/50 min-w-0 group/loc-text ${
-                                            isScrolled ? 'hover:bg-white/5' : ''
+                                        href={selectedLocationHref}
+                                        onClick={handleLocationLinkClick}
+                                        className={`flex items-center gap-2.5 px-3 sm:px-4 h-full transition-all min-w-0 group/loc-text ${
+                                            isScrolled ? 'hover:bg-white/5' : 'hover:bg-slate-50'
                                         }`}
+                                        aria-label={`${selectedLocationTitle} পোর্টাল খুলুন`}
                                     >
                                         <div className={`p-1 sm:p-1.5 rounded-full transition-all shrink-0 ${
                                             isScrolled 
@@ -452,12 +462,13 @@ export default function Header() {
 
                                     {/* Right Part: Modal Trigger */}
                                     <button
-                                        onClick={() => dispatch(openModal())}
-                                        className={`w-7 sm:w-10 h-full border-l flex items-center justify-center transition-all hover:bg-teal-500 hover:text-white group/arrow ${
+                                        onClick={openLocationPicker}
+                                        className={`w-11 h-full border-l flex items-center justify-center transition-all hover:bg-teal-500 hover:text-white group/arrow ${
                                             isScrolled 
                                             ? 'border-white/10 text-teal-400' 
                                             : 'border-slate-100 text-slate-400'
                                         }`}
+                                        aria-label="লোকেশন পরিবর্তন করুন"
                                         title="লোকেশন পরিবর্তন করুন"
                                     >
                                         <ChevronDown size={10} className="transition-transform group-hover/arrow:rotate-180" />
@@ -577,6 +588,49 @@ export default function Header() {
                             </div>
                         </div>
                     </nav>
+
+                    {mounted && (
+                        <div className="sm:hidden pb-3">
+                            <button
+                                type="button"
+                                onClick={openLocationPicker}
+                                className={`w-full min-h-[54px] rounded-2xl border px-3.5 py-2.5 flex items-center justify-between gap-3 text-left active:scale-[0.99] transition-all ${
+                                    isScrolled
+                                        ? 'bg-white/5 border-white/10 text-white shadow-inner'
+                                        : 'bg-slate-50 border-slate-200 text-slate-900 shadow-sm'
+                                }`}
+                                aria-label="এলাকা নির্বাচন করুন"
+                            >
+                                <span className="flex items-center gap-3 min-w-0">
+                                    <span className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                                        isScrolled ? 'bg-teal-400/15 text-teal-300' : 'bg-teal-50 text-teal-600'
+                                    }`}>
+                                        <MapPin size={18} />
+                                    </span>
+                                    <span className="min-w-0">
+                                        <span className={`block text-[10px] font-black uppercase tracking-[0.16em] ${
+                                            isScrolled ? 'text-teal-300/80' : 'text-teal-700'
+                                        }`}>
+                                            লোকেশন
+                                        </span>
+                                        <span className="block text-sm font-black truncate">
+                                            {selectedLocationTitle}
+                                        </span>
+                                        <span className={`block text-[11px] font-bold truncate ${
+                                            isScrolled ? 'text-white/55' : 'text-slate-500'
+                                        }`}>
+                                            {selectedLocationMeta}
+                                        </span>
+                                    </span>
+                                </span>
+                                <span className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                                    isScrolled ? 'bg-white/10 text-teal-300' : 'bg-white text-slate-400 border border-slate-200'
+                                }`}>
+                                    <ChevronDown size={16} />
+                                </span>
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
             <AnimatePresence>

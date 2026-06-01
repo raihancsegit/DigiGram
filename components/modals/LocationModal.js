@@ -20,6 +20,12 @@ export default function LocationModal() {
     const [unions, setUnions] = useState([]);
     const [wards, setWards] = useState([]);
     const [loading, setLoading] = useState(false);
+    const selectedTrail = [
+        selected.district,
+        selected.upazila,
+        selected.union,
+        selected.ward
+    ].filter(Boolean);
 
     const loadDistricts = async () => {
         setLoading(true);
@@ -114,14 +120,15 @@ export default function LocationModal() {
                 <motion.div
                     initial={{ y: "100%" }}
                     animate={{ y: 0 }}
-                    className="bg-white w-full max-w-lg rounded-t-[32px] sm:rounded-[32px] shadow-2xl h-[85vh] sm:h-auto sm:max-h-[90vh] flex flex-col overflow-hidden relative"
+                    className="bg-white w-full max-w-2xl rounded-t-[32px] sm:rounded-[32px] shadow-2xl h-[92dvh] sm:h-auto sm:max-h-[90vh] flex flex-col overflow-hidden relative"
                 >
                     {/* Mobile Handle */}
                     <div className="flex justify-center pt-4 pb-2 sm:hidden shrink-0">
                         <div className="w-12 h-1.5 rounded-full bg-slate-200" />
                     </div>
 
-                    <div className="px-6 py-5 sm:p-8 border-b border-slate-100 flex justify-between items-center shrink-0">
+                    <div className="px-5 py-4 sm:px-8 sm:py-6 border-b border-slate-100 shrink-0">
+                        <div className="flex justify-between items-center gap-4">
                         <div className="flex items-center gap-4 min-w-0">
                             {step > 1 && (
                                 <button
@@ -146,9 +153,25 @@ export default function LocationModal() {
                         >
                             <X size={22} />
                         </button>
+                        </div>
+
+                        <div className="mt-4 flex flex-wrap items-center gap-2">
+                            {(selectedTrail.length ? selectedTrail : ['এলাকা নির্বাচন বাকি']).map((label, index) => (
+                                <span
+                                    key={`${label}-${index}`}
+                                    className={`rounded-full px-3 py-1 text-[11px] font-extrabold ${
+                                        selectedTrail.length
+                                            ? 'bg-teal-50 text-teal-700 border border-teal-100'
+                                            : 'bg-slate-100 text-slate-500'
+                                    }`}
+                                >
+                                    {label}
+                                </span>
+                            ))}
+                        </div>
                     </div>
 
-                    <div className="p-6 overflow-y-auto flex-1">
+                    <div className="p-4 sm:p-6 overflow-y-auto flex-1 bg-slate-50/60">
                         <div className="flex items-center justify-between mb-4">
                             <div>
                                 <p className="text-xs font-extrabold uppercase tracking-wider text-[color:var(--dg-teal)] mb-1">
@@ -159,9 +182,9 @@ export default function LocationModal() {
                             {loading && <Loader2 className="animate-spin text-[color:var(--dg-teal)]" size={20} />}
                         </div>
 
-                        <ul className="space-y-2">
+                        <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             {step === 4 && selected.unionSlug && (
-                                <li className="mb-4">
+                                <li className="sm:col-span-2">
                                     <button
                                         type="button"
                                         onClick={() => {
@@ -176,7 +199,7 @@ export default function LocationModal() {
                                 </li>
                             )}
                             {list.length === 0 && !loading ? (
-                                <div className="py-10 text-center">
+                                <div className="sm:col-span-2 py-10 text-center rounded-3xl bg-white border border-slate-200">
                                     <p className="text-slate-400 font-bold text-sm">কোন তথ্য পাওয়া যায়নি</p>
                                 </div>
                             ) : (
@@ -186,7 +209,7 @@ export default function LocationModal() {
                                             type="button"
                                             disabled={loading}
                                             onClick={() => handleSelect(item)}
-                                            className="w-full flex justify-between items-center p-4 border border-slate-200 rounded-2xl hover:bg-teal-50/80 hover:border-teal-200 transition-colors text-left disabled:opacity-50"
+                                            className="w-full min-h-[86px] flex justify-between items-center p-4 border border-slate-200 bg-white rounded-2xl hover:bg-teal-50/80 hover:border-teal-200 hover:shadow-sm transition-all text-left disabled:opacity-50"
                                         >
                                             <div className="min-w-0">
                                                 <span className="font-extrabold text-slate-800 block truncate">{item.name_bn || item.name}</span>
