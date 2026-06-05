@@ -56,7 +56,7 @@ export default function ChairmanDashboard() {
     const [actionQueue, setActionQueue] = useState([]);
     const [unionImpact, setUnionImpact] = useState({ wards: [], families: [], totals: {} });
     const [loading, setLoading] = useState(true);
-    const tabClass = (id, tone = 'teal') => `flex items-center gap-2 px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${menuStyles.tab(activeTab === id, tone)}`;
+    const tabClass = (id, tone = 'teal') => `flex items-center gap-2 px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all shrink-0 ${menuStyles.tab(activeTab === id, tone)}`;
 
     useEffect(() => {
         if (!isAuthenticated || user?.role !== 'chairman') {
@@ -279,7 +279,10 @@ export default function ChairmanDashboard() {
                 />
                 
                 <div className="mb-8">
-                    <div className="flex flex-wrap p-1.5 bg-slate-200/50 rounded-[24px] w-full gap-1">
+                    <div
+                        className="flex flex-nowrap md:flex-wrap overflow-x-auto md:overflow-x-visible p-1.5 bg-slate-200/50 rounded-[24px] md:rounded-[32px] w-full gap-1.5 scroll-smooth"
+                        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                    >
                         <button 
                             onClick={() => setActiveTab('overview')}
                             className={tabClass('overview', 'teal')}

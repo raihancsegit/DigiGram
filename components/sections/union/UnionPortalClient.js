@@ -296,6 +296,15 @@ export default function UnionPortalClient({ ctx, activeServices = [], chairman =
         { label: 'মাদ্রাসা', value: toBnDigits(aggregatedData.madrassas.toString()), icon: BookOpen, color: 'text-sky-600', shadow: 'hover:shadow-sky-500/20', bg: 'bg-sky-50' },
     ];
 
+    const publicTrustItems = [
+        { label: 'Mapped wards', value: mergedWards.length, icon: MapPin, note: 'Ward-wise public portal ready' },
+        { label: 'Mapped villages', value: allVillages.length, icon: Home, note: 'Village page and household entry path' },
+        { label: 'Households', value: aggregatedData.total_houses, icon: Users, note: 'Digital household profile coverage' },
+        { label: 'Active services', value: activeServices.length, icon: CheckCircle2, note: 'Union-enabled service modules' },
+        { label: 'Blood donors', value: aggregatedData.bloodDonors, icon: Droplets, note: 'Emergency blood support signal' },
+        { label: 'Birth records', value: aggregatedData.birth_registered, icon: ShieldCheck, note: 'Registration data progress' }
+    ];
+
     return (
         <div className="bg-slate-50 min-h-screen">
             {/* Edge-to-Edge Hero Background Area */}
@@ -806,6 +815,31 @@ export default function UnionPortalClient({ ctx, activeServices = [], chairman =
                             <h4 className="text-sm font-black uppercase tracking-widest text-teal-400 mb-2">ডিজিটাল প্রসেস</h4>
                             <p className="text-xs font-medium text-slate-400 leading-relaxed">ইউনিয়নের প্রতিটি গ্রাম ভিত্তিক সেবা আমরা পর্যায়ক্রমে চালু করছি।</p>
                         </div>
+                    </div>
+                </div>
+
+                {/* Public Trust Board */}
+                <div className="mb-20 rounded-[36px] border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+                    <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                        <div>
+                            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-teal-600">Public trust board</p>
+                            <h2 className="mt-1 text-2xl font-black text-slate-900">এই ইউনিয়নের ডিজিটাল অগ্রগতি</h2>
+                        </div>
+                        <p className="max-w-xl text-xs font-bold leading-5 text-slate-500">
+                            নাগরিকরা দ্রুত বুঝবে কোন তথ্য online আছে, কোন service চালু, আর কোন data coverage বাড়ছে।
+                        </p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
+                        {publicTrustItems.map((item) => (
+                            <div key={item.label} className="rounded-3xl border border-slate-100 bg-slate-50 p-4">
+                                <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-teal-600 shadow-sm">
+                                    <item.icon size={18} />
+                                </div>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{item.label}</p>
+                                <p className="mt-2 text-2xl font-black text-slate-900">{toBnDigits(item.value || 0)}</p>
+                                <p className="mt-2 text-[11px] font-bold leading-4 text-slate-500">{item.note}</p>
+                            </div>
+                        ))}
                     </div>
                 </div>
 

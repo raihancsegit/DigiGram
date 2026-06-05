@@ -5,11 +5,13 @@ import Link from 'next/link';
 import {
     AlertCircle,
     Baby,
+    Bot,
     CheckCircle2,
     ExternalLink,
     Fingerprint,
     HeartPulse,
     Loader2,
+    MessageSquareText,
     Send,
     ShieldCheck,
     UserRoundCheck,
@@ -120,6 +122,19 @@ export default function UnionCitizenQualityDashboard({ unionId }) {
                 <Stat icon={ShieldCheck} label="Completeness" value={`${toBnDigits(summary.citizenCompleteness || 0)}%`} raw />
             </div>
 
+            <UnionDecisionRoom
+                summary={summary}
+                wards={dashboard?.wardSummaries || []}
+                candidates={dashboard?.candidates || []}
+                womenSupport={dashboard?.womenSupport || []}
+                lowCompleteness={dashboard?.lowCompleteness || []}
+                duplicateGroups={dashboard?.duplicateGroups || []}
+            />
+
+            <OfficerDataAssistant dashboard={dashboard} />
+
+            <DuplicateCitizenPanel groups={dashboard?.duplicateGroups || []} />
+
             <WomenSupportDesk
                 summary={summary}
                 items={dashboard?.womenSupport || []}
@@ -144,6 +159,228 @@ export default function UnionCitizenQualityDashboard({ unionId }) {
                 onSendSms={() => handleSendTargetSms('low_completeness', 'Household data update', LOW_SCORE_SMS)}
             />
         </div>
+    );
+}
+
+function OfficerDataAssistant({ dashboard }) {
+    const [query, setQuery] = useState('');
+    const [answer, setAnswer] = useState('প্রশ্ন করুন অথবা নিচের quick question থেকে একটি বেছে নিন।');
+    const summary = dashboard?.summary || {};
+    const wards = dashboard?.wardSummaries || [];
+    const candidates = dashboard?.candidates || [];
+    const womenSupport = dashboard?.womenSupport || [];
+    const duplicates = dashboard?.duplicateGroups || [];
+    const lowCompleteness = dashboard?.lowCompleteness || [];
+
+    function answerQuery(rawQuery) {
+        const text = String(rawQuery || query).trim();
+        if (!text) return;
+        const normalized = text.toLowerCase();
+        const weakestWard = [...wards].sort((a, b) => {
+            const aMissing = (a.missingNid || 0) + (a.missingBirthReg || 0) + (a.missingBloodGroup || 0);
+            const bMissing = (b.missingNid || 0) + (b.missingBirthReg || 0) + (b.missingBloodGroup || 0);
+            return bMissing - aMissing;
+        })[0];
+
+        let response;
+        if (normalized.includes('nid') || normalized.includes('এনআইডি')) {
+            const ward = [...wards].sort((a, b) => (b.missingNid || 0) - (a.missingNid || 0))[0];
+            response = ward
+                ? `${ward.wardName}-এ NID missing সবচেয়ে বেশি: ${toBnDigits(ward.missingNid || 0)} জন। ইউনিয়ন মোট ${toBnDigits(summary.missingNid || 0)} জন।`
+                : 'NID missing data এখনো পাওয়া যায়নি।';
+        } else if (normalized.includes('sms') || normalized.includes('ফলো') || normalized.includes('follow')) {
+            const urgent = candidates.filter((item) => item.type !== 'blood_group_update' && !item.activeRequest).length;
+            response = `আজ প্রথমে ${toBnDigits(urgent)}টি document follow-up, ${toBnDigits(womenSupport.length)}টি women-support case এবং ${toBnDigits(lowCompleteness.length)}টি low-score household-এ SMS দিন।`;
+        } else if (normalized.includes('duplicate') || normalized.includes('ডুপ্লিকেট')) {
+            response = duplicates.length
+                ? `${toBnDigits(duplicates.length)}টি duplicate group review দরকার। NID/birth/phone match দিয়ে শুরু করুন।`
+                : 'বর্তমানে duplicate signal পাওয়া যায়নি।';
+        } else if (normalized.includes('নারী') || normalized.includes('মহিলা') || normalized.includes('women')) {
+            response = `${toBnDigits(womenSupport.length)}টি women-support follow-up আছে; এর মধ্যে ${toBnDigits(summary.widowCandidates || 0)} জন বিধবা ভাতা যাচাই candidate।`;
+        } else if (normalized.includes('দুর্বল') || normalized.includes('weak') || normalized.includes('কমপ্লিট')) {
+            response = weakestWard
+                ? `${weakestWard.wardName} এখন সবচেয়ে বেশি attention চায়। Missing NID, birth certificate ও blood group মিলিয়ে ${toBnDigits((weakestWard.missingNid || 0) + (weakestWard.missingBirthReg || 0) + (weakestWard.missingBloodGroup || 0))} gap আছে।`
+                : 'Ward score তৈরি করার মতো data এখনো নেই।';
+        } else {
+            response = `আজকের brief: ${toBnDigits(candidates.length + womenSupport.length)} priority follow-up, ${toBnDigits(duplicates.length)} duplicate group এবং ${toBnDigits(lowCompleteness.length)} low-score household আছে।`;
+        }
+
+        setQuery(text);
+        setAnswer(response);
+    }
+
+    const quickQuestions = [
+        'কোন ওয়ার্ডে NID missing বেশি?',
+        'আজ কাকে SMS follow-up দেব?',
+        'Duplicate কতটি?',
+        'Women support priority কী?'
+    ];
+
+    return (
+        <section className="overflow-hidden rounded-[34px] bg-slate-950 text-white shadow-xl">
+            <div className="grid gap-0 lg:grid-cols-[0.75fr_1.25fr]">
+                <div className="border-b border-white/10 p-6 lg:border-b-0 lg:border-r">
+                    <div className="flex items-center gap-3">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-500 text-white">
+                            <Bot size={23} />
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-teal-300">AI Officer Assistant</p>
+                            <h4 className="text-xl font-black">Union data-কে প্রশ্ন করুন</h4>
+                        </div>
+                    </div>
+                    <p className="mt-4 text-xs font-bold leading-5 text-slate-400">
+                        Live dashboard summary থেকে NID gap, risky ward, duplicate এবং SMS priority-এর উত্তর দেয়।
+                    </p>
+                    <div className="mt-5 flex flex-wrap gap-2">
+                        {quickQuestions.map((question) => (
+                            <button
+                                key={question}
+                                type="button"
+                                onClick={() => answerQuery(question)}
+                                className="rounded-full bg-white/5 px-3 py-2 text-[11px] font-black text-slate-300 ring-1 ring-white/10 transition hover:bg-teal-500 hover:text-white"
+                            >
+                                {question}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+                <div className="p-6">
+                    <div className="rounded-3xl bg-white/5 p-5 ring-1 ring-white/10">
+                        <div className="flex items-start gap-3">
+                            <MessageSquareText className="mt-0.5 shrink-0 text-teal-300" size={20} />
+                            <p className="text-sm font-bold leading-6 text-slate-200">{answer}</p>
+                        </div>
+                    </div>
+                    <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                        <input
+                            value={query}
+                            onChange={(event) => setQuery(event.target.value)}
+                            onKeyDown={(event) => event.key === 'Enter' && answerQuery()}
+                            className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-bold text-white outline-none placeholder:text-slate-500 focus:border-teal-400"
+                            placeholder="যেমন: কোন ওয়ার্ডে NID missing বেশি?"
+                        />
+                        <button
+                            type="button"
+                            onClick={() => answerQuery()}
+                            className="rounded-2xl bg-teal-500 px-5 py-3 text-xs font-black text-white transition hover:bg-teal-400"
+                        >
+                            উত্তর দেখুন
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    );
+}
+
+function UnionDecisionRoom({ summary, wards, candidates, womenSupport, lowCompleteness, duplicateGroups }) {
+    const riskiestWard = [...wards].sort((a, b) => {
+        const aMissing = (a.missingNid || 0) + (a.missingBirthReg || 0) + (a.missingBloodGroup || 0);
+        const bMissing = (b.missingNid || 0) + (b.missingBirthReg || 0) + (b.missingBloodGroup || 0);
+        return bMissing - aMissing;
+    })[0];
+    const urgentCases = (candidates || []).filter((item) => item.type !== 'blood_group_update').length;
+    const decisionCards = [
+        {
+            title: 'Today priority',
+            value: toBnDigits(urgentCases + (womenSupport?.length || 0)),
+            text: 'NID, birth registration, women support follow-up আগে ধরুন।',
+            tone: 'bg-slate-950 text-white'
+        },
+        {
+            title: 'Weakest ward',
+            value: riskiestWard?.wardName || 'No ward',
+            text: riskiestWard ? `${toBnDigits((riskiestWard.missingNid || 0) + (riskiestWard.missingBirthReg || 0) + (riskiestWard.missingBloodGroup || 0))} missing data` : 'এখনো data নেই।',
+            tone: 'bg-amber-50 text-amber-800'
+        },
+        {
+            title: 'Duplicate warning',
+            value: toBnDigits(duplicateGroups?.length || 0),
+            text: 'Same NID / birth reg / family match review দরকার।',
+            tone: 'bg-rose-50 text-rose-800'
+        },
+        {
+            title: 'Data command',
+            value: `${toBnDigits(summary?.citizenCompleteness || 0)}%`,
+            text: `${toBnDigits(lowCompleteness?.length || 0)} low-score household আগে update করুন।`,
+            tone: 'bg-teal-50 text-teal-800'
+        }
+    ];
+
+    return (
+        <section className="rounded-[34px] border border-slate-200 bg-slate-50 p-5 sm:p-6">
+            <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.24em] text-teal-600">Union Decision Room</p>
+                    <h4 className="mt-1 text-xl font-black text-slate-900">আজ অফিসে কোন কাজ আগে হবে</h4>
+                </div>
+                <p className="max-w-xl text-xs font-bold leading-5 text-slate-500">
+                    Chairman/secretary dashboard খুললেই priority, risky ward, duplicate citizen এবং low-score family এক জায়গায় দেখা যাবে।
+                </p>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                {decisionCards.map((card) => (
+                    <div key={card.title} className={`rounded-3xl p-5 ${card.tone}`}>
+                        <p className="text-[10px] font-black uppercase tracking-widest opacity-70">{card.title}</p>
+                        <p className="mt-3 text-2xl font-black">{card.value}</p>
+                        <p className="mt-2 text-xs font-bold leading-5 opacity-80">{card.text}</p>
+                    </div>
+                ))}
+            </div>
+        </section>
+    );
+}
+
+function DuplicateCitizenPanel({ groups }) {
+    if (!groups?.length) {
+        return (
+            <section className="rounded-[32px] border border-emerald-100 bg-emerald-50 p-5">
+                <div className="flex items-center gap-3">
+                    <CheckCircle2 className="text-emerald-600" size={22} />
+                    <div>
+                        <h4 className="text-base font-black text-emerald-900">Duplicate citizen signal পাওয়া যায়নি</h4>
+                        <p className="text-xs font-bold text-emerald-700">NID, birth registration এবং family-match data clean আছে।</p>
+                    </div>
+                </div>
+            </section>
+        );
+    }
+
+    return (
+        <section className="rounded-[32px] border border-rose-100 bg-white p-6">
+            <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.24em] text-rose-500">Duplicate Detection</p>
+                    <h4 className="text-lg font-black text-slate-900">সম্ভাব্য duplicate citizen review</h4>
+                </div>
+                <span className="w-fit rounded-full bg-rose-50 px-3 py-2 text-xs font-black text-rose-700">
+                    {toBnDigits(groups.length)} group
+                </span>
+            </div>
+            <div className="grid gap-3 lg:grid-cols-2">
+                {groups.slice(0, 6).map((group) => (
+                    <div key={group.key} className="rounded-3xl border border-slate-100 bg-slate-50 p-4">
+                        <p className="text-xs font-black uppercase tracking-widest text-rose-500">{group.reason}</p>
+                        <div className="mt-3 space-y-2">
+                            {group.items.slice(0, 4).map((item) => (
+                                <div key={item.id} className="flex items-start justify-between gap-3 rounded-2xl bg-white p-3">
+                                    <div>
+                                        <p className="text-sm font-black text-slate-900">{item.name || item.ownerName || 'Citizen'}</p>
+                                        <p className="text-[11px] font-bold text-slate-400">{item.wardName || 'Ward'} · Holding {toBnDigits(item.houseNo || '')}</p>
+                                    </div>
+                                    {item.householdId && (
+                                        <Link href={`/h/${item.householdId}`} className="shrink-0 rounded-full bg-slate-950 px-3 py-2 text-[10px] font-black text-white hover:bg-rose-600">
+                                            Open
+                                        </Link>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </section>
     );
 }
 

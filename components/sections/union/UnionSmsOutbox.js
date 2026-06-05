@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import {
+    AlertTriangle,
     CheckCircle2,
     Clock3,
     Loader2,
@@ -45,6 +46,35 @@ const SMART_TARGETS = [
     { value: 'service_applicants', label: 'সব আবেদনকারী', title: 'Service applicant update', message: 'DigiGram: {name}, আপনার সেবা আবেদনের সর্বশেষ আপডেটের জন্য ইউনিয়ন পরিষদের সাথে যোগাযোগ রাখুন।' }
 ];
 
+const getSmsMath = (text) => {
+    if (!text) return { length: 0, isUnicode: false, limit: 160, chunks: 0 };
+    const isUnicode = /[^\u0000-\u007F]/.test(text);
+    const length = text.length;
+    let chunks = 1;
+    let limit = 160;
+    let chunkSize = 153;
+
+    if (isUnicode) {
+        limit = 70;
+        chunkSize = 67;
+        if (length > 70) {
+            chunks = Math.ceil(length / 67);
+        } else {
+            chunks = length > 0 ? 1 : 0;
+        }
+    } else {
+        limit = 160;
+        chunkSize = 153;
+        if (length > 160) {
+            chunks = Math.ceil(length / 153);
+        } else {
+            chunks = length > 0 ? 1 : 0;
+        }
+    }
+
+    return { length, isUnicode, limit, chunks };
+};
+
 export default function UnionSmsOutbox({
     unionId,
     heading = 'SMS Wallet, Campaign & Outbox',
@@ -82,6 +112,10 @@ export default function UnionSmsOutbox({
     const selectedTemplate = useMemo(() => {
         return (walletData?.templates || []).find((item) => item.id === campaignForm.templateId) || null;
     }, [walletData, campaignForm.templateId]);
+
+    const smsMath = useMemo(() => {
+        return getSmsMath(campaignForm.message);
+    }, [campaignForm.message]);
 
     async function load() {
         setLoading(true);
@@ -213,7 +247,7 @@ export default function UnionSmsOutbox({
         .filter((item) => Number(item.credits || 0) >= Math.max(lowThreshold * 4, 100))
         .sort((a, b) => Number(a.price || 0) - Number(b.price || 0))[0] || walletData?.packages?.[0] || null;
     const campaignCount = Number(campaignPreview?.recipientCount || 0);
-    const campaignCredits = Number(campaignPreview?.estimatedCredits || campaignCount);
+    const campaignCredits = campaignCount * (smsMath.chunks || 1);
     const canAffordCampaign = balance >= campaignCredits;
 
     return (
@@ -441,18 +475,57 @@ export default function UnionSmsOutbox({
                     placeholder="SMS message লিখুন..."
                 />
 
+                <div className="mt-2 flex items-center justify-between text-xs font-bold text-slate-400 px-1">
+                    <p>
+                        মেসেজ ক্যারেক্টার: <span className="text-teal-500 font-black">{toBnDigits(smsMath.length)}</span> / {toBnDigits(smsMath.limit)} (১ম পার্ট)
+                    </p>
+                    <p>
+                        মোট পার্ট: <span className={smsMath.chunks > 1 ? 'text-amber-500 font-black' : 'text-slate-500'}>{toBnDigits(smsMath.chunks)} পার্ট</span>
+                    </p>
+                </div>
+
+                {smsMath.chunks > 1 && (
+                    <div className="mt-3 p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-xs font-bold text-amber-850 flex items-start gap-2.5 animate-in fade-in duration-300">
+                        <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                        <div>
+                            <p className="font-black text-amber-900">বাজেট সতর্কবার্তা: মেসেজ ক্যারেক্টার লিমিট অতিক্রম করেছে!</p>
+                            <p className="mt-0.5 text-amber-700 leading-relaxed">
+                                {smsMath.isUnicode ? 'বাংলা' : 'ইংরেজি'} লেখার জন্য লিমিট {toBnDigits(smsMath.limit)} ক্যারেক্টার। বর্তমান মেসেজটি {toBnDigits(smsMath.chunks)}টি মেসেজ ক্রেডিট হিসেবে চার্জ হবে। পুরো ক্যাম্পেইনে আপনার মোট {toBnDigits(campaignCredits)} ক্রেডিট খরচ হবে।
+                            </p>
+                        </div>
+                    </div>
+                )}
+
+                {!canAffordCampaign && campaignCount > 0 && (
+                    <div className="mt-3 p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-bold text-rose-850 flex items-start gap-2.5 animate-in fade-in duration-300">
+                        <AlertTriangle size={16} className="text-rose-600 shrink-0 mt-0.5" />
+                        <div>
+                            <p className="font-black text-rose-900">অপর্যাপ্ত ব্যালেন্স সতর্কবার্তা!</p>
+                            <p className="mt-0.5 text-rose-700 leading-relaxed">
+                                আপনার বর্তমান ব্যালেন্স {toBnDigits(balance)} ক্রেডিট, কিন্তু ক্যাম্পেইনের জন্য প্রয়োজন {toBnDigits(campaignCredits)} ক্রেডিট। অনুগ্রহ করে রিচার্জ করুন অথবা লেখা ছোট করুন।
+                            </p>
+                        </div>
+                    </div>
+                )}
+
                 <div className="mt-4 grid gap-3 rounded-3xl bg-slate-50 p-4 lg:grid-cols-[1fr_auto] lg:items-center">
                     <div>
                         <p className="text-xs font-black uppercase tracking-widest text-slate-400">Preview</p>
                         <p className="mt-1 text-sm font-bold text-slate-700">
                             {campaignForm.message.replaceAll('{name}', 'রহিম উদ্দিন') || 'Message preview এখানে দেখাবে'}
                         </p>
-                        <div className="mt-3 flex flex-wrap gap-2">
+                        <div className="mt-3 flex flex-wrap items-center gap-2">
                             <span className="rounded-full bg-white px-3 py-1 text-[11px] font-black text-slate-600 ring-1 ring-slate-200">
-                                Recipients: {previewLoading ? '...' : toBnDigits(campaignCount)}
+                                প্রাপক: {previewLoading ? '...' : toBnDigits(campaignCount)} জন
                             </span>
-                            <span className={`rounded-full px-3 py-1 text-[11px] font-black ${canAffordCampaign ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
-                                Cost: {toBnDigits(campaignCredits)} credit
+                            <span className={`rounded-full px-3 py-1 text-[11px] font-black ${smsMath.isUnicode ? 'bg-teal-50 text-teal-700 border border-teal-200' : 'bg-slate-50 text-slate-700 border border-slate-200'}`}>
+                                ক্যারেক্টার সেট: {smsMath.isUnicode ? 'বাংলা (Unicode)' : 'ইংরেজি (GSM)'}
+                            </span>
+                            <span className="rounded-full bg-white px-3 py-1 text-[11px] font-black text-slate-600 ring-1 ring-slate-200">
+                                মেসেজ পার্ট: {toBnDigits(smsMath.chunks)} পার্ট
+                            </span>
+                            <span className={`rounded-full px-3 py-1 text-[11px] font-black border ${canAffordCampaign ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200 animate-pulse'}`}>
+                                মোট খরচ: {toBnDigits(campaignCredits)} ক্রেডিট
                             </span>
                             {campaignPreview?.error && (
                                 <span className="rounded-full bg-rose-50 px-3 py-1 text-[11px] font-black text-rose-700">{campaignPreview.error}</span>
@@ -461,7 +534,7 @@ export default function UnionSmsOutbox({
                     </div>
                     <button
                         disabled={campaignSending || previewLoading || !campaignForm.message.trim() || campaignCount === 0 || !canAffordCampaign}
-                        className="flex items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 py-4 text-sm font-black text-white hover:bg-teal-700 disabled:opacity-50"
+                        className="flex items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 py-4 text-sm font-black text-white hover:bg-teal-700 disabled:opacity-50 cursor-pointer"
                     >
                         {campaignSending ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />}
                         SMS Campaign পাঠান

@@ -6,13 +6,16 @@ import {
     CalendarDays,
     CheckCircle2,
     Clock3,
+    Hourglass,
     FileText,
     Home,
     MessageSquareText,
     PackageCheck,
     Phone,
+    ShieldCheck,
     XCircle
 } from 'lucide-react';
+import { getServiceSla } from '@/lib/utils/serviceSla';
 
 export const dynamic = 'force-dynamic';
 
@@ -59,6 +62,74 @@ function maskPhone(phone) {
     return `${phone.slice(0, 3)}****${phone.slice(-3)}`;
 }
 
+function toBnDigits(value) {
+    return String(value).replace(/\d/g, (digit) => '০১২৩৪৫৬৭৮৯'[digit]);
+}
+
+function getCitizenSlaMeta(request) {
+    const sla = getServiceSla(request);
+
+    if (request.status === 'rejected') {
+        return {
+            ...sla,
+            title: 'আবেদনটি বাতিল হয়েছে',
+            detail: 'Officer note দেখুন অথবা ইউনিয়ন পরিষদে যোগাযোগ করুন।',
+            className: 'border-rose-200 bg-rose-50 text-rose-800',
+            barClassName: 'bg-rose-500'
+        };
+    }
+
+    if (request.status === 'completed') {
+        return {
+            ...sla,
+            title: 'সেবা সম্পন্ন হয়েছে',
+            detail: 'এই আবেদনের অফিস কার্যক্রম সম্পন্ন করা হয়েছে।',
+            className: 'border-emerald-200 bg-emerald-50 text-emerald-800',
+            barClassName: 'bg-emerald-500'
+        };
+    }
+
+    if (request.status === 'ready') {
+        return {
+            ...sla,
+            title: request.collection_date ? 'সংগ্রহের তারিখ নির্ধারিত' : 'সংগ্রহের জন্য প্রস্তুত',
+            detail: request.collection_date
+                ? `${formatDate(request.collection_date)} তারিখে প্রয়োজনীয় কাগজসহ ইউনিয়ন পরিষদে আসুন।`
+                : 'সংগ্রহের তারিখ জানতে ইউনিয়ন পরিষদের সাথে যোগাযোগ করুন।',
+            className: 'border-teal-200 bg-teal-50 text-teal-800',
+            barClassName: 'bg-teal-500'
+        };
+    }
+
+    if (sla.state === 'overdue') {
+        return {
+            ...sla,
+            title: `লক্ষ্যমাত্রার চেয়ে ${toBnDigits(Math.abs(sla.remainingDays))} দিন বেশি হয়েছে`,
+            detail: 'আবেদনটি অফিসের অগ্রাধিকার তালিকায় থাকা উচিত। প্রয়োজনে ইউনিয়ন পরিষদে যোগাযোগ করুন।',
+            className: 'border-rose-200 bg-rose-50 text-rose-800',
+            barClassName: 'bg-rose-500'
+        };
+    }
+
+    if (sla.state === 'due_soon') {
+        return {
+            ...sla,
+            title: sla.remainingDays === 0 ? 'আজ লক্ষ্যমাত্রার শেষ দিন' : 'আর প্রায় ১ দিন সময় আছে',
+            detail: 'আবেদনটি বর্তমানে সক্রিয়ভাবে প্রক্রিয়াধীন আছে।',
+            className: 'border-amber-200 bg-amber-50 text-amber-800',
+            barClassName: 'bg-amber-500'
+        };
+    }
+
+    return {
+        ...sla,
+        title: `আনুমানিক ${toBnDigits(sla.remainingDays)} দিন বাকি`,
+        detail: `${toBnDigits(sla.targetDays)} কার্যদিবসের সেবা লক্ষ্যমাত্রা অনুযায়ী আবেদনটি চলছে।`,
+        className: 'border-sky-200 bg-sky-50 text-sky-800',
+        barClassName: 'bg-sky-500'
+    };
+}
+
 export default async function TrackServiceRequestPage({ params }) {
     const { requestId } = await params;
     const lookup = decodeURIComponent(requestId || '').trim();
@@ -100,6 +171,7 @@ export default async function TrackServiceRequestPage({ params }) {
         ? -1
         : Math.max(STATUS_STEPS.findIndex((step) => step.key === request.status), 0);
     const isFinal = ['ready', 'completed'].includes(request.status);
+    const sla = getCitizenSlaMeta(request);
 
     return (
         <main className="min-h-screen bg-[#f4f7fb] px-4 py-5 text-slate-900 sm:px-6 lg:px-10">
@@ -137,6 +209,35 @@ export default async function TrackServiceRequestPage({ params }) {
 
                     <div className="grid gap-5 p-5 sm:p-8 lg:grid-cols-[1.25fr_0.75fr]">
                         <div className="space-y-5">
+                            <div className={`rounded-3xl border p-5 sm:p-6 ${sla.className}`}>
+                                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                                    <div className="flex items-start gap-3">
+                                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/80 shadow-sm">
+                                            <Hourglass size={20} />
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-black uppercase tracking-widest opacity-70">Service Timeline</p>
+                                            <h2 className="mt-1 text-lg font-black sm:text-xl">{sla.title}</h2>
+                                            <p className="mt-1 text-sm font-bold opacity-80">{sla.detail}</p>
+                                        </div>
+                                    </div>
+                                    <div className="shrink-0 rounded-2xl bg-white/80 px-4 py-3 text-left shadow-sm sm:text-right">
+                                        <p className="text-[10px] font-black uppercase tracking-widest opacity-60">লক্ষ্যমাত্রা</p>
+                                        <p className="mt-1 text-sm font-black">{formatDate(sla.dueDate)}</p>
+                                    </div>
+                                </div>
+                                <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/80">
+                                    <div
+                                        className={`h-full rounded-full ${sla.barClassName}`}
+                                        style={{ width: `${request.status === 'completed' ? 100 : Math.max(8, sla.progress)}%` }}
+                                    />
+                                </div>
+                                <div className="mt-2 flex items-center justify-between text-xs font-black opacity-70">
+                                    <span>{toBnDigits(sla.ageDays)} দিন পার হয়েছে</span>
+                                    <span>{toBnDigits(sla.targetDays)} দিনের লক্ষ্য</span>
+                                </div>
+                            </div>
+
                             <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4 sm:p-6">
                                 <h2 className="text-lg font-black text-slate-900">বর্তমান অবস্থা</h2>
                                 {request.status === 'rejected' ? (
@@ -171,6 +272,26 @@ export default async function TrackServiceRequestPage({ params }) {
                                 <InfoCard icon={Phone} label="মোবাইল" value={maskPhone(request.contact_phone)} />
                                 <InfoCard icon={Home} label="বাড়ি/গ্রাম" value={`${request.household?.owner_name || 'বাড়ি'} · ${request.household?.village?.bn_name || 'গ্রাম নেই'}`} />
                                 <InfoCard icon={CalendarDays} label="জমার তারিখ" value={formatDate(request.created_at)} />
+                            </div>
+
+                            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                                <div className="flex items-start gap-3">
+                                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-teal-50 text-teal-700">
+                                        <ShieldCheck size={20} />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-black uppercase tracking-widest text-slate-400">এখন কী করবেন</p>
+                                        <p className="mt-1 text-sm font-black text-slate-900">
+                                            {request.status === 'pending' && 'আবেদন গ্রহণ করা হয়েছে। আপাতত নতুন করে আবেদন করার প্রয়োজন নেই।'}
+                                            {request.status === 'processing' && 'অফিস যাচাই করছে। অতিরিক্ত কাগজ চাইলে SMS বা officer note-এ জানানো হবে।'}
+                                            {request.status === 'ready' && (request.collection_date
+                                                ? `${formatDate(request.collection_date)} তারিখে মূল কাগজপত্র নিয়ে ইউনিয়ন পরিষদে যান।`
+                                                : 'সংগ্রহের তারিখ নিশ্চিত করতে ইউনিয়ন পরিষদে যোগাযোগ করুন।')}
+                                            {request.status === 'completed' && 'সনদ বা সেবা সংগ্রহ করা হয়ে থাকলে আর কোনো পদক্ষেপ প্রয়োজন নেই।'}
+                                            {request.status === 'rejected' && 'Officer note দেখে প্রয়োজনীয় তথ্য ঠিক করে ইউনিয়ন পরিষদে যোগাযোগ করুন।'}
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
 
                             {request.feedback && (

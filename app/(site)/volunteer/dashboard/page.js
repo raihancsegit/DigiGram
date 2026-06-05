@@ -46,7 +46,11 @@ export default function VolunteerDashboard() {
                         context.ward.id,
                         context.village
                     );
-                    setHouseholdVillage(syncedVillage);
+                    setHouseholdVillage(syncedVillage ? {
+                        ...syncedVillage,
+                        location_id: context.village.id,
+                        location_village_id: context.village.id
+                    } : null);
                 } catch (syncError) {
                     console.error("Error syncing volunteer household village:", syncError?.message || syncError);
                     setHouseholdVillage(null);

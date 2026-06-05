@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { householdService } from '@/lib/services/householdService';
 import { toBnDigits } from '@/lib/utils/format';
+import { getServiceSla } from '@/lib/utils/serviceSla';
 
 export default function UnionServiceManager({ unionId }) {
     const [requests, setRequests] = useState([]);
@@ -89,6 +90,24 @@ export default function UnionServiceManager({ unionId }) {
         rejected: { label: 'বাতিল', className: 'bg-rose-50 text-rose-600' }
     }[status] || { label: 'পেন্ডিং', className: 'bg-amber-50 text-amber-600' });
 
+    const getSlaMeta = (request) => {
+        const sla = getServiceSla(request);
+
+        if (sla.state === 'closed') return { ...sla, label: 'Closed', className: 'bg-slate-100 text-slate-500' };
+        if (sla.state === 'collection_date_needed') return { ...sla, label: 'Collection date needed', className: 'bg-violet-50 text-violet-700' };
+        if (sla.state === 'overdue') return { ...sla, label: `${toBnDigits(Math.abs(sla.remainingDays))} days overdue`, className: 'bg-rose-50 text-rose-700' };
+        if (sla.state === 'due_soon') return { ...sla, label: 'Due soon', className: 'bg-amber-50 text-amber-700' };
+        return { ...sla, label: `${toBnDigits(sla.remainingDays)} days left`, className: 'bg-teal-50 text-teal-700' };
+    };
+
+    const slaSummary = requests.reduce((acc, request) => {
+        const sla = getSlaMeta(request);
+        if (sla.priority >= 4) acc.overdue += 1;
+        if (sla.priority === 3) acc.needCollectionDate += 1;
+        if (sla.priority === 2) acc.dueSoon += 1;
+        return acc;
+    }, { overdue: 0, needCollectionDate: 0, dueSoon: 0 });
+
     return (
         <div className="space-y-8">
             <div className="flex flex-col gap-4 mb-6 lg:flex-row lg:items-center lg:justify-between">
@@ -122,9 +141,28 @@ export default function UnionServiceManager({ unionId }) {
                 </select>
             </div>
 
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                <div className="rounded-[24px] border border-rose-100 bg-rose-50 p-5">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-rose-500">Overdue SLA</p>
+                    <p className="mt-2 text-3xl font-black text-rose-700">{toBnDigits(slaSummary.overdue)}</p>
+                    <p className="mt-1 text-xs font-bold text-rose-600">সময় পার হয়ে গেছে, আগে process করুন।</p>
+                </div>
+                <div className="rounded-[24px] border border-violet-100 bg-violet-50 p-5">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-violet-500">Collection date missing</p>
+                    <p className="mt-2 text-3xl font-black text-violet-700">{toBnDigits(slaSummary.needCollectionDate)}</p>
+                    <p className="mt-1 text-xs font-bold text-violet-600">Ready আছে কিন্তু user কবে আসবে সেট করা হয়নি।</p>
+                </div>
+                <div className="rounded-[24px] border border-amber-100 bg-amber-50 p-5">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-amber-500">Due soon</p>
+                    <p className="mt-2 text-3xl font-black text-amber-700">{toBnDigits(slaSummary.dueSoon)}</p>
+                    <p className="mt-1 text-xs font-bold text-amber-600">আজ/আগামীকাল attention দরকার।</p>
+                </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredRequests.map(req => {
                     const currentStatus = getStatusMeta(req.status);
+                    const slaMeta = getSlaMeta(req);
                     return (
                     <motion.div 
                         key={req.id}
@@ -145,6 +183,9 @@ export default function UnionServiceManager({ unionId }) {
                             </div>
                             <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${currentStatus.className}`}>{currentStatus.label}</span>
                         </div>
+                        <div className={`mb-4 inline-flex rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-widest ${slaMeta.className}`}>
+                            SLA: {slaMeta.label}
+                        </div>
                         
                         <h4 className="text-xl font-black text-slate-800 mb-2">
                             {req.request_type === 'birth_registration' ? 'জন্ম নিবন্ধন' : 
@@ -161,7 +202,7 @@ export default function UnionServiceManager({ unionId }) {
 
                         <div className="pt-6 border-t border-slate-50 flex items-center justify-between">
                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                {new Date(req.created_at).toLocaleDateString('bn-BD')}
+                                {new Date(req.created_at).toLocaleDateString('bn-BD')} · {toBnDigits(slaMeta.ageDays)} days
                             </span>
                             <Link
                                 href={`/track/${req.id}`}

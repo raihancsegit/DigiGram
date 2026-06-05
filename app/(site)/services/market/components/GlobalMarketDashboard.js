@@ -8,6 +8,8 @@ import { PriceHistoryModal } from '@/components/sections/admin/market/PriceHisto
 import { motion, AnimatePresence } from 'framer-motion';
 import { toBnDigits } from '@/lib/utils/format';
 import MarketDecisionTools from './MarketDecisionTools';
+import MarketAiAssistant from './MarketAiAssistant';
+import MarketUtilityHub from './MarketUtilityHub';
 
 export function GlobalMarketDashboard() {
     const [searchQuery, setSearchQuery] = useState('');
@@ -154,6 +156,17 @@ export function GlobalMarketDashboard() {
                 markets={data.markets}
                 commodities={data.commodities}
                 title="District Daily Market Bulletin"
+            />
+
+            <MarketAiAssistant
+                prices={data.prices}
+                markets={data.markets}
+                commodities={data.commodities}
+            />
+
+            <MarketUtilityHub
+                markets={data.markets}
+                commodities={data.commodities}
             />
 
             {/* Main Content Grid */}

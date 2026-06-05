@@ -17,6 +17,7 @@ import HouseholdEntryForm from './HouseholdEntryForm';
 import HouseholdLockerManager from './HouseholdLockerManager';
 import ModalPortal from '@/components/common/ModalPortal';
 import toast from 'react-hot-toast';
+import { canCreateHouseholdInScope, canManageHousehold } from '@/lib/utils/householdPermissions';
 
 const inputStyles = "w-full px-5 py-4 rounded-[20px] bg-slate-50 border border-slate-100 focus:bg-white focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 outline-none transition-all font-bold text-slate-700 text-sm";
 const labelStyles = "text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1 mb-1.5 block";
@@ -63,6 +64,10 @@ export default function WardHouseholdManager({ wardId, assignedVillage = null, v
         empty: followUpItems.filter((item) => item.issueTypes.includes('empty')).length,
         benefit: followUpItems.filter((item) => item.issueTypes.includes('benefit')).length
     }), [followUpItems]);
+    const selectedLocationVillageId = user?.role === 'volunteer'
+        ? user.access_scope_id
+        : (selectedVillage?.location_village_id || selectedVillage?.location_id || selectedVillage?.locationId || null);
+    const canCreateHousehold = canCreateHouseholdInScope(user, wardId, selectedLocationVillageId);
 
     const loadInitialData = useCallback(async () => {
         try {
@@ -195,6 +200,11 @@ export default function WardHouseholdManager({ wardId, assignedVillage = null, v
 
     const handleDeleteHousehold = async (e, id) => {
         e.stopPropagation();
+        const targetHousehold = households.find((household) => household.id === id);
+        if (!canManageHousehold(user, targetHousehold, assignedVillage || selectedVillage)) {
+            toast.error('এই বাড়ির তথ্য সম্পাদনা/ডিলিট করার অনুমতি নেই।');
+            return;
+        }
         if (!confirm('আপনি কি সত্যিই এই বাড়িটি ডিলিট করতে চান? এর ভেতরের সকল সদস্যদের ডাটাও ডিলিট হয়ে যাবে।')) return;
         
         try {
@@ -222,6 +232,10 @@ export default function WardHouseholdManager({ wardId, assignedVillage = null, v
 
     const handleEditHousehold = async (e, house) => {
         e.stopPropagation();
+        if (!canManageHousehold(user, house, assignedVillage || selectedVillage)) {
+            toast.error('এই বাড়ির তথ্য সম্পাদনা করার অনুমতি নেই।');
+            return;
+        }
         try {
             // Fetch residents for this household
             const { supabase } = await import('@/lib/utils/supabase');
@@ -502,13 +516,7 @@ export default function WardHouseholdManager({ wardId, assignedVillage = null, v
                                     <Filter size={16} /> ফিল্টার
                                 </button>
                                 {(() => {
-                                    const isSuperAdmin = user?.role === 'super_admin';
-                                    const isMyWard = user?.role === 'ward_member' && wardId === user.access_scope_id;
-                                    const isMyVillage = user?.role === 'volunteer' && (
-                                        selectedVillage?.id === assignedVillage?.id || selectedVillage?.id === user.access_scope_id
-                                    );
-                                    
-                                    if (isSuperAdmin || isMyWard || isMyVillage) {
+                                    if (canCreateHousehold) {
                                         return (
                                             <button 
                                                 onClick={() => {
@@ -580,6 +588,7 @@ export default function WardHouseholdManager({ wardId, assignedVillage = null, v
                                             const house = family.house;
                                             const phone = getHouseholdPhone(house);
                                             const mapHref = getHouseholdMapHref(house);
+                                            const canUpdateHouse = canManageHousehold(user, house, assignedVillage || selectedVillage);
                                             return (
                                                 <div key={house.id} className="rounded-[28px] border border-white/10 bg-white/10 p-4 backdrop-blur">
                                                     <div className="mb-4 flex items-start justify-between gap-3">
@@ -601,9 +610,11 @@ export default function WardHouseholdManager({ wardId, assignedVillage = null, v
                                                         <button type="button" onClick={() => setSelectedHouseholdForLocker(house)} className="rounded-2xl bg-teal-400 px-3 py-3 text-xs font-black text-slate-950 transition hover:bg-white">
                                                             Open
                                                         </button>
-                                                        <button type="button" onClick={(event) => handleEditHousehold(event, house)} className="rounded-2xl bg-white/10 px-3 py-3 text-xs font-black text-white transition hover:bg-white/20">
-                                                            Update
-                                                        </button>
+                                                        {canUpdateHouse && (
+                                                            <button type="button" onClick={(event) => handleEditHousehold(event, house)} className="rounded-2xl bg-white/10 px-3 py-3 text-xs font-black text-white transition hover:bg-white/20">
+                                                                Update
+                                                            </button>
+                                                        )}
                                                         <button
                                                             type="button"
                                                             onClick={() => family.followUps?.[0] && handleSendFollowUpSms(family.followUps[0])}
@@ -716,7 +727,9 @@ export default function WardHouseholdManager({ wardId, assignedVillage = null, v
                                     )}
 
                                     <div className="grid gap-3 lg:grid-cols-2">
-                                    {filteredFollowUps.slice(0, 8).map((item) => (
+                                    {filteredFollowUps.slice(0, 8).map((item) => {
+                                        const canUpdateHouse = canManageHousehold(user, item.house, assignedVillage || selectedVillage);
+                                        return (
                                         <div key={item.key} className="rounded-3xl border border-amber-100 bg-white p-4 shadow-sm">
                                             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                                 <div>
@@ -760,6 +773,7 @@ export default function WardHouseholdManager({ wardId, assignedVillage = null, v
                                                     >
                                                         {sendingReminderKey === item.key ? 'পাঠাচ্ছে...' : 'SMS'}
                                                     </button>
+                                                    {canUpdateHouse && (
                                                     <button
                                                         type="button"
                                                         onClick={(event) => handleEditHousehold(event, item.house)}
@@ -767,10 +781,12 @@ export default function WardHouseholdManager({ wardId, assignedVillage = null, v
                                                     >
                                                         আপডেট
                                                     </button>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
-                                    ))}
+                                        );
+                                    })}
                                     </div>
                                 </div>
                             )}
@@ -876,13 +892,7 @@ export default function WardHouseholdManager({ wardId, assignedVillage = null, v
 
                                                                 {/* Action Buttons (At Bottom, visible on hover) */}
                                                                 {(() => {
-                                                                    const myVillageId = assignedVillage?.id;
-                                                                    const isSuperAdmin = user?.role === 'super_admin';
-                                                                    const isMyWard = user?.role === 'ward_member' && house.ward_id === user.access_scope_id;
-                                                                    const isMyVillage = user?.role === 'volunteer' && (
-                                                                        house.village_id === myVillageId || house.village_id === user.access_scope_id
-                                                                    );
-                                                                    const canEdit = isSuperAdmin || isMyWard || isMyVillage;
+                                                                    const canEdit = canManageHousehold(user, house, assignedVillage || selectedVillage);
                                                                     if (!canEdit) return null;
 
                                                                     return (
@@ -1154,7 +1164,7 @@ export default function WardHouseholdManager({ wardId, assignedVillage = null, v
                             <HouseholdEntryForm 
                                 wardId={wardId}
                                 villageId={selectedVillage.id}
-                                locationVillageId={assignedVillage?.id || selectedVillage?.location_id}
+                                locationVillageId={selectedLocationVillageId}
                                 initialData={editingHousehold}
                                 onSuccess={() => {
                                     setShowHouseModal(false);

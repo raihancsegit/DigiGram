@@ -7,11 +7,13 @@ import {
     Home, User, Phone, MapPin, Zap, Droplets, 
     Plus, Trash2, Save, Loader2, CheckCircle, Navigation,
     ChevronDown, ChevronUp, Lock, Shield, ArrowRight, ArrowLeft, X,
-    AlertCircle, CheckCircle2, Info, ShieldCheck, Sparkles, Scan
+    AlertCircle, CheckCircle2, Info, ShieldCheck, Sparkles, Scan, RotateCcw, WifiOff, Wifi, CloudUpload, Mic, MicOff
 } from 'lucide-react';
 import { householdService } from '@/lib/services/householdService';
+import { householdOfflineOutbox } from '@/lib/services/householdOfflineOutbox';
 import { aiService } from '@/lib/services/aiService';
 import { toBnDigits } from '@/lib/utils/format';
+import { parseBanglaResidentVoice } from '@/lib/utils/voiceResidentParser';
 import { notificationService } from '@/lib/services/notificationService';
 import { supabase } from '@/lib/utils/supabase';
 import toast from 'react-hot-toast';
@@ -87,7 +89,17 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
     });
     const [deletedResidentIds, setDeletedResidentIds] = useState([]);
     const [hierarchy, setHierarchy] = useState(null);
+    const [draftAvailable, setDraftAvailable] = useState(null);
+    const [draftStatus, setDraftStatus] = useState('idle');
+    const [voiceNote, setVoiceNote] = useState('');
+    const [voiceListening, setVoiceListening] = useState(false);
+    const [isOnline, setIsOnline] = useState(true);
+    const [outboxSummary, setOutboxSummary] = useState({ total: 0, pending: 0, failed: 0, syncing: 0 });
+    const [syncingOutbox, setSyncingOutbox] = useState(false);
     const bodyRef = useRef(null);
+    const draftResolvedRef = useRef(false);
+    const voiceRecognitionRef = useRef(null);
+    const draftKey = `digigram-household-draft:${wardId || 'ward'}:${villageId || locationVillageId || 'village'}:${householdId || initialData?.id || 'new'}`;
 
     const residentSummary = residents.reduce((acc, resident) => {
         if (!resident.name?.trim()) return acc;
@@ -125,6 +137,133 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
     const completeness = qualitySummary.totalFields > 0
         ? Math.round((qualitySummary.filledFields / qualitySummary.totalFields) * 100)
         : 0;
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        let active = true;
+
+        const refreshSummary = (summary = householdOfflineOutbox.getSummary()) => {
+            if (active) setOutboxSummary(summary);
+        };
+        const syncPending = async () => {
+            if (!navigator.onLine || householdOfflineOutbox.getSummary().total === 0) return;
+            setSyncingOutbox(true);
+            const result = await householdOfflineOutbox.syncAll();
+            if (!active) return;
+            refreshSummary();
+            setSyncingOutbox(false);
+            if (result.synced > 0) toast.success(`${toBnDigits(String(result.synced))}টি offline household sync হয়েছে।`);
+            if (result.failed > 0) toast.error(`${toBnDigits(String(result.failed))}টি offline sync retry দরকার।`);
+        };
+        const handleOnline = () => {
+            setIsOnline(true);
+            syncPending();
+        };
+        const handleOffline = () => setIsOnline(false);
+
+        setIsOnline(navigator.onLine);
+        refreshSummary();
+        const unsubscribe = householdOfflineOutbox.subscribe(refreshSummary);
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+        if (navigator.onLine) syncPending();
+
+        return () => {
+            active = false;
+            unsubscribe();
+            window.removeEventListener('online', handleOnline);
+            window.removeEventListener('offline', handleOffline);
+        };
+    }, []);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        try {
+            const saved = window.localStorage.getItem(draftKey);
+            if (!saved) {
+                draftResolvedRef.current = true;
+                return;
+            }
+
+            const parsed = JSON.parse(saved);
+            if (!parsed?.houseForm && !parsed?.residents) {
+                draftResolvedRef.current = true;
+                return;
+            }
+
+            setDraftAvailable({
+                savedAt: parsed.savedAt,
+                count: Array.isArray(parsed.residents) ? parsed.residents.length : 0
+            });
+        } catch (err) {
+            console.warn('Unable to read household draft:', err);
+            draftResolvedRef.current = true;
+        }
+    }, [draftKey]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined' || !draftResolvedRef.current) return;
+        const saveTimer = window.setTimeout(() => {
+            try {
+                window.localStorage.setItem(draftKey, JSON.stringify({
+                    houseForm,
+                    residents,
+                    voiceNote,
+                    step,
+                    savedAt: new Date().toISOString()
+                }));
+                setDraftStatus('saved');
+            } catch (err) {
+                console.warn('Unable to save household draft:', err);
+                setDraftStatus('error');
+            }
+        }, 700);
+
+        return () => window.clearTimeout(saveTimer);
+    }, [draftKey, houseForm, residents, voiceNote, step]);
+
+    function restoreDraft() {
+        if (typeof window === 'undefined') return;
+        try {
+            const saved = window.localStorage.getItem(draftKey);
+            const parsed = saved ? JSON.parse(saved) : null;
+            if (parsed?.houseForm) {
+                setHouseForm((current) => ({ ...current, ...parsed.houseForm }));
+            }
+            if (Array.isArray(parsed?.residents) && parsed.residents.length > 0) {
+                setResidents(parsed.residents.map((resident, idx) => ({
+                    ...defaultResident,
+                    ...resident,
+                    expanded: idx === 0 || !!resident.expanded
+                })));
+            }
+            if (parsed?.voiceNote) setVoiceNote(parsed.voiceNote);
+            if (parsed?.step) setStep(parsed.step);
+            draftResolvedRef.current = true;
+            setDraftAvailable(null);
+            setDraftStatus('restored');
+            toast.success('Field draft restored.');
+        } catch (err) {
+            console.error('Unable to restore household draft:', err);
+            toast.error('Draft restore failed.');
+        }
+    }
+
+    function discardDraft() {
+        if (typeof window !== 'undefined') {
+            window.localStorage.removeItem(draftKey);
+        }
+        draftResolvedRef.current = true;
+        setDraftAvailable(null);
+        setDraftStatus('idle');
+    }
+
+    function clearDraftAfterSuccess() {
+        if (typeof window !== 'undefined') {
+            window.localStorage.removeItem(draftKey);
+        }
+        setDraftStatus('idle');
+    }
 
     useEffect(() => {
         bodyRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
@@ -196,25 +335,80 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
         });
     }
 
+    function buildHouseholdSubmitData() {
+        const submitData = {
+            ...houseForm,
+            ward_id: wardId,
+            village_id: villageId,
+            location_village_id: locationVillageId || initialData?.location_village_id || null,
+            added_by_user_id: user?.id || initialData?.added_by_user_id || null
+        };
+        delete submitData.residents;
+        delete submitData.id;
+        delete submitData.village;
+        delete submitData.stats;
+        delete submitData.created_at;
+        delete submitData.updated_at;
+        delete submitData.locker_pin;
+        if (submitData.lat === '') submitData.lat = null;
+        if (submitData.lng === '') submitData.lng = null;
+        return submitData;
+    }
+
+    function isConnectionError(error) {
+        if (typeof navigator !== 'undefined' && !navigator.onLine) return true;
+        const message = String(error?.message || error || '').toLowerCase();
+        return ['failed to fetch', 'networkerror', 'network request', 'load failed', 'fetch failed'].some((text) => message.includes(text));
+    }
+
+    function queueCurrentSnapshot() {
+        const localHouseholdId = householdId || householdOfflineOutbox.createTemporaryHouseholdId();
+        if (!householdId) setHouseholdId(localHouseholdId);
+        const entry = householdOfflineOutbox.queue({
+            mode: isEditMode ? 'edit' : 'create',
+            householdId: localHouseholdId,
+            household: buildHouseholdSubmitData(),
+            residents,
+            deletedResidentIds,
+            lockerPin: houseForm.locker_pin,
+            wardId,
+            villageId: villageId || null,
+            locationVillageId: locationVillageId || null
+        });
+        setOutboxSummary(householdOfflineOutbox.getSummary());
+        if (houseForm.locker_pin) {
+            toast('নিরাপত্তার জন্য PIN offline device-এ রাখা হয়নি। Sync হওয়ার পর online অবস্থায় PIN সেট করুন।', {
+                icon: '🔒',
+                duration: 5000
+            });
+        }
+        return entry;
+    }
+
+    async function retryOutboxSync() {
+        if (!navigator.onLine) {
+            toast.error('ইন্টারনেট সংযোগ এখনো নেই।');
+            return;
+        }
+        setSyncingOutbox(true);
+        const result = await householdOfflineOutbox.syncAll();
+        setOutboxSummary(householdOfflineOutbox.getSummary());
+        setSyncingOutbox(false);
+        if (result.synced) toast.success(`${toBnDigits(String(result.synced))}টি household sync হয়েছে।`);
+        if (result.failed) toast.error(`${toBnDigits(String(result.failed))}টি sync হয়নি। আবার চেষ্টা করুন।`);
+    }
+
     async function handleSaveHouse() {
         setSaving(true);
         try {
-            const submitData = {
-                ...houseForm,
-                ward_id: wardId,
-                village_id: villageId,
-                location_village_id: locationVillageId || initialData?.location_village_id || null,
-                added_by_user_id: user?.id || initialData?.added_by_user_id || null
-            };
-            delete submitData.residents; // cleanup if from initialData
-            delete submitData.id;
-            delete submitData.village;
-            delete submitData.stats;
-            delete submitData.created_at;
-            delete submitData.updated_at;
+            if (typeof navigator !== 'undefined' && !navigator.onLine) {
+                if (!householdId) setHouseholdId(householdOfflineOutbox.createTemporaryHouseholdId());
+                setStep(2);
+                toast.success('Offline mode: বাড়ির তথ্য device-এ আছে। সদস্য যোগ করুন।');
+                return;
+            }
 
-            if (submitData.lat === '') submitData.lat = null;
-            if (submitData.lng === '') submitData.lng = null;
+            const submitData = buildHouseholdSubmitData();
 
             if (isEditMode) {
                 await householdService.updateHousehold(householdId, submitData);
@@ -233,7 +427,13 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
             setStep(2);
         } catch (err) {
             console.error("Supabase Error (House):", err?.message || JSON.stringify(err, null, 2), err);
-            toast.error("বাড়ি সেভ করতে সমস্যা হয়েছে: " + (err?.message || "Unknown error"));
+            if (isConnectionError(err)) {
+                if (!householdId) setHouseholdId(householdOfflineOutbox.createTemporaryHouseholdId());
+                setStep(2);
+                toast.success('Connection নেই। তথ্য offline draft-এ রাখা হয়েছে।');
+            } else {
+                toast.error("বাড়ি সেভ করতে সমস্যা হয়েছে: " + (err?.message || "Unknown error"));
+            }
         } finally {
             setSaving(false);
         }
@@ -253,6 +453,14 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
     }
 
     async function handleFinalize() {
+        if ((typeof navigator !== 'undefined' && !navigator.onLine) || householdId?.startsWith('offline:')) {
+            queueCurrentSnapshot();
+            clearDraftAfterSuccess();
+            toast.success('Offline outbox-এ রাখা হয়েছে। নেট এলে automatic sync হবে।');
+            onSuccess();
+            return;
+        }
+
         const loadingToast = toast.loading("সেভ প্রক্রিয়া শুরু হয়েছে, দয়া করে অপেক্ষা করুন...");
         setSaving(true);
         try {
@@ -356,11 +564,19 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
 
             toast.dismiss(loadingToast);
             toast.success("সব তথ্য সফলভাবে আপডেট করা হয়েছে!");
+            clearDraftAfterSuccess();
             onSuccess();
         } catch (err) {
             console.error("Finalize Error:", err);
             toast.dismiss(loadingToast);
-            toast.error("ডাটা সেভ করতে সমস্যা হয়েছে।");
+            if (isConnectionError(err)) {
+                queueCurrentSnapshot();
+                clearDraftAfterSuccess();
+                toast.success('Network বন্ধ হয়েছে। বাকি data outbox-এ রাখা হয়েছে।');
+                onSuccess();
+            } else {
+                toast.error("ডাটা সেভ করতে সমস্যা হয়েছে।");
+            }
         } finally {
             setSaving(false);
         }
@@ -499,6 +715,63 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
         }
     }
 
+    async function toggleVoiceFieldNote() {
+        if (typeof window === 'undefined') return;
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            toast.error('Voice input is not supported in this browser.');
+            return;
+        }
+
+        if (voiceListening) {
+            voiceRecognitionRef.current?.stop();
+            return;
+        }
+
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'bn-BD';
+        recognition.interimResults = false;
+        recognition.onstart = () => setVoiceListening(true);
+        recognition.onerror = () => {
+            setVoiceListening(false);
+            toast.error('Voice note capture failed.');
+        };
+        recognition.onend = () => setVoiceListening(false);
+        recognition.onresult = (event) => {
+            const transcript = event.results?.[0]?.[0]?.transcript || '';
+            if (!transcript) return;
+
+            setVoiceNote((current) => [current, transcript].filter(Boolean).join('\n'));
+            const parsed = parseBanglaResidentVoice(transcript);
+            setHouseForm((current) => ({
+                ...current,
+                owner_name: current.owner_name || parsed.name || '',
+                phone: current.phone || parsed.phone || ''
+            }));
+            setResidents((current) => {
+                if (!current.length) return current;
+                const next = [...current];
+                next[0] = {
+                    ...next[0],
+                    ...(parsed.name && !next[0].name ? { name: parsed.name } : {}),
+                    ...(parsed.dob && !next[0].dob ? { dob: parsed.dob } : {}),
+                    ...(parsed.nid && !next[0].nid ? { nid: parsed.nid } : {}),
+                    ...(parsed.birth_reg_no && !next[0].birth_reg_no ? { birth_reg_no: parsed.birth_reg_no } : {}),
+                    ...(parsed.blood_group && !next[0].blood_group ? { blood_group: parsed.blood_group } : {}),
+                    ...(parsed.gender ? { gender: parsed.gender } : {}),
+                    ...(parsed.relation_with_head ? { relation_with_head: parsed.relation_with_head } : {}),
+                    ...(parsed.is_voter ? { is_voter: true } : {})
+                };
+                return next;
+            });
+
+            const filledCount = Object.values(parsed).filter(Boolean).length;
+            toast.success(filledCount > 1 ? `${toBnDigits(String(filledCount))}টি field voice থেকে fill হয়েছে।` : 'Voice note added.');
+        };
+        voiceRecognitionRef.current = recognition;
+        recognition.start();
+    }
+
     function removeResident(idx) {
         const resToRemove = residents[idx];
         if (resToRemove.id) {
@@ -552,9 +825,120 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
 
             {/* BODY - Scrollable */}
             <div ref={bodyRef} className="flex-1 overflow-y-auto overscroll-contain bg-white p-3 sm:p-5 custom-scrollbar relative z-0 md:p-6">
+                <div className={`mb-4 rounded-2xl border p-4 ${
+                    isOnline
+                        ? outboxSummary.total > 0
+                            ? 'border-sky-200 bg-sky-50'
+                            : 'border-emerald-100 bg-emerald-50'
+                        : 'border-amber-200 bg-amber-50'
+                }`}>
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-start gap-3">
+                            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white ${
+                                isOnline ? 'text-emerald-600' : 'text-amber-600'
+                            }`}>
+                                {isOnline ? <Wifi size={18} /> : <WifiOff size={18} />}
+                            </div>
+                            <div>
+                                <p className="text-sm font-black text-slate-900">
+                                    {isOnline ? 'Field sync online' : 'Offline field mode চালু'}
+                                </p>
+                                <p className="mt-1 text-xs font-bold leading-5 text-slate-500">
+                                    {!isOnline && 'Form পূরণ চালিয়ে যান। Finalize করলে device outbox-এ থাকবে।'}
+                                    {isOnline && outboxSummary.total === 0 && 'সব household update server-এর সাথে synced আছে।'}
+                                    {isOnline && outboxSummary.total > 0 && `${toBnDigits(String(outboxSummary.total))}টি household sync-এর অপেক্ষায় আছে।`}
+                                </p>
+                                {outboxSummary.failed > 0 && (
+                                    <p className="mt-1 text-xs font-black text-rose-600">
+                                        {toBnDigits(String(outboxSummary.failed))}টি item retry দরকার।
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                        {outboxSummary.total > 0 && (
+                            <button
+                                type="button"
+                                disabled={!isOnline || syncingOutbox}
+                                onClick={retryOutboxSync}
+                                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-xs font-black text-white transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                            >
+                                {syncingOutbox ? <Loader2 size={15} className="animate-spin" /> : <CloudUpload size={15} />}
+                                {syncingOutbox ? 'Syncing...' : 'Sync now'}
+                            </button>
+                        )}
+                    </div>
+                </div>
+
+                {draftAvailable && (
+                    <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="flex items-start gap-3">
+                                <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-amber-600">
+                                    <WifiOff size={18} />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-black text-slate-900">Offline field draft পাওয়া গেছে</p>
+                                    <p className="mt-1 text-xs font-bold text-slate-500">
+                                        {toBnDigits(String(draftAvailable.count || 0))} member draft saved. Internet না থাকলেও data হারাবে না।
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                                <button
+                                    type="button"
+                                    onClick={restoreDraft}
+                                    className="inline-flex items-center gap-2 rounded-full bg-slate-950 px-4 py-2 text-xs font-black text-white hover:bg-teal-700"
+                                >
+                                    <RotateCcw size={14} />
+                                    Restore
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={discardDraft}
+                                    className="rounded-full bg-white px-4 py-2 text-xs font-black text-slate-600 ring-1 ring-amber-200 hover:text-rose-600"
+                                >
+                                    Discard
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {!draftAvailable && draftStatus === 'saved' && (
+                    <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-teal-50 px-3 py-2 text-[11px] font-black text-teal-700">
+                        <Save size={13} />
+                        Offline draft saved
+                    </div>
+                )}
+
                 {step === 1 && (
                     <motion.div initial={{opacity:0, x:20}} animate={{opacity:1, x:0}} className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(280px,0.65fr)]">
                         <div className="min-w-0 space-y-4 sm:space-y-5">
+                        <section className="rounded-2xl border border-teal-100 bg-gradient-to-br from-teal-50 to-white p-4">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div>
+                                    <p className="text-sm font-black text-slate-900">Voice quick-fill</p>
+                                    <p className="mt-1 text-xs font-bold text-slate-500">Mobile field-e owner name, phone ba note bole রাখুন। Draft-e auto-save হবে।</p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={toggleVoiceFieldNote}
+                                    className={`inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-xs font-black uppercase tracking-widest sm:w-auto ${voiceListening ? 'bg-rose-600 text-white animate-pulse' : 'bg-slate-950 text-white hover:bg-teal-700'}`}
+                                >
+                                    {voiceListening ? <MicOff size={16} /> : <Mic size={16} />}
+                                    {voiceListening ? 'Listening...' : 'Start voice'}
+                                </button>
+                            </div>
+                            {voiceNote && (
+                                <textarea
+                                    value={voiceNote}
+                                    onChange={(event) => setVoiceNote(event.target.value)}
+                                    className="mt-3 min-h-[76px] w-full rounded-2xl border border-teal-100 bg-white p-3 text-sm font-bold text-slate-700 outline-none focus:border-teal-500"
+                                    placeholder="Voice field note..."
+                                />
+                            )}
+                        </section>
+
                         <div className="rounded-2xl border border-teal-100 bg-teal-50/50 p-3 sm:p-4">
                             <label className={labelStyles}>Auto House ID</label>
                             <div className="relative">

@@ -20,6 +20,7 @@ export default function LocationModal() {
     const [unions, setUnions] = useState([]);
     const [wards, setWards] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [loadError, setLoadError] = useState('');
     const selectedTrail = [
         selected.district,
         selected.upazila,
@@ -27,32 +28,35 @@ export default function LocationModal() {
         selected.ward
     ].filter(Boolean);
 
-    const loadDistricts = async () => {
+    const runListLoad = async (loader, setter, label) => {
         setLoading(true);
-        const data = await getDistricts();
-        setDistricts(data);
-        setLoading(false);
+        setLoadError('');
+        try {
+            const data = await loader();
+            setter(Array.isArray(data) ? data : []);
+        } catch (error) {
+            console.error(`Failed to load ${label}:`, error);
+            setter([]);
+            setLoadError(`${label} লোড করা যায়নি। আবার চেষ্টা করুন।`);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const loadDistricts = async () => {
+        await runListLoad(getDistricts, setDistricts, 'districts');
     };
 
     const loadUpazilas = async (districtId) => {
-        setLoading(true);
-        const data = await getChildLocationsByType(districtId, 'upazila');
-        setUpazilas(data);
-        setLoading(false);
+        await runListLoad(() => getChildLocationsByType(districtId, 'upazila'), setUpazilas, 'upazilas');
     };
 
     const loadUnions = async (upazilaId) => {
-        setLoading(true);
-        const data = await getChildLocationsByType(upazilaId, 'union');
-        setUnions(data);
-        setLoading(false);
+        await runListLoad(() => getChildLocationsByType(upazilaId, 'union'), setUnions, 'unions');
     };
 
     const loadWards = async (unionId) => {
-        setLoading(true);
-        const data = await getChildLocationsByType(unionId, 'ward');
-        setWards(data);
-        setLoading(false);
+        await runListLoad(() => getChildLocationsByType(unionId, 'ward'), setWards, 'wards');
     };
 
     const loadWardsForSelectedUnion = async () => {
@@ -61,32 +65,44 @@ export default function LocationModal() {
             return;
         }
         if (!selected.unionSlug) return;
-        setLoading(true);
-        const selectedUnion = await getLocationBySlug(selected.unionSlug);
-        const data = selectedUnion?.id ? await getChildLocationsByType(selectedUnion.id, 'ward') : [];
-        setWards(data);
-        setLoading(false);
+        await runListLoad(async () => {
+            const selectedUnion = await getLocationBySlug(selected.unionSlug);
+            return selectedUnion?.id ? await getChildLocationsByType(selectedUnion.id, 'ward') : [];
+        }, setWards, 'wards');
     };
 
     useEffect(() => {
         if (!isOpen) return;
         if (step === 1) {
+            setUpazilas([]);
+            setUnions([]);
+            setWards([]);
             loadDistricts();
         } else if (step === 2 && selected.districtId) {
+            setUnions([]);
+            setWards([]);
             loadUpazilas(selected.districtId);
         } else if (step === 3 && selected.upazilaId) {
+            setWards([]);
             loadUnions(selected.upazilaId);
         } else if (step === 4 && (selected.unionId || selected.unionSlug)) {
+            setWards([]);
             loadWardsForSelectedUnion();
         }
     }, [isOpen, step, selected.districtId, selected.upazilaId, selected.unionId, selected.unionSlug]);
 
     const handleSelect = async (item) => {
         if (step === 1) {
+            setUpazilas([]);
+            setUnions([]);
+            setWards([]);
             dispatch(setStepData({ level: "district", value: item.name_bn, districtId: item.id }));
         } else if (step === 2) {
+            setUnions([]);
+            setWards([]);
             dispatch(setStepData({ level: "upazila", value: item.name_bn, upazilaId: item.id }));
         } else if (step === 3) {
+            setWards([]);
             dispatch(setStepData({ level: "union", value: item.name_bn, unionId: item.id, unionSlug: item.slug }));
         } else if (step === 4) {
             dispatch(setStepData({ level: "ward", value: item.name_bn, wardId: item.id }));
@@ -181,6 +197,18 @@ export default function LocationModal() {
                             </div>
                             {loading && <Loader2 className="animate-spin text-[color:var(--dg-teal)]" size={20} />}
                         </div>
+
+                        {step === 4 && selected.union && (
+                            <div className="mb-4 rounded-2xl border border-teal-100 bg-teal-50 px-4 py-3 text-sm font-extrabold text-teal-800">
+                                {selected.union} সিলেক্ট হয়েছে। ইউনিয়ন পোর্টালে ঢুকুন অথবা ওয়ার্ড বেছে নিন।
+                            </div>
+                        )}
+
+                        {loadError && (
+                            <div className="mb-4 rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm font-extrabold text-rose-700">
+                                {loadError}
+                            </div>
+                        )}
 
                         <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             {step === 4 && selected.unionSlug && (

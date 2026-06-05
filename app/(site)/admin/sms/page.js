@@ -22,6 +22,69 @@ import { toBnDigits } from '@/lib/utils/format';
 import SmsAutoFollowUpRules from '@/components/sections/sms/SmsAutoFollowUpRules';
 import SmsDeliveryReport from '@/components/sections/sms/SmsDeliveryReport';
 
+const gatewayPresets = {
+    mock: {
+        name: 'Mock SMS Gateway',
+        provider: 'mock',
+        senderId: 'DigiGram',
+        apiBaseUrl: '',
+        apiKey: '',
+        isActive: false,
+        configText: JSON.stringify({
+            note: 'Local/UAT only. Marks queued SMS as sent without external provider.'
+        }, null, 2)
+    },
+    json: {
+        name: 'JSON SMS Gateway',
+        provider: 'generic_json',
+        senderId: 'DigiGram',
+        apiBaseUrl: 'https://provider.example.com/api/sms/send',
+        apiKey: '',
+        isActive: false,
+        configText: JSON.stringify({
+            method: 'POST',
+            payload_mode: 'json',
+            recipient_key: 'to',
+            message_key: 'message',
+            sender_key: 'sender_id',
+            headers: {},
+            static_payload: {}
+        }, null, 2)
+    },
+    form: {
+        name: 'Form SMS Gateway',
+        provider: 'generic_form',
+        senderId: 'DigiGram',
+        apiBaseUrl: 'https://provider.example.com/api/sms/send',
+        apiKey: '',
+        isActive: false,
+        configText: JSON.stringify({
+            method: 'POST',
+            payload_mode: 'form',
+            recipient_key: 'mobile',
+            message_key: 'message',
+            sender_key: 'senderid',
+            static_payload: {}
+        }, null, 2)
+    },
+    query: {
+        name: 'Query SMS Gateway',
+        provider: 'generic_query',
+        senderId: 'DigiGram',
+        apiBaseUrl: 'https://provider.example.com/api/sms/send',
+        apiKey: '',
+        isActive: false,
+        configText: JSON.stringify({
+            method: 'GET',
+            payload_mode: 'query',
+            recipient_key: 'to',
+            message_key: 'text',
+            sender_key: 'from',
+            static_payload: {}
+        }, null, 2)
+    }
+};
+
 function money(value) {
     return `৳ ${toBnDigits(Number(value || 0).toLocaleString('bn-BD'))}`;
 }
@@ -30,8 +93,10 @@ export default function AdminSmsPage() {
     const [overview, setOverview] = useState(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [processingQueue, setProcessingQueue] = useState(false);
+    const [processStatus, setProcessStatus] = useState('');
     const [activeTab, setActiveTab] = useState('insights');
-    const [gatewayForm, setGatewayForm] = useState({ name: '', provider: '', senderId: '', apiBaseUrl: '', apiKey: '', isActive: false });
+    const [gatewayForm, setGatewayForm] = useState({ name: '', provider: '', senderId: '', apiBaseUrl: '', apiKey: '', isActive: false, configText: '{}' });
     const [packageForm, setPackageForm] = useState({ name: '', credits: '', price: '', description: '', validityDays: '365', sortOrder: '0', isActive: true });
 
     const pendingRecharges = useMemo(() => (overview?.rechargeRequests || []).filter((item) => item.status === 'pending'), [overview]);
@@ -54,7 +119,7 @@ export default function AdminSmsPage() {
         setSaving(true);
         try {
             await smsService.createGateway(gatewayForm);
-            setGatewayForm({ name: '', provider: '', senderId: '', apiBaseUrl: '', apiKey: '', isActive: false });
+            setGatewayForm({ name: '', provider: '', senderId: '', apiBaseUrl: '', apiKey: '', isActive: false, configText: '{}' });
             await load();
         } finally {
             setSaving(false);
@@ -87,6 +152,20 @@ export default function AdminSmsPage() {
         }
     }
 
+    async function processSmsQueue() {
+        setProcessingQueue(true);
+        setProcessStatus('');
+        try {
+            const result = await smsService.processQueue(50);
+            setProcessStatus(`Processed ${toBnDigits(result.processed || 0)} SMS: ${toBnDigits(result.sent || 0)} sent, ${toBnDigits(result.failed || 0)} failed.`);
+            await load();
+        } catch (error) {
+            setProcessStatus(error.message || 'SMS processing failed');
+        } finally {
+            setProcessingQueue(false);
+        }
+    }
+
     if (loading) {
         return <div className="py-20 text-center"><Loader2 className="mx-auto animate-spin text-teal-600" /></div>;
     }
@@ -115,14 +194,25 @@ export default function AdminSmsPage() {
                             Package বিক্রি, recharge approval, wallet balance এবং SMS queue এক জায়গা থেকে control করুন।
                         </p>
                     </div>
-                    <button
-                        type="button"
-                        onClick={load}
-                        className="inline-flex h-fit items-center justify-center gap-2 rounded-2xl bg-white/10 px-5 py-3 text-sm font-black text-white ring-1 ring-white/10 hover:bg-white/15"
-                    >
-                        <RefreshCw size={16} />
-                        Refresh
-                    </button>
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                        <button
+                            type="button"
+                            onClick={processSmsQueue}
+                            disabled={processingQueue}
+                            className="inline-flex h-fit items-center justify-center gap-2 rounded-2xl bg-teal-400 px-5 py-3 text-sm font-black text-slate-950 hover:bg-teal-300 disabled:opacity-60"
+                        >
+                            {processingQueue ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                            Process queued SMS
+                        </button>
+                        <button
+                            type="button"
+                            onClick={load}
+                            className="inline-flex h-fit items-center justify-center gap-2 rounded-2xl bg-white/10 px-5 py-3 text-sm font-black text-white ring-1 ring-white/10 hover:bg-white/15"
+                        >
+                            <RefreshCw size={16} />
+                            Refresh
+                        </button>
+                    </div>
                 </div>
                 <div className="grid border-t border-white/10 sm:grid-cols-2 lg:grid-cols-4">
                     <StatCard label="Total Wallet" value={stats.totalWallets || 0} />
@@ -133,8 +223,15 @@ export default function AdminSmsPage() {
                     <StatCard label="Used SMS" value={stats.usedCredits || 0} />
                     <StatCard label="Sent SMS" value={stats.sentMessages || 0} />
                     <StatCard label="Low Balance" value={stats.lowBalanceCount || 0} />
+                    <StatCard label="Active Gateway" value={stats.activeGatewayCount || 0} />
                 </div>
             </section>
+
+            {processStatus && (
+                <div className="rounded-[24px] border border-teal-100 bg-teal-50 px-5 py-4 text-sm font-black text-teal-900">
+                    {processStatus}
+                </div>
+            )}
 
             <div className="flex gap-2 overflow-x-auto rounded-[24px] bg-slate-100 p-2">
                 {[
@@ -471,6 +568,24 @@ export default function AdminSmsPage() {
 
             {activeTab === 'messages' && (
                 <section className="rounded-[32px] border border-slate-200 bg-white p-5 sm:p-6">
+                    <div className="mb-5 flex flex-col gap-3 rounded-3xl border border-teal-100 bg-teal-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <p className="text-xs font-black uppercase tracking-widest text-teal-700">Queue Worker</p>
+                            <h2 className="mt-1 text-xl font-black text-slate-900">Queued SMS পাঠানোর পরীক্ষা</h2>
+                            <p className="mt-1 text-sm font-bold text-slate-500">
+                                Active gateway থাকলে queued SMS পাঠাবে। Mock gateway active করলে production SMS না পাঠিয়েও flow test করা যাবে।
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={processSmsQueue}
+                            disabled={processingQueue}
+                            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-teal-600 px-5 py-3 text-sm font-black text-white hover:bg-teal-700 disabled:opacity-60"
+                        >
+                            {processingQueue ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                            Process now
+                        </button>
+                    </div>
                     <SmsDeliveryReport
                         messages={overview?.messages || []}
                         title="Platform SMS Delivery Report"
@@ -514,12 +629,32 @@ export default function AdminSmsPage() {
                             <Plus className="text-teal-600" />
                             <h2 className="text-xl font-black text-slate-800">নতুন Gateway</h2>
                         </div>
+                        <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                            {Object.entries(gatewayPresets).map(([key, preset]) => (
+                                <button
+                                    key={key}
+                                    type="button"
+                                    onClick={() => setGatewayForm(preset)}
+                                    className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-black text-slate-600 transition hover:border-teal-200 hover:bg-teal-50 hover:text-teal-700"
+                                >
+                                    {key.toUpperCase()}
+                                </button>
+                            ))}
+                        </div>
                         <div className="grid gap-3">
                             <Input required value={gatewayForm.name} onChange={(value) => setGatewayForm({ ...gatewayForm, name: value })} placeholder="Gateway name" />
                             <Input required value={gatewayForm.provider} onChange={(value) => setGatewayForm({ ...gatewayForm, provider: value })} placeholder="Provider" />
                             <Input value={gatewayForm.senderId} onChange={(value) => setGatewayForm({ ...gatewayForm, senderId: value })} placeholder="Sender ID" />
                             <Input value={gatewayForm.apiBaseUrl} onChange={(value) => setGatewayForm({ ...gatewayForm, apiBaseUrl: value })} placeholder="API base URL" />
                             <Input value={gatewayForm.apiKey} onChange={(value) => setGatewayForm({ ...gatewayForm, apiKey: value })} placeholder="API key" />
+                            <Textarea
+                                value={gatewayForm.configText}
+                                onChange={(value) => setGatewayForm({ ...gatewayForm, configText: value })}
+                                placeholder="Gateway config JSON"
+                            />
+                            <p className="rounded-2xl bg-slate-50 p-3 text-xs font-bold leading-relaxed text-slate-500">
+                                Config JSON diye provider payload map korun. payload_mode: json, form, query. recipient_key, message_key, sender_key provider onujayi din.
+                            </p>
                             <label className="flex items-center gap-2 text-sm font-bold text-slate-600">
                                 <input type="checkbox" checked={gatewayForm.isActive} onChange={(event) => setGatewayForm({ ...gatewayForm, isActive: event.target.checked })} />
                                 Active gateway
@@ -614,6 +749,18 @@ function Input({ value, onChange, placeholder, type = 'text', required = false }
             onChange={(event) => onChange(event.target.value)}
             placeholder={placeholder}
             className="rounded-2xl border border-slate-200 px-4 py-3 font-bold outline-none focus:border-teal-400"
+        />
+    );
+}
+
+function Textarea({ value, onChange, placeholder }) {
+    return (
+        <textarea
+            value={value}
+            onChange={(event) => onChange(event.target.value)}
+            placeholder={placeholder}
+            rows={8}
+            className="rounded-2xl border border-slate-200 px-4 py-3 font-mono text-sm font-bold outline-none focus:border-teal-400"
         />
     );
 }

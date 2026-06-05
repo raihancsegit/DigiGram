@@ -70,7 +70,14 @@ export async function POST(request) {
             inserted = data || [];
         }
 
-        const allVillages = [...(existingVillages || []), ...inserted];
+        const allVillages = [...(existingVillages || []), ...inserted].map((village) => {
+            const matchedLocation = (locationVillages || []).find((locVillage) => matchesLocationVillage(village, locVillage));
+            return {
+                ...village,
+                location_id: matchedLocation?.id || null,
+                location_village_id: matchedLocation?.id || null
+            };
+        });
         const syncedVillage = locationVillage?.id
             ? allVillages.find((village) => matchesLocationVillage(village, locationVillage)) || null
             : null;

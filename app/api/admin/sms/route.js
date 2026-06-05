@@ -26,6 +26,12 @@ function ageHours(dateValue) {
     return Math.floor((Date.now() - date.getTime()) / (1000 * 60 * 60));
 }
 
+function parseGatewayConfig(value) {
+    if (!value) return {};
+    if (typeof value === 'object') return value;
+    return JSON.parse(value);
+}
+
 export async function GET() {
     try {
         const [
@@ -242,7 +248,8 @@ export async function GET() {
             approvedRechargeCredits,
             usedCredits,
             lowBalanceCount: lowBalanceWallets.length,
-            averageCreditPrice
+            averageCreditPrice,
+            activeGatewayCount
         };
 
         return NextResponse.json({
@@ -276,6 +283,13 @@ export async function POST(request) {
         const { action } = body;
 
         if (action === 'create_gateway') {
+            let config = {};
+            try {
+                config = parseGatewayConfig(body.config || body.configText);
+            } catch {
+                return NextResponse.json({ error: 'Gateway config must be valid JSON' }, { status: 400 });
+            }
+
             const { data, error } = await supabaseAdmin
                 .from('sms_gateways')
                 .insert([{
@@ -284,7 +298,8 @@ export async function POST(request) {
                     sender_id: body.senderId || null,
                     api_base_url: body.apiBaseUrl || null,
                     api_key: body.apiKey || null,
-                    is_active: Boolean(body.isActive)
+                    is_active: Boolean(body.isActive),
+                    config
                 }])
                 .select()
                 .single();

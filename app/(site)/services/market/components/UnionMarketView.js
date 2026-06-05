@@ -16,6 +16,8 @@ import { PriceHistoryModal } from '@/components/sections/admin/market/PriceHisto
 import { motion, AnimatePresence } from 'framer-motion';
 import RelatedServiceLinks from '@/components/common/RelatedServiceLinks';
 import MarketDecisionTools from './MarketDecisionTools';
+import MarketAiAssistant from './MarketAiAssistant';
+import MarketUtilityHub from './MarketUtilityHub';
 
 export function UnionMarketView({ unionSlug }) {
     const unionInfo = findUnionBySlug(unionSlug);
@@ -292,6 +294,19 @@ export function UnionMarketView({ unionSlug }) {
                 markets={data.markets}
                 commodities={data.commodities}
                 title={`${unionInfo?.union?.name || data.union?.name_bn || 'Union'} Daily Market Bulletin`}
+            />
+
+            <MarketAiAssistant
+                prices={data.allPrices}
+                markets={data.markets}
+                commodities={data.commodities}
+            />
+
+            <MarketUtilityHub
+                union={data.union}
+                market={selectedHat}
+                markets={data.markets}
+                commodities={data.commodities}
             />
 
             {/* Agri Alerts Bar */}

@@ -6,7 +6,8 @@ import Link from 'next/link';
 import { 
     Database, Trash2, Zap, ShieldAlert, CheckCircle2, 
     Loader2, Users, MapPin, Home, ArrowRight, Download, Upload,
-    RefreshCw, AlertTriangle, GitBranch, FileWarning, ExternalLink
+    RefreshCw, AlertTriangle, GitBranch, FileWarning, ExternalLink,
+    MessageSquare, Building2, ClipboardList, Gauge
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { adminService } from '@/lib/services/adminService';
@@ -119,6 +120,16 @@ export default function MaintenancePage() {
 
     const profileOptions = audit?.options?.assignableProfiles || [];
     const villageOptions = audit?.options?.locationVillages || [];
+    const readiness = audit?.readiness;
+    const householdReadyPercent = readiness?.household?.totalResidents
+        ? Math.max(0, Math.round(
+            ((readiness.household.totalResidents
+                - readiness.household.residentsMissingNid
+                - readiness.household.residentsMissingBirth
+                - readiness.household.residentsMissingBlood)
+                / (readiness.household.totalResidents * 3)) * 100
+        ))
+        : 0;
 
     return (
         <div className="max-w-6xl mx-auto space-y-8 pb-20">
@@ -143,6 +154,82 @@ export default function MaintenancePage() {
                 <StatCard icon={<Home />} label="গ্রাম" value={stats?.villages} color="blue" />
                 <StatCard icon={<Users />} label="ইউজার" value={stats?.users} color="amber" />
             </div>
+
+            <section className="bg-slate-950 rounded-[36px] p-6 md:p-8 text-white shadow-xl shadow-slate-200/60">
+                <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between mb-6">
+                    <div>
+                        <div className="flex items-center gap-2 text-teal-300 font-black text-xs uppercase tracking-widest mb-2">
+                            <Gauge size={14} /> Production Readiness
+                        </div>
+                        <h2 className="text-2xl md:text-3xl font-black">System readiness à¦à¦• à¦œà¦¾à§Ÿà¦—à¦¾à§Ÿ</h2>
+                        <p className="mt-2 text-sm font-bold text-slate-400">Household, SMS business, citizen workload à¦“ institution portal gap à¦à¦–à¦¾à¦¨à§‡ à¦¦à§‡à¦–à¦¾ à¦¯à¦¾à¦¬à§‡à¥¤</p>
+                    </div>
+                    <span className={`inline-flex w-fit items-center gap-2 rounded-full px-4 py-2 text-xs font-black uppercase tracking-widest ${
+                        readiness?.status === 'ready' ? 'bg-emerald-400/15 text-emerald-200' : 'bg-amber-400/15 text-amber-200'
+                    }`}>
+                        {readiness?.status === 'ready' ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />}
+                        {readiness?.status === 'ready' ? 'SQL Ready' : 'SQL check needed'}
+                    </span>
+                </div>
+
+                {readiness?.sqlErrors?.length > 0 && (
+                    <div className="mb-6 rounded-3xl border border-amber-400/20 bg-amber-400/10 p-4 text-sm font-bold text-amber-100">
+                        {readiness.sqlErrors.slice(0, 2).join(' | ')}
+                    </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                    <ReadinessCard
+                        icon={<Home />}
+                        title="Household Data"
+                        main={`${householdReadyPercent}%`}
+                        note={`${readiness?.household?.totalHouseholds || 0} homes, ${readiness?.household?.totalResidents || 0} residents`}
+                        items={[
+                            ['NID missing', readiness?.household?.residentsMissingNid],
+                            ['Birth missing', readiness?.household?.residentsMissingBirth],
+                            ['Blood missing', readiness?.household?.residentsMissingBlood],
+                            ['GPS missing', readiness?.household?.householdsMissingGps]
+                        ]}
+                    />
+                    <ReadinessCard
+                        icon={<MessageSquare />}
+                        title="SMS Business"
+                        main={readiness?.smsBusiness?.wallets || 0}
+                        note="wallets active / rechargeable"
+                        items={[
+                            ['Active gateways', readiness?.smsBusiness?.activeGateways],
+                            ['Low balance', readiness?.smsBusiness?.lowBalanceWallets],
+                            ['Queued', readiness?.smsBusiness?.queuedMessages],
+                            ['Failed', readiness?.smsBusiness?.failedMessages],
+                            ['Pending recharge', readiness?.smsBusiness?.pendingRechargeRequests]
+                        ]}
+                    />
+                    <ReadinessCard
+                        icon={<ClipboardList />}
+                        title="Citizen Workload"
+                        main={(readiness?.citizenWorkload?.openComplaints || 0) + (readiness?.citizenWorkload?.openAppointments || 0) + (readiness?.citizenWorkload?.openLifeSupportCases || 0)}
+                        note="open items needing officer action"
+                        items={[
+                            ['Complaints', readiness?.citizenWorkload?.openComplaints],
+                            ['Appointments', readiness?.citizenWorkload?.openAppointments],
+                            ['Life support', readiness?.citizenWorkload?.openLifeSupportCases],
+                            ['Service requests', readiness?.household?.servicePendingRows]
+                        ]}
+                    />
+                    <ReadinessCard
+                        icon={<Building2 />}
+                        title="Institution Portal"
+                        main={readiness?.institution?.institutions || 0}
+                        note="schools, colleges, madrasa portals"
+                        items={[
+                            ['Web pages', readiness?.institution?.websitePages],
+                            ['Classes', readiness?.institution?.classes],
+                            ['Students', readiness?.institution?.students],
+                            ['Lessons', readiness?.institution?.lessons]
+                        ]}
+                    />
+                </div>
+            </section>
 
             <section className="bg-white rounded-[32px] p-8 border border-slate-200 shadow-sm">
                 <div className="flex items-start justify-between gap-4 mb-6">
@@ -365,6 +452,42 @@ export default function MaintenancePage() {
                 </div>
             </section>
 
+            <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <LaunchChecklistCard
+                    title="Role Permission Test"
+                    tone="teal"
+                    items={[
+                        'Ward member: own ward household add/edit/delete',
+                        'Ward member: other ward edit blocked',
+                        'Volunteer: own village edit allowed',
+                        'Volunteer: other village edit blocked',
+                        'Chairman: read/process application, household edit blocked'
+                    ]}
+                />
+                <LaunchChecklistCard
+                    title="SMS Business Test"
+                    tone="amber"
+                    items={[
+                        'Active gateway configured',
+                        'Recharge request submitted and approved',
+                        'Queued SMS processed by /api/sms/process',
+                        'Failed SMS visible in report',
+                        'Low balance wallet follow-up visible'
+                    ]}
+                />
+                <LaunchChecklistCard
+                    title="Mobile Field Test"
+                    tone="indigo"
+                    items={[
+                        'Household form fits mobile viewport',
+                        'GPS capture works on phone',
+                        'Document/photo upload works',
+                        'Citizen inbox OTP works',
+                        'Portal menus usable with thumb navigation'
+                    ]}
+                />
+            </section>
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Seed Tool */}
                 <section className="bg-white rounded-[40px] p-10 border border-slate-200 shadow-sm flex flex-col h-full">
@@ -491,6 +614,56 @@ function FeatureItem({ text }) {
             <CheckCircle2 size={16} className="text-emerald-500" />
             {text}
         </li>
+    );
+}
+
+function ReadinessCard({ icon, title, main, note, items = [] }) {
+    return (
+        <div className="rounded-[28px] border border-white/10 bg-white/[0.06] p-5 shadow-lg shadow-black/10">
+            <div className="mb-5 flex items-start justify-between gap-3">
+                <div>
+                    <p className="text-sm font-black text-white">{title}</p>
+                    <p className="mt-1 text-xs font-bold text-slate-400">{note}</p>
+                </div>
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-teal-400/10 text-teal-200">
+                    {icon}
+                </div>
+            </div>
+            <p className="mb-5 text-4xl font-black text-teal-200">{main}</p>
+            <div className="space-y-2">
+                {items.map(([label, value]) => (
+                    <div key={label} className="flex items-center justify-between gap-3 rounded-2xl bg-white/[0.05] px-3 py-2">
+                        <span className="text-xs font-bold text-slate-400">{label}</span>
+                        <span className="text-sm font-black text-white">{value || 0}</span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+function LaunchChecklistCard({ title, items = [], tone = 'teal' }) {
+    const tones = {
+        teal: 'border-teal-100 bg-teal-50/70 text-teal-700',
+        amber: 'border-amber-100 bg-amber-50/70 text-amber-700',
+        indigo: 'border-indigo-100 bg-indigo-50/70 text-indigo-700'
+    };
+
+    return (
+        <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+            <div className={`mb-5 inline-flex rounded-2xl border px-3 py-2 text-xs font-black uppercase tracking-widest ${tones[tone] || tones.teal}`}>
+                Launch Gate
+            </div>
+            <h3 className="mb-4 text-xl font-black text-slate-900">{title}</h3>
+            <div className="space-y-3">
+                {items.map((item) => (
+                    <div key={item} className="flex items-start gap-3 rounded-2xl bg-slate-50 px-4 py-3">
+                        <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-emerald-500" />
+                        <p className="text-sm font-bold text-slate-600">{item}</p>
+                    </div>
+                ))}
+            </div>
+        </div>
     );
 }
 

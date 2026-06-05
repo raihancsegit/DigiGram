@@ -8,7 +8,8 @@ import {
     Plus, Store, Search, Filter, Trash2, Edit2, 
     Save, X, ChevronRight, TrendingUp, History, Info,
     Users, TrendingDown, Minus, MapPin, Calendar, 
-    Loader2, CheckCircle2, ShoppingBag, BellRing, AlertTriangle
+    Loader2, CheckCircle2, ShoppingBag, BellRing, AlertTriangle,
+    MessageSquareWarning
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PriceHistoryModal } from './PriceHistoryModal';
@@ -43,6 +44,9 @@ export default function MarketManagement() {
     const [submitting, setSubmitting] = useState(false);
     const [unions, setUnions] = useState([]);
     const [selectedUnionId, setSelectedUnionId] = useState(user?.access_scope_id || '');
+    const [complaints, setComplaints] = useState([]);
+    const [complaintsLoading, setComplaintsLoading] = useState(false);
+    const [complaintNotes, setComplaintNotes] = useState({});
 
     useEffect(() => {
         loadInitialData();
@@ -51,6 +55,12 @@ export default function MarketManagement() {
             if (isAdmin) loadUnions();
         }
     }, [user, selectedUnionId]);
+
+    useEffect(() => {
+        if (selectedMarketId || selectedUnionId || user?.access_scope_id) {
+            loadComplaints(selectedMarketId);
+        }
+    }, [selectedMarketId, selectedUnionId, user?.access_scope_id, markets.length]);
 
     async function loadUnions() {
         try {
@@ -177,6 +187,43 @@ export default function MarketManagement() {
         }
     }
 
+    async function loadComplaints(marketId = selectedMarketId) {
+        const selectedMarket = markets.find((market) => market.id === marketId);
+        const locationId = selectedMarket?.location_id || selectedUnionId || user?.access_scope_id;
+        if (!locationId && !marketId) {
+            setComplaints([]);
+            return;
+        }
+
+        try {
+            setComplaintsLoading(true);
+            const data = await marketService.getMarketComplaints({
+                locationId,
+                marketId,
+                limit: 50
+            });
+            setComplaints(data);
+        } catch (err) {
+            console.error("Load complaints failed:", err.message || JSON.stringify(err));
+        } finally {
+            setComplaintsLoading(false);
+        }
+    }
+
+    async function handleUpdateComplaint(id, status) {
+        try {
+            await marketService.updateMarketComplaint({
+                id,
+                status,
+                officerNote: complaintNotes[id] || '',
+                reviewedBy: user?.id
+            });
+            await loadComplaints(selectedMarketId);
+        } catch (err) {
+            alert("Complaint update failed: " + (err.message || JSON.stringify(err)));
+        }
+    }
+
     const handleUpdatePrice = async (commodityId, price, supply) => {
         try {
             if (!price || isNaN(price)) {
@@ -296,6 +343,15 @@ export default function MarketManagement() {
             </div>
 
             <MarketIntelligencePanel markets={markets} commodities={commodities} prices={prices} selectedMarketId={selectedMarketId} />
+
+            <MarketComplaintPanel
+                complaints={complaints}
+                loading={complaintsLoading}
+                notes={complaintNotes}
+                onNoteChange={(id, value) => setComplaintNotes((current) => ({ ...current, [id]: value }))}
+                onUpdate={handleUpdateComplaint}
+                onRefresh={() => loadComplaints(selectedMarketId)}
+            />
 
             {/* Main Price Editor */}
             <div className="bg-white rounded-[40px] border border-slate-200/60 shadow-xl overflow-hidden">
@@ -517,6 +573,159 @@ export default function MarketManagement() {
                 commodity={historyModal.commodity}
             />
         </div>
+    );
+}
+
+function MarketComplaintPanel({ complaints = [], loading, notes = {}, onNoteChange, onUpdate, onRefresh }) {
+    const [statusFilter, setStatusFilter] = useState('open');
+    const filteredComplaints = complaints.filter((item) => {
+        if (statusFilter === 'all') return true;
+        if (statusFilter === 'open') return ['pending', 'reviewing'].includes(item.status);
+        return item.status === statusFilter;
+    });
+    const openCount = complaints.filter((item) => ['pending', 'reviewing'].includes(item.status)).length;
+    const resolvedCount = complaints.filter((item) => item.status === 'resolved').length;
+
+    const statusTone = {
+        pending: 'bg-amber-50 text-amber-700 ring-amber-100',
+        reviewing: 'bg-sky-50 text-sky-700 ring-sky-100',
+        resolved: 'bg-emerald-50 text-emerald-700 ring-emerald-100',
+        rejected: 'bg-rose-50 text-rose-700 ring-rose-100'
+    };
+    const statusLabel = {
+        pending: 'Pending',
+        reviewing: 'Reviewing',
+        resolved: 'Resolved',
+        rejected: 'Rejected'
+    };
+    const typeLabel = {
+        high_price: 'দাম বেশি',
+        wrong_weight: 'ওজনে সমস্যা',
+        unsafe_food: 'খাদ্য নিরাপত্তা',
+        seller_behavior: 'বিক্রেতা আচরণ',
+        other: 'অন্যান্য'
+    };
+
+    return (
+        <section className="rounded-[34px] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+            <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                <div className="flex items-start gap-3">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-rose-50 text-rose-600">
+                        <MessageSquareWarning size={22} />
+                    </div>
+                    <div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.22em] text-rose-600">Public Market Complaints</p>
+                        <h2 className="text-2xl font-black text-slate-950">বাজার অভিযোগ ও সমাধান ডেস্ক</h2>
+                        <p className="mt-1 text-sm font-bold text-slate-500">নাগরিকের অভিযোগ দেখে দ্রুত reviewing, resolved বা rejected করুন।</p>
+                    </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                    {[
+                        ['open', `Open ${toBnDigits(openCount)}`],
+                        ['pending', 'Pending'],
+                        ['reviewing', 'Reviewing'],
+                        ['resolved', `Resolved ${toBnDigits(resolvedCount)}`],
+                        ['all', 'All']
+                    ].map(([value, label]) => (
+                        <button
+                            key={value}
+                            type="button"
+                            onClick={() => setStatusFilter(value)}
+                            className={`rounded-full px-4 py-2 text-xs font-black transition-all ${
+                                statusFilter === value
+                                    ? 'bg-slate-950 text-white shadow-lg'
+                                    : 'bg-slate-50 text-slate-500 hover:bg-teal-50 hover:text-teal-700'
+                            }`}
+                        >
+                            {label}
+                        </button>
+                    ))}
+                    <button
+                        type="button"
+                        onClick={onRefresh}
+                        className="rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-600 hover:border-teal-200 hover:bg-teal-50 hover:text-teal-700"
+                    >
+                        Refresh
+                    </button>
+                </div>
+            </div>
+
+            {loading ? (
+                <div className="flex items-center justify-center rounded-[26px] bg-slate-50 py-10 text-slate-500">
+                    <Loader2 className="mr-3 animate-spin text-teal-600" size={22} />
+                    <span className="text-sm font-black">Complaint load হচ্ছে...</span>
+                </div>
+            ) : filteredComplaints.length === 0 ? (
+                <div className="rounded-[26px] border border-dashed border-slate-200 bg-slate-50 p-6 text-center">
+                    <p className="text-lg font-black text-slate-800">এখন কোনো অভিযোগ নেই</p>
+                    <p className="mt-1 text-sm font-bold text-slate-500">Public বাজার page থেকে অভিযোগ জমা দিলে এখানে দেখা যাবে।</p>
+                </div>
+            ) : (
+                <div className="grid gap-3 lg:grid-cols-2">
+                    {filteredComplaints.map((item) => (
+                        <article key={item.id} className="rounded-[26px] border border-slate-100 bg-slate-50/70 p-4">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                <div>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] ring-1 ${statusTone[item.status] || statusTone.pending}`}>
+                                            {statusLabel[item.status] || item.status}
+                                        </span>
+                                        <span className="rounded-full bg-white px-3 py-1 text-[10px] font-black text-slate-500 ring-1 ring-slate-200">
+                                            {typeLabel[item.complaint_type] || item.complaint_type || 'অভিযোগ'}
+                                        </span>
+                                    </div>
+                                    <h3 className="mt-3 text-lg font-black text-slate-950">{item.complainant_name}</h3>
+                                    <p className="text-xs font-bold text-slate-500">{item.complainant_phone} · {item.market?.name || 'ইউনিয়ন বাজার'}</p>
+                                </div>
+                                <p className="text-xs font-black text-slate-400">
+                                    {item.created_at ? new Date(item.created_at).toLocaleString('bn-BD') : ''}
+                                </p>
+                            </div>
+
+                            <p className="mt-4 rounded-2xl bg-white p-4 text-sm font-bold leading-7 text-slate-700">{item.note}</p>
+
+                            {item.officer_note && (
+                                <p className="mt-3 rounded-2xl bg-emerald-50 p-3 text-xs font-bold leading-6 text-emerald-800">
+                                    Officer note: {item.officer_note}
+                                </p>
+                            )}
+
+                            <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_auto]">
+                                <input
+                                    value={notes[item.id] || ''}
+                                    onChange={(event) => onNoteChange(item.id, event.target.value)}
+                                    placeholder="Officer note লিখুন..."
+                                    className="min-w-0 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 outline-none transition focus:border-teal-400 focus:ring-4 focus:ring-teal-500/10"
+                                />
+                                <div className="flex flex-wrap gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => onUpdate(item.id, 'reviewing')}
+                                        className="rounded-2xl bg-sky-600 px-4 py-3 text-xs font-black text-white hover:bg-sky-700"
+                                    >
+                                        Reviewing
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => onUpdate(item.id, 'resolved')}
+                                        className="rounded-2xl bg-emerald-600 px-4 py-3 text-xs font-black text-white hover:bg-emerald-700"
+                                    >
+                                        Resolve
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => onUpdate(item.id, 'rejected')}
+                                        className="rounded-2xl bg-rose-600 px-4 py-3 text-xs font-black text-white hover:bg-rose-700"
+                                    >
+                                        Reject
+                                    </button>
+                                </div>
+                            </div>
+                        </article>
+                    ))}
+                </div>
+            )}
+        </section>
     );
 }
 

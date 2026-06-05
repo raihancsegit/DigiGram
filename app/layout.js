@@ -2,6 +2,7 @@ import ReduxProvider from "@/components/Provider";
 import AuthSessionSync from "@/components/auth/AuthSessionSync";
 import PWARegistration from "@/components/PWARegistration";
 import RouteChangeListener from "@/components/common/RouteChangeListener";
+import HouseholdOutboxSync from "@/components/common/HouseholdOutboxSync";
 import { Suspense } from "react";
 import { Toaster } from 'react-hot-toast';
 import "./globals.css";
@@ -34,6 +35,7 @@ export default function RootLayout({ children }) {
         <PWARegistration />
         <ReduxProvider>
           <AuthSessionSync />
+          <HouseholdOutboxSync />
           <Suspense fallback={null}>
             <RouteChangeListener />
           </Suspense>

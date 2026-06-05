@@ -6,7 +6,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { 
     Lock, Shield, Eye, EyeOff, Trash2, FileText, 
     CheckCircle, Loader2, X, Plus, Info, Home, User, Zap, Droplets, Unlock, Users, MapPin, Maximize2, Minimize2,
-    Banknote, ClipboardList, Navigation, Calendar, AlertCircle, CheckCheck, Clock, Receipt, Sparkles, ArrowRight, UserCircle, UserCheck, ShieldCheck
+    Banknote, ClipboardList, Navigation, Calendar, AlertCircle, CheckCheck, Clock, Receipt, Sparkles, ArrowRight, UserCircle, UserCheck, ShieldCheck, History
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { householdService } from '@/lib/services/householdService';
@@ -54,6 +54,8 @@ const TABS = {
     documents: { label: 'লকার', icon: ShieldCheck },
     tax: { label: 'ট্যাক্স', icon: Banknote }
 };
+
+TABS.timeline = { label: 'Timeline', icon: History };
 
 export default function HouseholdLockerManager({ household, onUpdate, onClose }) {
     const { user } = useSelector((state) => state.auth);
@@ -763,6 +765,65 @@ export default function HouseholdLockerManager({ household, onUpdate, onClose })
         return warnings;
     });
 
+    const timelineEvents = [
+        household?.created_at && {
+            id: `house-${household.id}`,
+            type: 'household',
+            title: 'Household profile created',
+            description: `${household.owner_name || 'Family'} profile opened in DigiGram.`,
+            date: household.created_at,
+            icon: Home,
+            tone: 'bg-teal-50 text-teal-700 border-teal-100'
+        },
+        ...residents.map((resident) => ({
+            id: `resident-${resident.id}`,
+            type: 'resident',
+            title: `${resident.name || 'Resident'} added`,
+            description: `${relationLabel(resident.relation_with_head)} · ${resident.nid ? 'NID available' : 'NID missing'} · ${resident.birth_reg_no ? 'Birth reg available' : 'Birth reg missing'}`,
+            date: resident.created_at || household.created_at,
+            icon: User,
+            tone: 'bg-slate-50 text-slate-700 border-slate-100'
+        })),
+        ...serviceRequests.map((request) => ({
+            id: `request-${request.id}`,
+            type: 'request',
+            title: SERVICE_TYPES[request.request_type] || request.request_type || 'Service request',
+            description: `${request.applicant_name || 'Applicant'} · ${STATUS_CONFIG[request.status]?.label || request.status || 'pending'}${request.collection_date ? ` · Collection ${new Date(request.collection_date).toLocaleDateString('bn-BD')}` : ''}`,
+            date: request.updated_at || request.created_at,
+            icon: ClipboardList,
+            tone: request.status === 'ready' || request.status === 'completed'
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                : request.status === 'rejected'
+                    ? 'bg-rose-50 text-rose-700 border-rose-100'
+                    : 'bg-amber-50 text-amber-700 border-amber-100'
+        })),
+        ...documents.map((document) => ({
+            id: `document-${document.id}`,
+            type: 'document',
+            title: document.title || document.document_type || 'Document uploaded',
+            description: `${document.document_type || 'Document'} saved in digital locker.`,
+            date: document.created_at || household.created_at,
+            icon: ShieldCheck,
+            tone: 'bg-indigo-50 text-indigo-700 border-indigo-100'
+        })),
+        ...taxes.map((tax) => ({
+            id: `tax-${tax.id}`,
+            type: 'tax',
+            title: `Tax ${tax.fiscal_year_label || tax.year || ''}`,
+            description: `${tax.status || 'due'} · Paid ${toBnDigits(tax.amount_paid || 0)} / Due ${toBnDigits(tax.amount_due || 0)}`,
+            date: tax.updated_at || tax.created_at || tax.issued_at,
+            icon: Banknote,
+            tone: tax.status === 'paid' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-orange-50 text-orange-700 border-orange-100'
+        }))
+    ]
+        .filter(Boolean)
+        .sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
+
+    const timelineSummary = timelineEvents.reduce((acc, event) => {
+        acc[event.type] = (acc[event.type] || 0) + 1;
+        return acc;
+    }, {});
+
     const selectedApplicant = residents.find(r => r.name === serviceForm.applicant_name);
     const selectedApplicantMissingFields = selectedApplicant ? [
         !selectedApplicant.nid && 'NID',
@@ -1078,6 +1139,62 @@ export default function HouseholdLockerManager({ household, onUpdate, onClose })
                                     </div>
                                 </div>
                             )}
+                        </motion.div>
+                    )}
+
+                    {activeTab === 'timeline' && (
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+                            <div className="rounded-[32px] border border-slate-200 bg-slate-50 p-5 sm:p-6">
+                                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                                    <div>
+                                        <p className="text-[10px] font-black uppercase tracking-[0.24em] text-teal-600">Family Timeline</p>
+                                        <h3 className="mt-1 text-xl font-black text-slate-900">এই পরিবারের সব activity এক জায়গায়</h3>
+                                        <p className="mt-2 max-w-2xl text-xs font-bold leading-5 text-slate-500">
+                                            Household update, member, application, document locker এবং tax history chronological ভাবে দেখা যাবে।
+                                        </p>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                                        {[
+                                            ['Members', timelineSummary.resident || 0],
+                                            ['Requests', timelineSummary.request || 0],
+                                            ['Docs', timelineSummary.document || 0],
+                                            ['Tax', timelineSummary.tax || 0]
+                                        ].map(([label, value]) => (
+                                            <div key={label} className="rounded-2xl bg-white px-4 py-3 text-center shadow-sm">
+                                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{label}</p>
+                                                <p className="mt-1 text-xl font-black text-slate-900">{toBnDigits(value)}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="relative space-y-4">
+                                <div className="absolute bottom-0 left-5 top-0 hidden w-px bg-slate-200 sm:block" />
+                                {timelineEvents.map((event) => (
+                                    <div key={event.id} className="relative flex gap-4 rounded-[28px] border border-slate-100 bg-white p-4 shadow-sm sm:ml-10 sm:p-5">
+                                        <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border ${event.tone}`}>
+                                            <event.icon size={20} />
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                                <div>
+                                                    <h4 className="break-words text-sm font-black text-slate-900">{event.title}</h4>
+                                                    <p className="mt-1 break-words text-xs font-bold leading-5 text-slate-500">{event.description}</p>
+                                                </div>
+                                                <span className="shrink-0 rounded-full bg-slate-50 px-3 py-1 text-[10px] font-black text-slate-500">
+                                                    {event.date ? toBnDigits(new Date(event.date).toLocaleDateString('bn-BD')) : 'No date'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                                {timelineEvents.length === 0 && (
+                                    <div className="rounded-[28px] border border-dashed border-slate-200 bg-slate-50 p-8 text-center text-sm font-bold text-slate-500">
+                                        Timeline activity এখনো নেই।
+                                    </div>
+                                )}
+                            </div>
                         </motion.div>
                     )}
 

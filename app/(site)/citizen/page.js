@@ -404,7 +404,7 @@ export default function CitizenCenterPage() {
                         )}
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                         <Metric icon={FileText} label="আবেদন" value={totals.services} />
                         <Metric icon={CalendarCheck} label="Serial" value={totals.appointments} />
                         <Metric icon={ShieldCheck} label="Support" value={totals.lifeSupport} />
@@ -992,10 +992,16 @@ function LifeSupportForm({
 
 function Metric({ icon: Icon, label, value }) {
     return (
-        <div className="rounded-[26px] border border-slate-200 bg-white p-5 shadow-sm">
-            <Icon className="text-teal-600" size={22} />
-            <p className="mt-4 text-3xl font-black">{toBnDigits(value || 0)}</p>
-            <p className="text-xs font-black uppercase tracking-widest text-slate-400">{label}</p>
+        <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm flex items-center justify-between gap-4 transition-all duration-300 hover:shadow-lg hover:border-teal-200 group">
+            <div className="space-y-1">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{label}</p>
+                <p className="text-3xl font-black text-slate-800 tracking-tight leading-none pt-1">
+                    {toBnDigits(value || 0)}
+                </p>
+            </div>
+            <div className="w-12 h-12 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center shrink-0 group-hover:bg-teal-600 group-hover:text-white transition-all duration-300 shadow-sm shadow-teal-500/5">
+                <Icon size={20} />
+            </div>
         </div>
     );
 }

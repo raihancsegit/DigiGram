@@ -11,6 +11,23 @@ function createAdminClient() {
     );
 }
 
+async function safeCount(supabaseAdmin, table, applyFilter = (query) => query) {
+    try {
+        const query = applyFilter(supabaseAdmin.from(table).select('*', { count: 'exact', head: true }));
+        const { count, error } = await query;
+        if (error) {
+            return { count: 0, error: error.message };
+        }
+        return { count: count || 0, error: null };
+    } catch (err) {
+        return { count: 0, error: err.message || String(err) };
+    }
+}
+
+function readinessStatus(errors = []) {
+    return errors.filter(Boolean).length === 0 ? 'ready' : 'needs_sql';
+}
+
 export async function GET() {
     try {
         const supabaseAdmin = createAdminClient();
@@ -96,6 +113,67 @@ export async function GET() {
             .filter((profile) => !profile.access_scope_id || locationTypes.get(profile.access_scope_id) !== 'village')
             .slice(0, 10);
 
+        const [
+            totalHouseholds,
+            totalResidents,
+            residentsMissingNid,
+            residentsMissingBirth,
+            residentsMissingBlood,
+            householdsMissingGps,
+            taxDueRows,
+            servicePendingRows,
+            activeSmsGateways,
+            smsWallets,
+            smsLowBalanceWallets,
+            smsQueued,
+            smsFailed,
+            smsPendingRecharge,
+            citizenComplaintsOpen,
+            citizenAppointmentsOpen,
+            citizenLifeSupportOpen,
+            institutionsTotal,
+            institutionPagesTotal,
+            schoolClassesTotal,
+            schoolStudentsTotal,
+            schoolLessonsTotal,
+            marketAlertsTotal,
+            lostFoundOpen
+        ] = await Promise.all([
+            safeCount(supabaseAdmin, 'households'),
+            safeCount(supabaseAdmin, 'residents'),
+            safeCount(supabaseAdmin, 'residents', (query) => query.is('nid', null)),
+            safeCount(supabaseAdmin, 'residents', (query) => query.is('birth_reg_no', null)),
+            safeCount(supabaseAdmin, 'residents', (query) => query.is('blood_group', null)),
+            safeCount(supabaseAdmin, 'households', (query) => query.or('lat.is.null,lng.is.null')),
+            safeCount(supabaseAdmin, 'household_taxes', (query) => query.in('status', ['due', 'partial'])),
+            safeCount(supabaseAdmin, 'service_requests', (query) => query.in('status', ['pending', 'processing', 'ready'])),
+            safeCount(supabaseAdmin, 'sms_gateways', (query) => query.eq('is_active', true)),
+            safeCount(supabaseAdmin, 'sms_wallets'),
+            safeCount(supabaseAdmin, 'sms_wallets', (query) => query.lte('balance', 50)),
+            safeCount(supabaseAdmin, 'sms_messages', (query) => query.eq('status', 'queued')),
+            safeCount(supabaseAdmin, 'sms_messages', (query) => query.eq('status', 'failed')),
+            safeCount(supabaseAdmin, 'sms_recharge_requests', (query) => query.eq('status', 'pending')),
+            safeCount(supabaseAdmin, 'citizen_complaints', (query) => query.in('status', ['submitted', 'reviewing', 'assigned'])),
+            safeCount(supabaseAdmin, 'citizen_appointments', (query) => query.in('status', ['pending', 'confirmed'])),
+            safeCount(supabaseAdmin, 'citizen_life_support_cases', (query) => query.in('status', ['submitted', 'reviewing', 'approved'])),
+            safeCount(supabaseAdmin, 'institutions'),
+            safeCount(supabaseAdmin, 'institution_pages'),
+            safeCount(supabaseAdmin, 'school_classes'),
+            safeCount(supabaseAdmin, 'school_students'),
+            safeCount(supabaseAdmin, 'school_lessons'),
+            safeCount(supabaseAdmin, 'market_price_alert_subscriptions', (query) => query.eq('is_active', true)),
+            safeCount(supabaseAdmin, 'lost_found_posts', (query) => query.eq('status', 'active'))
+        ]);
+
+        const readinessErrors = [
+            totalHouseholds.error,
+            totalResidents.error,
+            activeSmsGateways.error,
+            smsWallets.error,
+            citizenComplaintsOpen.error,
+            institutionsTotal.error
+        ];
+
         return NextResponse.json({
             success: true,
             data: {
@@ -115,6 +193,44 @@ export async function GET() {
                 options: {
                     assignableProfiles: assignableProfiles.data || [],
                     locationVillages: locationVillages.data || []
+                },
+                readiness: {
+                    status: readinessStatus(readinessErrors),
+                    sqlErrors: readinessErrors.filter(Boolean),
+                    household: {
+                        totalHouseholds: totalHouseholds.count,
+                        totalResidents: totalResidents.count,
+                        residentsMissingNid: residentsMissingNid.count,
+                        residentsMissingBirth: residentsMissingBirth.count,
+                        residentsMissingBlood: residentsMissingBlood.count,
+                        householdsMissingGps: householdsMissingGps.count,
+                        taxDueRows: taxDueRows.count,
+                        servicePendingRows: servicePendingRows.count
+                    },
+                    smsBusiness: {
+                        activeGateways: activeSmsGateways.count,
+                        wallets: smsWallets.count,
+                        lowBalanceWallets: smsLowBalanceWallets.count,
+                        queuedMessages: smsQueued.count,
+                        failedMessages: smsFailed.count,
+                        pendingRechargeRequests: smsPendingRecharge.count
+                    },
+                    citizenWorkload: {
+                        openComplaints: citizenComplaintsOpen.count,
+                        openAppointments: citizenAppointmentsOpen.count,
+                        openLifeSupportCases: citizenLifeSupportOpen.count
+                    },
+                    institution: {
+                        institutions: institutionsTotal.count,
+                        websitePages: institutionPagesTotal.count,
+                        classes: schoolClassesTotal.count,
+                        students: schoolStudentsTotal.count,
+                        lessons: schoolLessonsTotal.count
+                    },
+                    growth: {
+                        activeMarketAlerts: marketAlertsTotal.count,
+                        activeLostFoundPosts: lostFoundOpen.count
+                    }
                 }
             }
         });
