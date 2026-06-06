@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { BriefcaseBusiness, CheckCircle2, Clock3, HeartPulse, Leaf, Loader2, MapPin, Search, Send, ShieldCheck, XCircle } from 'lucide-react';
 import { toBnDigits } from '@/lib/utils/format';
+import { authenticatedFetch } from '@/lib/utils/authenticated-fetch';
+import OfficerActivityTimeline, { CitizenQueueSla } from '@/components/sections/citizen/OfficerActivityTimeline';
 
 const TYPE_META = {
     document: { label: 'Document', icon: ShieldCheck, color: 'bg-teal-50 text-teal-700 border-teal-100' },
@@ -52,7 +54,7 @@ export default function CitizenLifeSupportManager({ scopeType = 'union', scopeId
             if (scopeId) params.set('scopeId', scopeId);
             if (status !== 'all') params.set('status', status);
             if (caseType !== 'all') params.set('caseType', caseType);
-            const response = await fetch(`/api/citizen/life-support/manage?${params.toString()}`);
+            const response = await authenticatedFetch(`/api/citizen/life-support/manage?${params.toString()}`);
             const result = await response.json();
             if (!response.ok) throw new Error(result.error || 'Life support load failed');
             setItems(result.data || []);
@@ -95,7 +97,7 @@ export default function CitizenLifeSupportManager({ scopeType = 'union', scopeId
         setSavingId(item.id);
         setNotice('');
         try {
-            const response = await fetch('/api/citizen/life-support/manage', {
+            const response = await authenticatedFetch('/api/citizen/life-support/manage', {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -210,6 +212,9 @@ export default function CitizenLifeSupportManager({ scopeType = 'union', scopeId
                                     <Info label="মোবাইল" value={item.phone} />
                                     <Info label="লোকেশন" value={item.location_text || 'লোকেশন নেই'} />
                                 </div>
+
+                                <CitizenQueueSla item={item} />
+                                <OfficerActivityTimeline events={item.activity || []} />
 
                                 <input
                                     type="datetime-local"

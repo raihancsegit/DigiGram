@@ -54,10 +54,10 @@ const ACTIONS = [
         color: 'bg-indigo-50 text-indigo-700 border-indigo-100'
     },
     {
-        title: 'বকেয়া ও রিমাইন্ডার',
-        text: 'Tax, school fee, service ready হলে SMS reminder পেতে পারবেন।',
-        href: '/citizen',
-        icon: BellRing,
+        title: 'Tax ও fee payment',
+        text: 'OTP দিয়ে বকেয়া দেখুন, payment reference দিন এবং receipt status অনুসরণ করুন।',
+        href: '/pay',
+        icon: WalletCards,
         color: 'bg-cyan-50 text-cyan-700 border-cyan-100'
     },
     {

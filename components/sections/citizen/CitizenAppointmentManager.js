@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CalendarCheck, CheckCircle2, Clock3, Loader2, Search, Send, XCircle } from 'lucide-react';
 import { toBnDigits } from '@/lib/utils/format';
+import { authenticatedFetch } from '@/lib/utils/authenticated-fetch';
+import OfficerActivityTimeline, { CitizenQueueSla } from '@/components/sections/citizen/OfficerActivityTimeline';
 
 const STATUS_META = {
     submitted: { label: 'নতুন', color: 'bg-amber-50 text-amber-700 border-amber-100', icon: Clock3 },
@@ -41,14 +43,14 @@ export default function CitizenAppointmentManager({ scopeType = 'union', scopeId
     const [serialNo, setSerialNo] = useState({});
     const [notice, setNotice] = useState('');
 
-    const loadAppointments = async () => {
+    const loadAppointments = useCallback(async () => {
         setLoading(true);
         try {
             const params = new URLSearchParams();
             if (scopeType) params.set('scopeType', scopeType);
             if (scopeId) params.set('scopeId', scopeId);
             if (status !== 'all') params.set('status', status);
-            const response = await fetch(`/api/citizen/appointments/manage?${params.toString()}`);
+            const response = await authenticatedFetch(`/api/citizen/appointments/manage?${params.toString()}`);
             const result = await response.json();
             if (!response.ok) throw new Error(result.error || 'Appointment load failed');
             setItems(result.data || []);
@@ -57,11 +59,11 @@ export default function CitizenAppointmentManager({ scopeType = 'union', scopeId
         } finally {
             setLoading(false);
         }
-    };
+    }, [scopeType, scopeId, status]);
 
     useEffect(() => {
         loadAppointments();
-    }, [scopeType, scopeId, status]);
+    }, [loadAppointments]);
 
     const filteredItems = useMemo(() => {
         const search = query.trim().toLowerCase();
@@ -89,7 +91,7 @@ export default function CitizenAppointmentManager({ scopeType = 'union', scopeId
         setSavingId(item.id);
         setNotice('');
         try {
-            const response = await fetch('/api/citizen/appointments/manage', {
+            const response = await authenticatedFetch('/api/citizen/appointments/manage', {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -207,6 +209,9 @@ export default function CitizenAppointmentManager({ scopeType = 'union', scopeId
                                     <Info label="মোবাইল" value={item.phone} />
                                     <Info label="পছন্দের সময়" value={[item.preferred_date, item.preferred_time_slot].filter(Boolean).join(' · ') || 'দেওয়া হয়নি'} />
                                 </div>
+
+                                <CitizenQueueSla item={item} />
+                                <OfficerActivityTimeline events={item.activity || []} />
 
                                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                                     <input

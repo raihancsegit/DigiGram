@@ -1,8 +1,12 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import { requireRequestProfile } from '@/lib/utils/server-auth';
 
 export async function POST(request) {
     try {
+        const auth = await requireRequestProfile(request, ['super_admin']);
+        if (auth.response) return auth.response;
+
         const body = await request.json();
         const { email, password, first_name, last_name, phone, role, access_scope_id } = body;
 

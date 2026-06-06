@@ -6,7 +6,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
     LayoutDashboard, Users, Settings, Bell,
     LogOut, Menu, X, Shield, Globe,
-    CreditCard, Zap, School, Activity, MapPin, ShoppingBag, Database, MessageSquareText
+    CreditCard, Zap, School, Activity, MapPin, ShoppingBag, Database, MessageSquareText,
+    ScanSearch, FileClock, GitBranch
 } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { performLogout } from '@/lib/store/features/authSlice';
@@ -14,11 +15,19 @@ import NotificationBell from '@/components/ui/NotificationBell';
 import { menuStyles } from '@/components/common/menuStyles';
 
 export default function AdminShell({ children }) {
-    const [isSidebarOpen, setSidebarOpen] = useState(true);
+    const [isSidebarOpen, setSidebarOpen] = useState(false);
     const pathname = usePathname();
     const router = useRouter();
     const dispatch = useDispatch();
     const { user } = useSelector((state) => state.auth);
+
+    useEffect(() => {
+        const media = window.matchMedia('(min-width: 768px)');
+        const syncSidebar = () => setSidebarOpen(media.matches);
+        syncSidebar();
+        media.addEventListener('change', syncSidebar);
+        return () => media.removeEventListener('change', syncSidebar);
+    }, []);
 
     const handleLogout = async () => {
         await dispatch(performLogout());
@@ -35,7 +44,10 @@ export default function AdminShell({ children }) {
         { name: 'শিক্ষা প্রতিষ্ঠান', icon: School, path: '/admin/institutions', permission: 'can_manage_institutions' },
         { name: 'ইউজার ম্যানেজমেন্ট', icon: Users, path: '/admin/members', permission: 'can_manage_users' },
         { name: 'নোটিশবোর্ড', icon: Bell, path: '/admin/notices', permission: 'can_manage_news' },
+        { name: 'ডাটা কোয়ালিটি', icon: ScanSearch, path: '/admin/data-quality', permission: 'can_manage_system' },
         { name: 'SMS', icon: MessageSquareText, path: '/admin/sms', permission: 'can_manage_system' },
+        { name: 'SLA / Operations', icon: FileClock, path: '/admin/operations', permission: 'can_manage_system' },
+        { name: 'SQL Migrations', icon: GitBranch, path: '/admin/migrations', permission: 'can_manage_system' },
         { name: 'বিলিং / ক্রেডিট', icon: CreditCard, path: '/admin/billing' },
         { name: 'সিস্টেম মেনটেন্যান্স', icon: Database, path: '/admin/maintenance', permission: 'can_manage_system' },
         { name: 'সেটিংস', icon: Settings, path: '/admin/settings' },
@@ -55,10 +67,20 @@ export default function AdminShell({ children }) {
 
     return (
         <div className="min-h-screen bg-[#f8fafc] flex">
+            {isSidebarOpen && (
+                <button
+                    type="button"
+                    aria-label="Close admin menu"
+                    onClick={() => setSidebarOpen(false)}
+                    className="fixed inset-0 z-40 bg-slate-950/45 backdrop-blur-sm md:hidden"
+                />
+            )}
             {/* Sidebar */}
             <aside
                 style={{ width: isSidebarOpen ? 280 : 80 }}
-                className="fixed left-0 top-0 h-screen bg-white border-r border-slate-200 z-50 flex flex-col transition-all duration-300 overflow-hidden"
+                className={`fixed left-0 top-0 z-50 flex h-screen flex-col overflow-hidden border-r border-slate-200 bg-white transition-transform duration-300 md:transition-[width] ${
+                    isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+                }`}
             >
                 {/* Logo Section */}
                 <div className="h-20 flex items-center px-6 gap-3 border-b border-slate-100">
@@ -111,11 +133,12 @@ export default function AdminShell({ children }) {
 
             {/* Main Content Area */}
             <main
-                className="flex-1 transition-all duration-300 min-h-screen flex flex-col"
-                style={{ marginLeft: isSidebarOpen ? 280 : 80 }}
+                className={`flex min-h-screen flex-1 flex-col transition-all duration-300 ${
+                    isSidebarOpen ? 'md:ml-[280px]' : 'md:ml-20'
+                }`}
             >
                 {/* Top Header */}
-                <header className="h-20 bg-white border-b border-slate-200 sticky top-0 z-30 flex items-center justify-between px-8">
+                <header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-slate-200 bg-white px-4 sm:px-6 md:px-8">
                     <div className="flex items-center gap-4">
                         <button
                             onClick={() => setSidebarOpen(!isSidebarOpen)}
@@ -155,7 +178,7 @@ export default function AdminShell({ children }) {
                 </header>
 
                 {/* Page Content */}
-                <div className="p-8 max-w-[1400px] mx-auto w-full">
+                <div className="mx-auto w-full max-w-[1400px] p-4 sm:p-6 md:p-8">
                     {children}
                 </div>
             </main>

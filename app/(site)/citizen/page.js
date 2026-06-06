@@ -119,6 +119,7 @@ export default function CitizenCenterPage() {
             blood: inbox.bloodRequests?.length || 0,
             reminders: inbox.reminders?.length || 0,
             taxes: inbox.householdTaxes?.filter((item) => item.status !== 'paid')?.length || 0,
+            privacy: inbox.privacyHistory?.length || 0,
             timeline: inbox.timeline?.length || 0
         };
     }, [inbox]);
@@ -426,7 +427,7 @@ export default function CitizenCenterPage() {
                             <CitizenReadinessCard inbox={inbox} totals={totals} setActiveTab={setActiveInboxTab} />
 
                             <div className="rounded-[30px] border border-slate-200 bg-white p-3 shadow-sm">
-                                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-9">
+                                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-10">
                                     {[
                                         ['timeline', 'Timeline', ListChecks, totals.timeline],
                                         ['appointments', 'Serial', CalendarCheck, totals.appointments],
@@ -436,6 +437,7 @@ export default function CitizenCenterPage() {
                                         ['blood', 'রক্ত', Droplet, totals.blood],
                                         ['reminders', 'Reminder', Bell, totals.reminders],
                                         ['taxes', 'Tax', Banknote, inbox.householdTaxes?.length || 0],
+                                        ['privacy', 'Privacy', ShieldCheck, totals.privacy],
                                         ['households', 'বাড়ি', Home, inbox.households?.length || 0]
                                     ].map(([id, label, Icon, count]) => (
                                         <button
@@ -586,8 +588,36 @@ export default function CitizenCenterPage() {
                                                     {item.status || 'due'}
                                                 </span>
                                             </div>
+                                            {item.status !== 'paid' && (
+                                                <Link
+                                                    href={`/pay?phone=${encodeURIComponent(phone)}`}
+                                                    className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-teal-600 px-4 py-2 text-xs font-black text-white"
+                                                >
+                                                    <Banknote size={15} /> Online payment
+                                                </Link>
+                                            )}
                                         </div>
                                     ))}
+                                </Panel>
+                            )}
+
+                            {activeInboxTab === 'privacy' && (
+                                <Panel title="Privacy access history" icon={ShieldCheck}>
+                                    {(inbox.privacyHistory || []).length === 0 ? <Empty text="এখনো কোনো private data access history নেই।" /> : (
+                                        <div className="space-y-3">
+                                            {inbox.privacyHistory.map((item) => (
+                                                <TimelineItem
+                                                    key={item.id}
+                                                    item={{
+                                                        title: item.action === 'inbox_viewed' ? 'Citizen inbox দেখা হয়েছে' : item.action,
+                                                        text: `${item.resource_type} · ${item.actor_role || 'citizen'} · ${item.access_channel || 'web'}`,
+                                                        status: 'protected',
+                                                        date: item.created_at
+                                                    }}
+                                                />
+                                            ))}
+                                        </div>
+                                    )}
                                 </Panel>
                             )}
 

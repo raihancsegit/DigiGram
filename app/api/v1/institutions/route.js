@@ -10,6 +10,10 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const locationId = searchParams.get('location_id');
     const type = searchParams.get('type');
+
+    if (!locationId || locationId === 'null' || locationId === 'undefined') {
+        return NextResponse.json([]);
+    }
     
     const institutions = await getInstitutionsByLocation(locationId, type);
     return NextResponse.json(institutions);

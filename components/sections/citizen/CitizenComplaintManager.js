@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     AlertTriangle,
     CheckCircle2,
@@ -13,6 +13,7 @@ import {
     XCircle
 } from 'lucide-react';
 import { toBnDigits } from '@/lib/utils/format';
+import { authenticatedFetch } from '@/lib/utils/authenticated-fetch';
 
 const STATUS_META = {
     submitted: { label: 'নতুন', color: 'bg-amber-50 text-amber-700 border-amber-100', icon: Clock3 },
@@ -58,7 +59,7 @@ export default function CitizenComplaintManager({ scopeType = 'union', scopeId, 
     const [officerNotes, setOfficerNotes] = useState({});
     const [notice, setNotice] = useState('');
 
-    const loadComplaints = async () => {
+    const loadComplaints = useCallback(async () => {
         setLoading(true);
         try {
             const params = new URLSearchParams();
@@ -66,7 +67,7 @@ export default function CitizenComplaintManager({ scopeType = 'union', scopeId, 
             if (scopeId) params.set('scopeId', scopeId);
             if (status !== 'all') params.set('status', status);
 
-            const response = await fetch(`/api/citizen/complaints/manage?${params.toString()}`);
+            const response = await authenticatedFetch(`/api/citizen/complaints/manage?${params.toString()}`);
             const result = await response.json();
             if (!response.ok) throw new Error(result.error || 'Complaint load failed');
             setItems(result.data || []);
@@ -75,11 +76,11 @@ export default function CitizenComplaintManager({ scopeType = 'union', scopeId, 
         } finally {
             setLoading(false);
         }
-    };
+    }, [scopeId, scopeType, status]);
 
     useEffect(() => {
         loadComplaints();
-    }, [scopeType, scopeId, status]);
+    }, [loadComplaints]);
 
     const filteredItems = useMemo(() => {
         const search = query.trim().toLowerCase();
@@ -121,7 +122,7 @@ export default function CitizenComplaintManager({ scopeType = 'union', scopeId, 
         setSavingId(item.id);
         setNotice('');
         try {
-            const response = await fetch('/api/citizen/complaints/manage', {
+            const response = await authenticatedFetch('/api/citizen/complaints/manage', {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

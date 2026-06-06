@@ -1,8 +1,12 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import { canAccessLocation, requireRequestProfile } from '@/lib/utils/server-auth';
 
 export async function POST(request) {
     try {
+        const auth = await requireRequestProfile(request, ['super_admin', 'chairman']);
+        if (auth.response) return auth.response;
+
         const body = await request.json();
         const { action, projectData, projectId, settings, unionSlug, donationId } = body;
 
@@ -17,6 +21,41 @@ export async function POST(request) {
                 }
             }
         );
+
+        if (auth.profile.role !== 'super_admin') {
+            let targetUnionSlug = unionSlug || projectData?.union_slug || null;
+
+            if (!targetUnionSlug && (projectData?.id || projectId)) {
+                const { data: project } = await supabaseAdmin
+                    .from('donation_projects')
+                    .select('union_slug')
+                    .eq('id', projectData?.id || projectId)
+                    .maybeSingle();
+                targetUnionSlug = project?.union_slug || null;
+            }
+
+            if (!targetUnionSlug && donationId) {
+                const { data: donation } = await supabaseAdmin
+                    .from('donation_ledger')
+                    .select('project:donation_projects(union_slug)')
+                    .eq('id', donationId)
+                    .maybeSingle();
+                targetUnionSlug = donation?.project?.union_slug || null;
+            }
+
+            const { data: targetUnion } = targetUnionSlug
+                ? await supabaseAdmin
+                    .from('locations')
+                    .select('id')
+                    .eq('slug', targetUnionSlug)
+                    .eq('type', 'union')
+                    .maybeSingle()
+                : { data: null };
+
+            if (!targetUnion?.id || !(await canAccessLocation(auth.profile, targetUnion.id))) {
+                return NextResponse.json({ error: 'This donation record is outside your assigned union' }, { status: 403 });
+            }
+        }
 
         if (action === 'save_project') {
             const dataToSave = {

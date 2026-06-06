@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import { requireRequestProfile } from '@/lib/utils/server-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,8 +29,11 @@ function readinessStatus(errors = []) {
     return errors.filter(Boolean).length === 0 ? 'ready' : 'needs_sql';
 }
 
-export async function GET() {
+export async function GET(request) {
     try {
+        const auth = await requireRequestProfile(request, ['super_admin']);
+        if (auth.response) return auth.response;
+
         const supabaseAdmin = createAdminClient();
 
         const [
@@ -173,6 +177,12 @@ export async function GET() {
             citizenComplaintsOpen.error,
             institutionsTotal.error
         ];
+        const { data: securityAuditRows, error: securityAuditError } = await supabaseAdmin
+            .from('admin_rls_security_audit')
+            .select('*')
+            .order('table_name');
+        const securitySetupRequired = ['42P01', 'PGRST205'].includes(securityAuditError?.code);
+        const securityRows = securityAuditRows || [];
 
         return NextResponse.json({
             success: true,
@@ -231,6 +241,17 @@ export async function GET() {
                         activeMarketAlerts: marketAlertsTotal.count,
                         activeLostFoundPosts: lostFoundOpen.count
                     }
+                },
+                security: {
+                    setupRequired: securitySetupRequired,
+                    error: securityAuditError && !securitySetupRequired
+                        ? securityAuditError.message
+                        : null,
+                    readyCount: securityRows.filter((row) => row.status === 'ok').length,
+                    unsafeCount: securityRows.filter((row) => (
+                        !['ok', 'missing_table'].includes(row.status)
+                    )).length,
+                    rows: securityRows
                 }
             }
         });
@@ -242,6 +263,9 @@ export async function GET() {
 
 export async function POST(request) {
     try {
+        const auth = await requireRequestProfile(request, ['super_admin']);
+        if (auth.response) return auth.response;
+
         const body = await request.json();
         const { action } = body;
 

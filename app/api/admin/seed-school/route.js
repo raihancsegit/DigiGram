@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { buildSchoolWebsiteDemoPage } from '@/lib/constants/schoolWebsiteDefaults';
+import { canManageInstitution, requireRequestProfile } from '@/lib/utils/server-auth';
 
 const PASSWORD = 'password123';
 
@@ -374,8 +375,14 @@ function formatSeedError(error) {
 
 export async function POST(request) {
     try {
+        const auth = await requireRequestProfile(request, ['super_admin', 'institution_admin', 'school_admin']);
+        if (auth.response) return auth.response;
+
         const { institutionId } = await request.json();
         if (!institutionId) return NextResponse.json({ error: 'institutionId is required' }, { status: 400 });
+        if (!(await canManageInstitution(auth.profile, institutionId))) {
+            return NextResponse.json({ error: 'This institution is outside your assigned scope' }, { status: 403 });
+        }
         if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
             return NextResponse.json({
                 error: 'Supabase service role env missing. Add NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY before demo seed.'

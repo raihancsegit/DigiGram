@@ -7,6 +7,33 @@ import { useMemo, useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { newsService } from '@/lib/services/newsService';
 
+const FALLBACK_TICKER_ITEMS = [
+    {
+        id: 'citizen-services',
+        text: 'নাগরিক সেবা, আবেদন ও জরুরি তথ্য এখন DigiGram-এ এক জায়গায় পাওয়া যাচ্ছে।',
+        union: 'ডিজিগ্রাম',
+        href: '/citizen'
+    },
+    {
+        id: 'blood-service',
+        text: 'জরুরি রক্তের প্রয়োজন হলে ডিজিটাল ব্লাড ব্যাংক থেকে দ্রুত ডোনার খুঁজুন।',
+        union: 'জরুরি সেবা',
+        href: '/services/blood'
+    },
+    {
+        id: 'market-update',
+        text: 'আপনার এলাকার বাজারদর, চাহিদা ও গুরুত্বপূর্ণ আপডেট নিয়মিত দেখুন।',
+        union: 'বাজার',
+        href: '/services/market'
+    },
+    {
+        id: 'lost-found',
+        text: 'হারানো বা পাওয়া জিনিসের সংবাদ প্রকাশ করে দ্রুত সঠিক মানুষের কাছে পৌঁছে দিন।',
+        union: 'জনসেবা',
+        href: '/lost-found'
+    }
+];
+
 export default function NewsTicker() {
     const { selected } = useSelector((state) => state.location);
     const [newsItems, setNewsItems] = useState([]);
@@ -40,10 +67,12 @@ export default function NewsTicker() {
                 setNewsItems(combinedNews.map(n => ({
                     id: n.slug || n.id,
                     text: n.excerpt || n.title,
-                    union: n.location?.name_bn || (n.is_global ? 'গ্লোবাল' : 'লোকাল')
+                    union: n.location?.name_bn || (n.is_global ? 'গ্লোবাল' : 'লোকাল'),
+                    href: `/news/${n.slug || n.id}`
                 })));
             } catch (err) {
                 console.error("Error fetching ticker news:", err);
+                setNewsItems([]);
             } finally {
                 setLoading(false);
             }
@@ -53,9 +82,8 @@ export default function NewsTicker() {
     }, [selected?.unionId, selected?.unionName]);
 
     const loopItems = useMemo(() => {
-        if (newsItems.length === 0) return [];
-        // Ensure at least enough items for a smooth loop
-        return [...newsItems, ...newsItems];
+        const items = newsItems.length > 0 ? newsItems : FALLBACK_TICKER_ITEMS;
+        return [...items, ...items];
     }, [newsItems]);
 
     if (loading && newsItems.length === 0) {
@@ -66,8 +94,6 @@ export default function NewsTicker() {
             </div>
         );
     }
-
-    if (newsItems.length === 0) return null;
 
     return (
         <div className="relative dg-ticker-bar overflow-hidden">
@@ -110,7 +136,7 @@ export default function NewsTicker() {
                         {loopItems.map((news, i) => (
                             <Link 
                                 key={`${news.id}-${i}`} 
-                                href={`/news/${news.id}`}
+                                href={news.href || `/news/${news.id}`}
                                 className="flex items-center gap-3 shrink-0 group/item cursor-pointer"
                             >
                                 <span className="flex h-2 w-2 rounded-full bg-[color:var(--dg-teal-bright)] shadow-[0_0_10px_rgba(45,212,191,0.55)] group-hover/item:scale-125 transition-transform" />
@@ -126,13 +152,13 @@ export default function NewsTicker() {
                     </div>
                 </div>
 
-                <button
-                    type="button"
+                <Link
+                    href="/news"
                     className="hidden sm:flex items-center gap-1 self-center ml-1 px-3 py-1.5 rounded-full text-[11px] font-bold text-slate-300/90 hover:text-white hover:bg-white/10 border border-transparent hover:border-white/10 transition-colors duration-[var(--dg-duration)] shrink-0 z-[3]"
                 >
                     সব খবর
                     <ChevronRight size={14} />
-                </button>
+                </Link>
             </div>
         </div>
     );

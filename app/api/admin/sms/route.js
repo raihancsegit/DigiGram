@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/utils/supabase-admin';
+import { requireRequestProfile } from '@/lib/utils/server-auth';
 
 function monthKey(dateValue) {
     const date = new Date(dateValue);
@@ -32,8 +33,11 @@ function parseGatewayConfig(value) {
     return JSON.parse(value);
 }
 
-export async function GET() {
+export async function GET(request) {
     try {
+        const auth = await requireRequestProfile(request, ['super_admin']);
+        if (auth.response) return auth.response;
+
         const [
             { data: gateways, error: gatewayError },
             { data: packages, error: packageError },
@@ -279,6 +283,9 @@ export async function GET() {
 
 export async function POST(request) {
     try {
+        const auth = await requireRequestProfile(request, ['super_admin']);
+        if (auth.response) return auth.response;
+
         const body = await request.json();
         const { action } = body;
 

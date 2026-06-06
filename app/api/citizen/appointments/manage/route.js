@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/utils/supabase-admin';
+import { canAccessLocation, requireRequestProfile } from '@/lib/utils/server-auth';
+import { loadOfficerActivity, recordOfficerActivity } from '@/lib/utils/officer-activity';
 
 const VALID_STATUS = new Set(['submitted', 'reviewing', 'scheduled', 'completed', 'rejected', 'no_show']);
 const VALID_PRIORITY = new Set(['low', 'normal', 'urgent', 'emergency']);
@@ -117,10 +119,20 @@ async function queueAppointmentSms({ appointment, message, category }) {
 
 export async function GET(request) {
     try {
+        const auth = await requireRequestProfile(request, ['super_admin', 'chairman', 'ward_member']);
+        if (auth.response) return auth.response;
+
         const { searchParams } = request.nextUrl;
         const scopeType = searchParams.get('scopeType');
         const scopeId = searchParams.get('scopeId');
         const status = searchParams.get('status');
+        if (auth.profile.role !== 'super_admin') {
+            if (!scopeId || !(await canAccessLocation(auth.profile, scopeId))) {
+                return NextResponse.json({ error: 'Appointment scope is outside your assigned area' }, { status: 403 });
+            }
+        }
+
+        await supabaseAdmin.rpc('refresh_service_sla_escalations');
         const allowedScopeIds = await getAllowedScopeIds(scopeType, scopeId);
 
         let query = supabaseAdmin
@@ -138,11 +150,15 @@ export async function GET(request) {
 
         const rows = (data || []).filter((item) => {
             if (!scopeId) return true;
-            if (!item.assigned_scope_id) return true;
+            if (!item.assigned_scope_id) return auth.profile.role === 'super_admin';
             return allowedScopeIds.includes(item.assigned_scope_id);
         });
 
-        return NextResponse.json({ success: true, data: rows });
+        const activity = await loadOfficerActivity('citizen_appointment', rows);
+        return NextResponse.json({
+            success: true,
+            data: rows.map((item) => ({ ...item, activity: activity.get(item.id) || [] }))
+        });
     } catch (error) {
         console.error('Appointment manager load failed:', error);
         return NextResponse.json({ error: error.message || 'Appointment manager load failed' }, { status: 500 });
@@ -151,6 +167,9 @@ export async function GET(request) {
 
 export async function PATCH(request) {
     try {
+        const auth = await requireRequestProfile(request, ['super_admin', 'chairman', 'ward_member']);
+        if (auth.response) return auth.response;
+
         const body = await request.json();
         if (!body.id) {
             return NextResponse.json({ error: 'Appointment id is required' }, { status: 400 });
@@ -174,9 +193,19 @@ export async function PATCH(request) {
 
         const { data: previous } = await supabaseAdmin
             .from('citizen_appointments')
-            .select('id,status,feedback,scheduled_at')
+            .select('id,status,feedback,scheduled_at,assigned_scope_id')
             .eq('id', body.id)
             .maybeSingle();
+
+        if (!previous) {
+            return NextResponse.json({ error: 'Appointment not found' }, { status: 404 });
+        }
+        if (
+            auth.profile.role !== 'super_admin'
+            && (!previous.assigned_scope_id || !(await canAccessLocation(auth.profile, previous.assigned_scope_id)))
+        ) {
+            return NextResponse.json({ error: 'Appointment is outside your assigned area' }, { status: 403 });
+        }
 
         const { data, error } = await supabaseAdmin
             .from('citizen_appointments')
@@ -185,6 +214,25 @@ export async function PATCH(request) {
             .select()
             .single();
         if (error) throw error;
+
+        await recordOfficerActivity({
+            sourceType: 'citizen_appointment',
+            sourceId: data.id,
+            assignedScopeId: data.assigned_scope_id,
+            actor: auth.profile,
+            action: previous.status !== data.status ? 'status_changed' : 'details_updated',
+            fromStatus: previous.status,
+            toStatus: data.status,
+            note: body.officerNote || body.feedback || null,
+            metadata: {
+                scheduled_at: data.scheduled_at,
+                serial_no: data.serial_no,
+                priority: data.priority
+            }
+        });
+
+        const activity = await loadOfficerActivity('citizen_appointment', [data]);
+        data.activity = activity.get(data.id) || [];
 
         const changedStatus = body.status && previous?.status !== body.status;
         const changedFeedback = 'feedback' in body && (previous?.feedback || '') !== (body.feedback || '');

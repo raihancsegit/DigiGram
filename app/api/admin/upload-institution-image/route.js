@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import { canManageInstitution, requireRequestProfile } from '@/lib/utils/server-auth';
 
 const bucketName = 'public-uploads';
 
@@ -20,7 +21,13 @@ function mediaPathAllowed(path, institutionId) {
 
 export async function GET(request) {
     try {
+        const auth = await requireRequestProfile(request, ['super_admin', 'institution_admin', 'school_admin']);
+        if (auth.response) return auth.response;
+
         const institutionId = safeInstitutionFolder(new URL(request.url).searchParams.get('institutionId'));
+        if (!(await canManageInstitution(auth.profile, institutionId))) {
+            return NextResponse.json({ error: 'This institution is outside your assigned scope' }, { status: 403 });
+        }
         const folder = `institutions/${institutionId}`;
         const supabaseAdmin = createAdminClient();
         const { data: buckets } = await supabaseAdmin.storage.listBuckets();
@@ -65,10 +72,16 @@ export async function GET(request) {
 
 export async function DELETE(request) {
     try {
+        const auth = await requireRequestProfile(request, ['super_admin', 'institution_admin', 'school_admin']);
+        if (auth.response) return auth.response;
+
         const body = await request.json();
         const institutionId = safeInstitutionFolder(body.institutionId);
         const path = body.path;
 
+        if (!(await canManageInstitution(auth.profile, institutionId))) {
+            return NextResponse.json({ error: 'This institution is outside your assigned scope' }, { status: 403 });
+        }
         if (!mediaPathAllowed(path, institutionId)) {
             return NextResponse.json({ error: 'Invalid institution media path' }, { status: 400 });
         }
@@ -89,12 +102,18 @@ export async function DELETE(request) {
 
 export async function POST(request) {
     try {
+        const auth = await requireRequestProfile(request, ['super_admin', 'institution_admin', 'school_admin']);
+        if (auth.response) return auth.response;
+
         const formData = await request.formData();
         const file = formData.get('file');
         const institutionId = formData.get('institutionId') || 'general';
 
         if (!file) {
             return NextResponse.json({ error: 'Missing file' }, { status: 400 });
+        }
+        if (!(await canManageInstitution(auth.profile, institutionId))) {
+            return NextResponse.json({ error: 'This institution is outside your assigned scope' }, { status: 403 });
         }
 
         if (!file.type?.startsWith('image/')) {

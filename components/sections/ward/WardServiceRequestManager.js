@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { householdService } from '@/lib/services/householdService';
 import { toBnDigits } from '@/lib/utils/format';
+import { getServiceSla } from '@/lib/utils/serviceSla';
 
 const STATUS_LABELS = {
     pending: 'অপেক্ষমাণ',
@@ -159,7 +160,9 @@ export default function WardServiceRequestManager({ wardId }) {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                    {filteredRequests.map((request) => (
+                    {filteredRequests.map((request) => {
+                        const sla = getServiceSla(request);
+                        return (
                         <button
                             type="button"
                             key={request.id}
@@ -178,6 +181,17 @@ export default function WardServiceRequestManager({ wardId }) {
                             <h4 className="text-lg font-black text-slate-800">
                                 {REQUEST_LABELS[request.request_type] || request.request_type}
                             </h4>
+                            <span className={`mt-3 inline-flex rounded-full px-3 py-1 text-[10px] font-black ${
+                                sla.state === 'overdue'
+                                    ? 'bg-rose-50 text-rose-700'
+                                    : sla.state === 'due_soon'
+                                        ? 'bg-amber-50 text-amber-700'
+                                        : 'bg-teal-50 text-teal-700'
+                            }`}>
+                                {sla.state === 'overdue'
+                                    ? `${toBnDigits(Math.abs(sla.remainingDays))} দিন overdue`
+                                    : `${toBnDigits(Math.max(0, sla.remainingDays))} দিন বাকি`}
+                            </span>
                             <p className="mt-1 line-clamp-1 text-xs font-bold text-slate-400">ID: {request.id}</p>
 
                             <div className="mt-4 space-y-2 text-xs font-bold text-slate-500">
@@ -204,7 +218,8 @@ export default function WardServiceRequestManager({ wardId }) {
                                 <ExternalLink size={15} className="transition group-hover:translate-x-1" />
                             </div>
                         </button>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
 

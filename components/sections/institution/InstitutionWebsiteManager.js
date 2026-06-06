@@ -15,6 +15,7 @@ import {
 } from '@/lib/constants/schoolWebsiteDefaults';
 import { institutionPortalService } from '@/lib/services/institutionPortalService';
 import { institutionService } from '@/lib/services/institutionService';
+import { authenticatedFetch } from '@/lib/utils/authenticated-fetch';
 
 const DEFAULT_MENU = ['home', 'about', 'classes', 'teachers', 'facilities', 'admission', 'notices', 'contact'];
 const SCHOOL_CATEGORIES = ['school', 'primary_school', 'high_school', 'college', 'dakhil_madrasa', 'alim_madrasa', 'kindergarten'];
@@ -576,7 +577,7 @@ export default function InstitutionWebsiteManager({ institution, initialPage, on
         setMediaLoading(true);
         setMediaError('');
         try {
-            const response = await fetch(`/api/admin/upload-institution-image?institutionId=${encodeURIComponent(institution.id)}`, {
+            const response = await authenticatedFetch(`/api/admin/upload-institution-image?institutionId=${encodeURIComponent(institution.id)}`, {
                 cache: 'no-store'
             });
             const result = await response.json();
@@ -622,7 +623,7 @@ export default function InstitutionWebsiteManager({ institution, initialPage, on
     async function deleteMedia(item) {
         setMediaError('');
         try {
-            const response = await fetch('/api/admin/upload-institution-image', {
+            const response = await authenticatedFetch('/api/admin/upload-institution-image', {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ institutionId: institution.id, path: item.path })
@@ -642,7 +643,7 @@ export default function InstitutionWebsiteManager({ institution, initialPage, on
             const formData = new FormData();
             formData.append('file', file);
             formData.append('institutionId', institution.id);
-            const response = await fetch('/api/admin/upload-institution-image', {
+            const response = await authenticatedFetch('/api/admin/upload-institution-image', {
                 method: 'POST',
                 body: formData
             });

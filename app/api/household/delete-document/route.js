@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import { recordDataAccess } from '@/lib/utils/data-access-log';
 
 export async function DELETE(request) {
     try {
@@ -27,7 +28,7 @@ export async function DELETE(request) {
 
         const { data: household, error: householdError } = await supabaseAdmin
             .from('households')
-            .select('id, qr_code_id')
+            .select('id, qr_code_id, phone')
             .eq('id', doc.household_id)
             .single();
 
@@ -57,6 +58,15 @@ export async function DELETE(request) {
             .eq('id', id);
 
         if (deleteError) throw deleteError;
+
+        await recordDataAccess({
+            request,
+            citizenPhone: household.phone || null,
+            householdId: household.id,
+            resourceType: 'household_document',
+            resourceId: id,
+            action: 'document_deleted'
+        });
 
         return NextResponse.json({ success: true });
     } catch (err) {

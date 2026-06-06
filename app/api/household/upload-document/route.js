@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import { recordDataAccess } from '@/lib/utils/data-access-log';
 
 export async function POST(request) {
     try {
@@ -30,7 +31,7 @@ export async function POST(request) {
         }
 
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(householdLookup);
-        let householdQuery = supabaseAdmin.from('households').select('id');
+        let householdQuery = supabaseAdmin.from('households').select('id,phone');
         householdQuery = isUuid
             ? householdQuery.eq('id', householdLookup)
             : householdQuery.eq('qr_code_id', householdLookup);
@@ -77,6 +78,16 @@ export async function POST(request) {
             .single();
 
         if (dbError) throw dbError;
+
+        await recordDataAccess({
+            request,
+            citizenPhone: household.phone || null,
+            householdId: household.id,
+            resourceType: 'household_document',
+            resourceId: docData.id,
+            action: 'document_uploaded',
+            metadata: { type, title, mime_type: file.type, file_size: file.size }
+        });
 
         return NextResponse.json({ success: true, data: docData });
     } catch (err) {

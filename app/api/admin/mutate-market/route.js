@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import { canAccessLocation, requireRequestProfile } from '@/lib/utils/server-auth';
 
 function normalizePhone(phone) {
     const digits = String(phone || '').replace(/[^0-9]/g, '');
@@ -106,6 +107,9 @@ async function queueMarketPriceAlerts(supabaseAdmin, { marketId, commodityId, pr
 
 export async function POST(request) {
     try {
+        const auth = await requireRequestProfile(request, ['super_admin', 'chairman', 'market_manager']);
+        if (auth.response) return auth.response;
+
         const body = await request.json();
         const { action, data } = body;
 
@@ -114,6 +118,27 @@ export async function POST(request) {
             process.env.NEXT_PUBLIC_SUPABASE_URL,
             process.env.SUPABASE_SERVICE_ROLE_KEY
         );
+
+        let targetLocationId = data?.locationId || null;
+        if (!targetLocationId && data?.id) {
+            const { data: market } = await supabaseAdmin
+                .from('markets')
+                .select('location_id')
+                .eq('id', data.id)
+                .maybeSingle();
+            targetLocationId = market?.location_id || null;
+        }
+        if (!targetLocationId && data?.marketId) {
+            const { data: market } = await supabaseAdmin
+                .from('markets')
+                .select('location_id')
+                .eq('id', data.marketId)
+                .maybeSingle();
+            targetLocationId = market?.location_id || null;
+        }
+        if (!targetLocationId || !(await canAccessLocation(auth.profile, targetLocationId))) {
+            return NextResponse.json({ error: 'This market is outside your assigned scope' }, { status: 403 });
+        }
 
         if (action === 'create_market') {
             const { name, type, days, locationId, managerId } = data;

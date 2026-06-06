@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/utils/supabase-admin';
+import { canAccessLocation, requireRequestProfile } from '@/lib/utils/server-auth';
+import { loadOfficerActivity, recordOfficerActivity } from '@/lib/utils/officer-activity';
 
 const VALID_STATUS = new Set(['submitted', 'reviewing', 'assigned', 'scheduled', 'completed', 'rejected']);
 const VALID_PRIORITY = new Set(['low', 'normal', 'urgent', 'emergency']);
@@ -96,11 +98,21 @@ async function queueSms({ row, message, category }) {
 
 export async function GET(request) {
     try {
+        const auth = await requireRequestProfile(request, ['super_admin', 'chairman', 'ward_member']);
+        if (auth.response) return auth.response;
+
         const { searchParams } = request.nextUrl;
         const scopeType = searchParams.get('scopeType');
         const scopeId = searchParams.get('scopeId');
         const status = searchParams.get('status');
         const caseType = searchParams.get('caseType');
+        if (auth.profile.role !== 'super_admin') {
+            if (!scopeId || !(await canAccessLocation(auth.profile, scopeId))) {
+                return NextResponse.json({ error: 'Life-support scope is outside your assigned area' }, { status: 403 });
+            }
+        }
+
+        await supabaseAdmin.rpc('refresh_service_sla_escalations');
         const allowedScopeIds = await getAllowedScopeIds(scopeType, scopeId);
 
         let query = supabaseAdmin
@@ -117,11 +129,15 @@ export async function GET(request) {
 
         const rows = (data || []).filter((item) => {
             if (!scopeId) return true;
-            if (!item.assigned_scope_id) return true;
+            if (!item.assigned_scope_id) return auth.profile.role === 'super_admin';
             return allowedScopeIds.includes(item.assigned_scope_id);
         });
 
-        return NextResponse.json({ success: true, data: rows });
+        const activity = await loadOfficerActivity('citizen_life_support_case', rows);
+        return NextResponse.json({
+            success: true,
+            data: rows.map((item) => ({ ...item, activity: activity.get(item.id) || [] }))
+        });
     } catch (error) {
         console.error('Life support manager load failed:', error);
         return NextResponse.json({ error: error.message || 'Life support manager load failed' }, { status: 500 });
@@ -130,6 +146,9 @@ export async function GET(request) {
 
 export async function PATCH(request) {
     try {
+        const auth = await requireRequestProfile(request, ['super_admin', 'chairman', 'ward_member']);
+        if (auth.response) return auth.response;
+
         const body = await request.json();
         if (!body.id) return NextResponse.json({ error: 'Case id is required' }, { status: 400 });
         if (body.status && !VALID_STATUS.has(body.status)) return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
@@ -145,9 +164,19 @@ export async function PATCH(request) {
 
         const { data: previous } = await supabaseAdmin
             .from('citizen_life_support_cases')
-            .select('id,status,feedback,scheduled_at')
+            .select('id,status,feedback,scheduled_at,assigned_scope_id')
             .eq('id', body.id)
             .maybeSingle();
+
+        if (!previous) {
+            return NextResponse.json({ error: 'Life-support case not found' }, { status: 404 });
+        }
+        if (
+            auth.profile.role !== 'super_admin'
+            && (!previous.assigned_scope_id || !(await canAccessLocation(auth.profile, previous.assigned_scope_id)))
+        ) {
+            return NextResponse.json({ error: 'Life-support case is outside your assigned area' }, { status: 403 });
+        }
 
         const { data, error } = await supabaseAdmin
             .from('citizen_life_support_cases')
@@ -156,6 +185,25 @@ export async function PATCH(request) {
             .select()
             .single();
         if (error) throw error;
+
+        await recordOfficerActivity({
+            sourceType: 'citizen_life_support_case',
+            sourceId: data.id,
+            assignedScopeId: data.assigned_scope_id,
+            actor: auth.profile,
+            action: previous.status !== data.status ? 'status_changed' : 'details_updated',
+            fromStatus: previous.status,
+            toStatus: data.status,
+            note: body.officerNote || body.feedback || null,
+            metadata: {
+                scheduled_at: data.scheduled_at,
+                priority: data.priority,
+                case_type: data.case_type
+            }
+        });
+
+        const activity = await loadOfficerActivity('citizen_life_support_case', [data]);
+        data.activity = activity.get(data.id) || [];
 
         const changedStatus = body.status && previous?.status !== body.status;
         const changedFeedback = 'feedback' in body && (previous?.feedback || '') !== (body.feedback || '');

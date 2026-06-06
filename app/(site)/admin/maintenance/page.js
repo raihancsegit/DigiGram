@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { adminService } from '@/lib/services/adminService';
+import { authenticatedFetch } from '@/lib/utils/authenticated-fetch';
 
 export default function MaintenancePage() {
     const [loadingAction, setLoadingAction] = useState(null);
@@ -52,7 +53,7 @@ export default function MaintenancePage() {
         );
         
         try {
-            const response = await fetch('/api/admin/maintenance', {
+            const response = await authenticatedFetch('/api/admin/maintenance', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action })
@@ -75,7 +76,7 @@ export default function MaintenancePage() {
         const loadingToast = toast.loading('আপডেট করা হচ্ছে...');
 
         try {
-            const response = await fetch('/api/admin/maintenance', {
+            const response = await authenticatedFetch('/api/admin/maintenance', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action, ...payload })
@@ -103,7 +104,7 @@ export default function MaintenancePage() {
             formData.append('documentId', documentId);
             formData.append('file', file);
 
-            const response = await fetch('/api/admin/migrate-household-document', {
+            const response = await authenticatedFetch('/api/admin/migrate-household-document', {
                 method: 'POST',
                 body: formData
             });
@@ -121,6 +122,8 @@ export default function MaintenancePage() {
     const profileOptions = audit?.options?.assignableProfiles || [];
     const villageOptions = audit?.options?.locationVillages || [];
     const readiness = audit?.readiness;
+    const security = audit?.security;
+    const securityRows = security?.rows || [];
     const householdReadyPercent = readiness?.household?.totalResidents
         ? Math.max(0, Math.round(
             ((readiness.household.totalResidents
@@ -229,6 +232,88 @@ export default function MaintenancePage() {
                         ]}
                     />
                 </div>
+            </section>
+
+            <section className="overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-sm">
+                <div className="flex flex-col gap-4 border-b border-slate-100 p-6 md:flex-row md:items-center md:justify-between md:p-8">
+                    <div>
+                        <div className="mb-2 flex items-center gap-2 text-xs font-black uppercase tracking-widest text-emerald-700">
+                            <ShieldAlert size={14} /> Role & RLS Security
+                        </div>
+                        <h2 className="text-2xl font-black text-slate-800">Database access isolation</h2>
+                        <p className="mt-2 text-sm font-bold text-slate-500">
+                            Critical table-গুলোর RLS, policy এবং unsafe access এক জায়গায় যাচাই করুন।
+                        </p>
+                    </div>
+                    {!security?.setupRequired && !security?.error && (
+                        <div className="flex shrink-0 gap-3">
+                            <SecurityCount
+                                label="Ready"
+                                value={security?.readyCount || 0}
+                                tone="emerald"
+                            />
+                            <SecurityCount
+                                label="Needs review"
+                                value={security?.unsafeCount || 0}
+                                tone={security?.unsafeCount > 0 ? 'rose' : 'slate'}
+                            />
+                        </div>
+                    )}
+                </div>
+
+                {security?.setupRequired ? (
+                    <div className="m-6 rounded-3xl border border-amber-200 bg-amber-50 p-5 md:m-8">
+                        <div className="flex items-start gap-3">
+                            <AlertTriangle className="mt-0.5 shrink-0 text-amber-600" size={20} />
+                            <div>
+                                <h3 className="font-black text-amber-950">Security audit migration চালানো বাকি</h3>
+                                <p className="mt-1 text-sm font-bold leading-6 text-amber-800">
+                                    Supabase SQL Editor-এ <code className="rounded bg-amber-100 px-1.5 py-1">database/63_role_rls_security_audit.sql</code> চালান।
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                ) : security?.error ? (
+                    <div className="m-6 rounded-3xl border border-rose-200 bg-rose-50 p-5 text-sm font-bold text-rose-800 md:m-8">
+                        {security.error}
+                    </div>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="min-w-[720px] w-full text-left">
+                            <thead className="bg-slate-50 text-xs font-black uppercase tracking-wider text-slate-500">
+                                <tr>
+                                    <th className="px-6 py-4 md:px-8">Table</th>
+                                    <th className="px-6 py-4">RLS</th>
+                                    <th className="px-6 py-4">Policies</th>
+                                    <th className="px-6 py-4">Status</th>
+                                    <th className="px-6 py-4 md:pr-8">Finding</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {securityRows.map((row) => (
+                                    <tr key={row.table_name} className="text-sm font-bold text-slate-700">
+                                        <td className="px-6 py-4 font-black text-slate-900 md:px-8">{row.table_name}</td>
+                                        <td className="px-6 py-4">{row.rls_enabled ? 'Enabled' : 'Disabled'}</td>
+                                        <td className="px-6 py-4">{row.policy_count ?? 0}</td>
+                                        <td className="px-6 py-4">
+                                            <SecurityStatus status={row.status} />
+                                        </td>
+                                        <td className="max-w-md px-6 py-4 text-slate-500 md:pr-8">
+                                            {row.finding || 'No unsafe policy detected'}
+                                        </td>
+                                    </tr>
+                                ))}
+                                {securityRows.length === 0 && (
+                                    <tr>
+                                        <td colSpan={5} className="px-6 py-10 text-center text-sm font-bold text-slate-500">
+                                            কোনো security audit row পাওয়া যায়নি।
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
             </section>
 
             <section className="bg-white rounded-[32px] p-8 border border-slate-200 shadow-sm">
@@ -639,6 +724,56 @@ function ReadinessCard({ icon, title, main, note, items = [] }) {
                 ))}
             </div>
         </div>
+    );
+}
+
+function SecurityCount({ label, value, tone }) {
+    const tones = {
+        emerald: 'border-emerald-100 bg-emerald-50 text-emerald-700',
+        rose: 'border-rose-100 bg-rose-50 text-rose-700',
+        slate: 'border-slate-200 bg-slate-50 text-slate-600'
+    };
+
+    return (
+        <div className={`min-w-24 rounded-2xl border px-4 py-3 text-center ${tones[tone] || tones.slate}`}>
+            <p className="text-2xl font-black">{value}</p>
+            <p className="text-[10px] font-black uppercase tracking-widest">{label}</p>
+        </div>
+    );
+}
+
+function SecurityStatus({ status }) {
+    const states = {
+        ok: {
+            label: 'Ready',
+            className: 'bg-emerald-50 text-emerald-700'
+        },
+        rls_disabled: {
+            label: 'RLS off',
+            className: 'bg-rose-50 text-rose-700'
+        },
+        no_policy: {
+            label: 'No policy',
+            className: 'bg-amber-50 text-amber-700'
+        },
+        unsafe_policy: {
+            label: 'Unsafe',
+            className: 'bg-rose-50 text-rose-700'
+        },
+        missing_table: {
+            label: 'Missing',
+            className: 'bg-slate-100 text-slate-600'
+        }
+    };
+    const state = states[status] || {
+        label: status || 'Review',
+        className: 'bg-slate-100 text-slate-600'
+    };
+
+    return (
+        <span className={`inline-flex rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider ${state.className}`}>
+            {state.label}
+        </span>
     );
 }
 

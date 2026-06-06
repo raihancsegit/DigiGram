@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/utils/supabase-admin';
+import { recordDataAccess } from '@/lib/utils/data-access-log';
 
 export async function GET(request) {
     try {
@@ -22,7 +23,7 @@ export async function GET(request) {
         }
 
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(lookup);
-        let householdQuery = supabaseAdmin.from('households').select('id');
+        let householdQuery = supabaseAdmin.from('households').select('id,phone');
         householdQuery = isUuid
             ? householdQuery.eq('id', lookup)
             : householdQuery.eq('qr_code_id', lookup);
@@ -57,6 +58,16 @@ export async function GET(request) {
                 needs_migration: false
             };
         }));
+
+        await recordDataAccess({
+            request,
+            citizenPhone: household.phone || null,
+            householdId: household.id,
+            resourceType: 'household_locker',
+            resourceId: household.id,
+            action: 'documents_viewed',
+            metadata: { document_count: signedDocs.length }
+        });
 
         return NextResponse.json({ success: true, data: signedDocs });
     } catch (err) {

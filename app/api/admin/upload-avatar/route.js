@@ -1,14 +1,21 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import { requireRequestProfile } from '@/lib/utils/server-auth';
 
 export async function POST(request) {
     try {
+        const auth = await requireRequestProfile(request);
+        if (auth.response) return auth.response;
+
         const formData = await request.formData();
         const file = formData.get('file');
         const userId = formData.get('userId');
 
         if (!file || !userId) {
             return NextResponse.json({ error: 'Missing file or userId' }, { status: 400 });
+        }
+        if (auth.profile.role !== 'super_admin' && auth.profile.id !== userId) {
+            return NextResponse.json({ error: 'You can only update your own avatar' }, { status: 403 });
         }
 
         const supabaseAdmin = createClient(

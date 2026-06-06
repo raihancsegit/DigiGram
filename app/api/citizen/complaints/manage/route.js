@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/utils/supabase-admin';
+import { canAccessLocation, requireRequestProfile } from '@/lib/utils/server-auth';
 
 const VALID_STATUS = new Set(['submitted', 'reviewing', 'assigned', 'resolved', 'rejected']);
 const VALID_PRIORITY = new Set(['low', 'normal', 'urgent', 'emergency']);
@@ -116,10 +117,20 @@ async function queueComplaintSms({ complaint, message, category }) {
 
 export async function GET(request) {
     try {
+        const auth = await requireRequestProfile(request, ['super_admin', 'chairman', 'ward_member']);
+        if (auth.response) return auth.response;
+
         const { searchParams } = request.nextUrl;
         const scopeType = searchParams.get('scopeType');
         const scopeId = searchParams.get('scopeId');
         const status = searchParams.get('status');
+        if (auth.profile.role !== 'super_admin') {
+            if (!scopeId || !(await canAccessLocation(auth.profile, scopeId))) {
+                return NextResponse.json({ error: 'Complaint scope is outside your assigned area' }, { status: 403 });
+            }
+        }
+
+        await supabaseAdmin.rpc('refresh_service_sla_escalations').catch(() => null);
         const allowedScopeIds = await getAllowedScopeIds(scopeType, scopeId);
 
         let query = supabaseAdmin
@@ -137,7 +148,7 @@ export async function GET(request) {
 
         const rows = (data || []).filter((item) => {
             if (!scopeId) return true;
-            if (!item.assigned_scope_id) return true;
+            if (!item.assigned_scope_id) return auth.profile.role === 'super_admin';
             return allowedScopeIds.includes(item.assigned_scope_id);
         });
 
@@ -150,6 +161,9 @@ export async function GET(request) {
 
 export async function PATCH(request) {
     try {
+        const auth = await requireRequestProfile(request, ['super_admin', 'chairman', 'ward_member']);
+        if (auth.response) return auth.response;
+
         const body = await request.json();
         if (!body.id) {
             return NextResponse.json({ error: 'Complaint id is required' }, { status: 400 });
@@ -174,9 +188,26 @@ export async function PATCH(request) {
 
         const { data: previous } = await supabaseAdmin
             .from('citizen_complaints')
-            .select('id,status,feedback')
+            .select('id,status,feedback,assigned_scope_id')
             .eq('id', body.id)
             .maybeSingle();
+
+        if (!previous) {
+            return NextResponse.json({ error: 'Complaint not found' }, { status: 404 });
+        }
+        if (
+            auth.profile.role !== 'super_admin'
+            && (!previous.assigned_scope_id || !(await canAccessLocation(auth.profile, previous.assigned_scope_id)))
+        ) {
+            return NextResponse.json({ error: 'Complaint is outside your assigned area' }, { status: 403 });
+        }
+        if (
+            body.assignedScopeId
+            && auth.profile.role !== 'super_admin'
+            && !(await canAccessLocation(auth.profile, body.assignedScopeId))
+        ) {
+            return NextResponse.json({ error: 'New complaint scope is outside your assigned area' }, { status: 403 });
+        }
 
         const { data, error } = await supabaseAdmin
             .from('citizen_complaints')

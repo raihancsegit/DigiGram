@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import { canAccessLocation, requireRequestProfile } from '@/lib/utils/server-auth';
 
 function matchesLocationVillage(village, locationVillage) {
     const names = [
@@ -13,10 +14,16 @@ function matchesLocationVillage(village, locationVillage) {
 
 export async function POST(request) {
     try {
+        const auth = await requireRequestProfile(request, ['super_admin', 'chairman', 'ward_member', 'volunteer']);
+        if (auth.response) return auth.response;
+
         const { wardId, locationVillage = null } = await request.json();
 
         if (!wardId) {
             return NextResponse.json({ error: 'wardId is required' }, { status: 400 });
+        }
+        if (!(await canAccessLocation(auth.profile, wardId))) {
+            return NextResponse.json({ error: 'This ward is outside your assigned scope' }, { status: 403 });
         }
 
         const supabaseAdmin = createClient(

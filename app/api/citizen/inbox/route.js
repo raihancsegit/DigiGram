@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/utils/supabase-admin';
+import { recordDataAccess } from '@/lib/utils/data-access-log';
 
 function normalizePhone(phone) {
     const digits = String(phone || '').replace(/[^0-9]/g, '');
@@ -44,7 +45,7 @@ export async function POST(request) {
         ] = await Promise.all([
             supabaseAdmin
                 .from('service_requests')
-                .select('id,request_type,status,applicant_name,contact_phone,collection_date,feedback,certificate_no,created_at')
+                .select('id,request_type,status,applicant_name,contact_phone,collection_date,feedback,certificate_no,created_at,sla_due_at,sla_breached_at,escalation_level')
                 .eq('contact_phone', normalizedPhone)
                 .order('created_at', { ascending: false })
                 .limit(30),
@@ -110,6 +111,36 @@ export async function POST(request) {
             lifeSupportCases = lifeRows || [];
         } catch (lifeError) {
             console.warn('Citizen life support skipped:', lifeError.message);
+        }
+
+        await recordDataAccess({
+            request,
+            citizenPhone: normalizedPhone,
+            householdId: householdIds[0] || null,
+            resourceType: 'citizen_inbox',
+            resourceId: normalizedPhone,
+            action: 'inbox_viewed',
+            metadata: {
+                linked_households: householdIds.length,
+                service_requests: serviceRequests?.length || 0,
+                complaints: complaints?.length || 0
+            }
+        });
+
+        let privacyHistory = [];
+        try {
+            const { data: accessRows, error: accessError } = await supabaseAdmin
+                .from('data_access_logs')
+                .select('id,actor_role,resource_type,action,access_channel,metadata,created_at')
+                .eq('citizen_phone', normalizedPhone)
+                .order('created_at', { ascending: false })
+                .limit(20);
+            if (accessError) throw accessError;
+            privacyHistory = accessRows || [];
+        } catch (accessError) {
+            if (!['42P01', 'PGRST205'].includes(accessError.code)) {
+                console.warn('Citizen privacy history skipped:', accessError.message);
+            }
         }
 
         const timeline = [
@@ -200,6 +231,7 @@ export async function POST(request) {
                 reminders: reminders || [],
                 households: households || [],
                 householdTaxes: householdTaxes || [],
+                privacyHistory,
                 timeline
             }
         });
