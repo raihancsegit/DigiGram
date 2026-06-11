@@ -20,7 +20,7 @@ It is a **multi-tenant SaaS** platform where:
 
 | Layer | Technology |
 |-------|------------|
-| Framework | **Next.js 15** (App Router, React Server Components) |
+| Framework | **Next.js 16** (App Router, React Server Components) |
 | Styling | **Tailwind CSS v4** |
 | Database | **Supabase** (PostgreSQL + Row Level Security) |
 | AI | **Google Gemini API** (document analysis, vision) |

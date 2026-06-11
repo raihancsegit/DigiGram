@@ -1,5 +1,5 @@
 "use client"
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { motion, useScroll, useSpring } from 'framer-motion';
 import { 
@@ -10,8 +10,68 @@ import {
 } from 'lucide-react';
 import { newsService } from '@/lib/services/newsService';
 
+const ALLOWED_ARTICLE_TAGS = new Set([
+    'p', 'br', 'strong', 'b', 'em', 'i', 'u', 's', 'blockquote',
+    'ul', 'ol', 'li', 'h2', 'h3', 'h4', 'a', 'img'
+]);
+
+const ALLOWED_ARTICLE_ATTRS = {
+    a: new Set(['href', 'title', 'target', 'rel']),
+    img: new Set(['src', 'alt', 'title'])
+};
+
+function escapeHtml(value) {
+    return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function isSafeUrl(value, allowImages = false) {
+    const trimmed = String(value || '').trim();
+    if (!trimmed) return false;
+    if (trimmed.startsWith('/') || trimmed.startsWith('#')) return true;
+    if (/^https?:\/\//i.test(trimmed)) return true;
+    return allowImages && /^data:image\/(png|jpe?g|webp|gif);base64,/i.test(trimmed);
+}
+
+function sanitizeArticleHtml(html) {
+    const withoutUnsafeBlocks = String(html || '').replace(
+        /<\s*(script|style|iframe|object|embed|form|input|button|textarea|select|link|meta)[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi,
+        ''
+    );
+
+    return withoutUnsafeBlocks.replace(/<\s*(\/?)([a-z0-9-]+)([^>]*)>/gi, (match, closingSlash, rawTag, rawAttrs) => {
+        const tag = rawTag.toLowerCase();
+        if (!ALLOWED_ARTICLE_TAGS.has(tag)) return '';
+        if (closingSlash) return `</${tag}>`;
+
+        const allowedAttrs = ALLOWED_ARTICLE_ATTRS[tag];
+        if (!allowedAttrs) return `<${tag}>`;
+
+        const attrs = [];
+        String(rawAttrs || '').replace(/([a-z0-9:-]+)\s*=\s*("([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/gi, (_, rawName, _rawValue, doubleValue, singleValue, bareValue) => {
+            const name = rawName.toLowerCase();
+            const value = doubleValue ?? singleValue ?? bareValue ?? '';
+            if (name.startsWith('on') || !allowedAttrs.has(name)) return '';
+            if ((name === 'href' || name === 'src') && !isSafeUrl(value, name === 'src')) return '';
+            attrs.push(`${name}="${escapeHtml(value)}"`);
+            return '';
+        });
+
+        if (tag === 'a') {
+            attrs.push('rel="noopener noreferrer"');
+        }
+
+        return attrs.length > 0 ? `<${tag} ${attrs.join(' ')}>` : `<${tag}>`;
+    });
+}
+
 export default function NewsDetailsView({ news }) {
     const [relatedNews, setRelatedNews] = useState([]);
+    const safeContent = useMemo(() => sanitizeArticleHtml(news?.content), [news?.content]);
     
     const { scrollYProgress } = useScroll();
     const scaleX = useSpring(scrollYProgress, {
@@ -164,7 +224,7 @@ export default function NewsDetailsView({ news }) {
                             prose-headings:font-black prose-headings:text-slate-900 prose-h2:text-3xl prose-h3:text-2xl
                             prose-p:mb-8 prose-li:mb-2 prose-li:marker:text-teal-500
                             first-letter:text-7xl first-letter:font-black first-letter:text-teal-600 first-letter:mr-3 first-letter:float-left"
-                            dangerouslySetInnerHTML={{ __html: news.content }}
+                            dangerouslySetInnerHTML={{ __html: safeContent }}
                         />
                         
                         {/* Tags */}
