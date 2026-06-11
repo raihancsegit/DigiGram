@@ -402,6 +402,12 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
         : 'border border-white/60 bg-white/95 shadow-2xl shadow-slate-950/15';
     const sectionLeadClass = `text-sm font-black uppercase tracking-[0.18em] ${websiteAccentClass}`;
     const currentSlide = sliderItems[activeSlide] || sliderItems[0] || {};
+    const featuredTeacher = teachers[0] || {};
+    const sideTeachers = teachers.slice(1, 3);
+    const featuredGallery = galleryItems[0] || {};
+    const sideGallery = galleryItems.slice(1, 4);
+    const featuredProgram = programItems[0] || {};
+    const sidePrograms = programItems.slice(1, 4);
     const goToSlide = (direction) => {
         setActiveSlide((current) => (current + direction + sliderItems.length) % sliderItems.length);
     };
@@ -595,6 +601,305 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
             </section>
             )}
             {isSectionVisible('intro') && (
+            <section style={{ order: sectionOrder('intro') }} className={`py-20 ${isDarkTemplate ? template.sectionClass : 'bg-gradient-to-br from-white via-slate-50 to-[var(--school-primary)]/5'}`}>
+                <div className="mx-auto grid max-w-7xl gap-10 px-4 lg:grid-cols-[0.92fr_1.08fr] lg:items-center">
+                    <div>
+                        <div className="mb-6 inline-flex items-center gap-3 rounded-full border border-[var(--school-primary)]/15 bg-white/80 px-4 py-2 shadow-sm">
+                            <School className="h-5 w-5 text-[var(--school-primary)]" />
+                            <span className="text-xs font-black uppercase tracking-[0.18em] text-[var(--school-primary)]">প্রতিষ্ঠানের গল্প</span>
+                        </div>
+                        <p className={sectionLeadClass}>আমাদের সম্পর্কে</p>
+                        <h2 className={`mt-3 text-4xl font-black leading-tight md:text-5xl ${template.sectionTitleClass}`}>{siteName}</h2>
+                        <p className={`mt-5 max-w-2xl text-lg font-medium leading-9 ${isDarkTemplate ? bodyTextClass : 'text-slate-600'}`}>
+                            {page?.about_text || `${siteName} keeps students, teachers and guardians connected through a focused academic environment.`}
+                        </p>
+                        <div className="mt-7 flex flex-wrap gap-3">
+                            {highlights.slice(0, 4).map((item) => (
+                                <span key={item} className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-black shadow-sm ${isDarkTemplate ? 'bg-white/[0.07] text-white/80' : 'bg-white text-slate-700'}`}>
+                                    <CheckCircle2 className="h-4 w-4 text-[var(--school-primary)]" />
+                                    {item}
+                                </span>
+                            ))}
+                        </div>
+                        <button type="button" onClick={() => navigatePage('about')} className={`mt-8 rounded-full px-6 py-3 font-black shadow-lg transition hover:-translate-y-0.5 ${primaryButtonClass}`} style={brandGradient}>
+                            বিস্তারিত দেখুন
+                        </button>
+                    </div>
+                    <div className="relative">
+                        <div className="absolute -left-5 top-10 hidden h-28 w-28 rounded-full bg-[var(--school-accent)]/25 blur-2xl lg:block" />
+                        <div className={`relative overflow-hidden rounded-[2rem] border p-3 shadow-2xl ${isDarkTemplate ? 'border-white/10 bg-white/[0.04]' : 'border-white bg-white'}`}>
+                            <div className="relative min-h-[410px] overflow-hidden rounded-[1.55rem]">
+                                {featuredGallery.image_url || page?.banner_image_url || currentSlide.image_url ? (
+                                    <img src={featuredGallery.image_url || page?.banner_image_url || currentSlide.image_url} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                                ) : (
+                                    <div className={`absolute inset-0 ${websitePatternClass}`} />
+                                )}
+                                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent" />
+                                <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
+                                    <p className="text-xs font-black uppercase tracking-[0.2em] text-white/70">শেখার পরিবেশ</p>
+                                    <h3 className="mt-2 text-3xl font-black">{featuredGallery.title || currentSlide.title || siteName}</h3>
+                                    <p className="mt-2 max-w-xl font-medium leading-7 text-white/80">{featuredGallery.caption || currentSlide.subtitle || design.heroLine}</p>
+                                </div>
+                            </div>
+                            <div className="grid gap-3 pt-3 sm:grid-cols-4">
+                                {stats.map((stat, index) => (
+                                    <div key={`intro-stat-${stat.label}-${index}`} className={`rounded-2xl px-4 py-3 ${isDarkTemplate ? 'bg-white/[0.06]' : 'bg-slate-50'}`}>
+                                        <p className="text-lg font-black text-[var(--school-primary)]">{stat.value}</p>
+                                        <p className={`mt-1 text-xs font-bold ${isDarkTemplate ? 'text-white/65' : 'text-slate-500'}`}>{stat.label}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                            {classSections.slice(0, 2).map((item, index) => (
+                                <article key={`${item.title}-${index}`} className={`border p-5 shadow-lg transition hover:-translate-y-1 hover:shadow-xl ${template.cardClass} ${softPanelClass}`}>
+                                    <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--school-primary)]/10 text-2xl">{classIcons[index % classIcons.length]}</div>
+                                    <h3 className="font-black">{item.title}</h3>
+                                    <p className={`mt-2 text-sm font-medium leading-7 ${isDarkTemplate ? mutedTextClass : 'text-slate-500'}`}>{item.description}</p>
+                                    {item.badge && <p className="mt-4 inline-flex rounded-full bg-[var(--school-accent)]/15 px-3 py-1 text-xs font-black text-[var(--school-primary)]">{item.badge}</p>}
+                                </article>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </section>
+            )}
+
+            {isSectionVisible('teachers') && (
+            <section style={{ order: sectionOrder('teachers') }} className={`py-20 ${isDarkTemplate ? template.shellClass : 'bg-white'}`}>
+                <div className="mx-auto max-w-7xl px-4">
+                    <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
+                        <div>
+                            <p className={sectionLeadClass}>শিক্ষকমণ্ডলী</p>
+                            <h2 className="mt-3 text-4xl font-black leading-tight">যাদের যত্নে প্রতিদিন এগিয়ে যায় শিক্ষার্থীরা</h2>
+                        </div>
+                        <button type="button" onClick={() => navigatePage('teachers')} className="rounded-full border border-[var(--school-primary)]/20 px-5 py-3 font-black text-[var(--school-primary)] shadow-sm">সব দেখুন</button>
+                    </div>
+                    <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
+                        <article className={`relative overflow-hidden p-8 text-white shadow-2xl ${template.cardClass}`} style={brandGradient}>
+                            <div className="absolute right-6 top-6 text-7xl font-black text-white/10">{featuredTeacher.name?.slice(0, 1) || 'T'}</div>
+                            <p className="text-xs font-black uppercase tracking-[0.22em] text-white/70">প্রধান শিক্ষক</p>
+                            <div className="mt-10 flex flex-wrap items-end gap-6">
+                                <div className="flex h-24 w-24 items-center justify-center rounded-[1.5rem] bg-white text-3xl font-black text-[var(--school-primary)] shadow-xl">
+                                    {featuredTeacher.name?.slice(0, 1) || 'T'}
+                                </div>
+                                <div>
+                                    <h3 className="text-3xl font-black">{featuredTeacher.name || 'Academic lead'}</h3>
+                                    <p className="mt-2 font-bold text-white/80">{featuredTeacher.subject || 'Classroom guidance'}</p>
+                                </div>
+                            </div>
+                            <p className="mt-7 max-w-2xl text-lg font-medium leading-8 text-white/80">
+                                {featuredTeacher.experience || page?.principal_message || 'Daily academic care, routine follow-up and guardian communication stay visible from one place.'}
+                            </p>
+                        </article>
+                        <div className="grid gap-4">
+                            {sideTeachers.map((teacher, index) => (
+                                <article key={`${teacher.name}-${index}`} className={`flex items-center gap-5 p-5 shadow-lg transition hover:-translate-y-1 hover:shadow-xl ${template.cardClass} ${panelClass}`}>
+                                    <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[var(--school-primary)]/10 text-xl font-black text-[var(--school-primary)]">
+                                        {teacher.name?.slice(0, 1)}
+                                    </div>
+                                    <div>
+                                        <h3 className="font-black">{teacher.name}</h3>
+                                        <p className="mt-1 text-sm font-bold text-[var(--school-primary)]">{teacher.subject}</p>
+                                        {teacher.experience && <p className={`mt-2 text-sm font-medium ${isDarkTemplate ? mutedTextClass : 'text-slate-500'}`}>{teacher.experience}</p>}
+                                    </div>
+                                </article>
+                            ))}
+                            <div className={`p-5 ${template.cardClass} ${softPanelClass}`}>
+                                <p className="text-sm font-black text-[var(--school-primary)]">অভিভাবক সংযোগ</p>
+                                <p className={`mt-2 font-medium leading-7 ${isDarkTemplate ? bodyTextClass : 'text-slate-600'}`}>ক্লাস আপডেট, ফলাফল ও নোটিশ একসাথে সাজানো থাকে, তাই অগ্রগতি বুঝতে সহজ হয়।</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            )}
+
+            {isSectionVisible('journey') && (
+            <section style={{ order: sectionOrder('journey') }} className="bg-slate-950 py-20 text-white">
+                <div className="mx-auto max-w-7xl px-4">
+                    <div className="grid gap-8 lg:grid-cols-[0.75fr_1.25fr] lg:items-center">
+                        <div>
+                            <p className="text-sm font-black uppercase tracking-[0.22em] text-amber-300">শিক্ষার্থী যাত্রা</p>
+                            <h2 className="mt-3 text-4xl font-black leading-tight">ভর্তি থেকে ফলাফল, প্রতিটি ধাপ পরিষ্কার</h2>
+                            <p className="mt-5 text-lg font-medium leading-8 text-white/70">
+                                {page?.principal_message || 'Routine, homework, attendance, exam notice and guardian communication are presented in one clean academic flow.'}
+                            </p>
+                            <button type="button" onClick={() => navigatePage('guardian')} className="mt-8 rounded-full bg-white px-6 py-3 font-black text-slate-950 shadow-xl">অভিভাবক ডেস্ক</button>
+                        </div>
+                        <div className="relative">
+                            <div className="absolute left-5 top-8 hidden h-[calc(100%-4rem)] w-px bg-white/15 lg:block" />
+                            <div className="grid gap-4">
+                                {programItems.slice(0, 4).map((item, index) => (
+                                    <article key={`journey-program-${item.title}-${index}`} className="relative rounded-[1.5rem] border border-white/10 bg-white/[0.06] p-5 shadow-2xl backdrop-blur transition hover:-translate-y-1 hover:bg-white/[0.09] lg:ml-10">
+                                        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-amber-300 font-black text-slate-950 lg:absolute lg:-left-16 lg:top-6">0{index + 1}</div>
+                                        <h3 className="text-xl font-black">{item.title}</h3>
+                                        <p className="mt-2 font-medium leading-7 text-white/68">{item.description}</p>
+                                    </article>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            )}
+
+            {isSectionVisible('professional') && (
+            <section style={{ order: sectionOrder('professional') }} className={`py-20 ${isDarkTemplate ? template.sectionClass : 'bg-gradient-to-b from-white to-slate-50'}`}>
+                <div className="mx-auto max-w-7xl px-4">
+                    <div className="mb-10 max-w-3xl">
+                        <p className={sectionLeadClass}>প্রতিষ্ঠান প্রোফাইল</p>
+                        <h2 className="mt-3 text-4xl font-black leading-tight">ক্যাম্পাস জীবন, আস্থা ও প্রয়োজনীয় তথ্য</h2>
+                        <p className={`mt-4 text-lg font-medium leading-8 ${isDarkTemplate ? bodyTextClass : 'text-slate-600'}`}>
+                            {page?.approval_text || page?.hero_subtitle || design.heroLine}
+                        </p>
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                        {safeArray(extraSections.achievements, DEFAULT_EXTRA_SECTIONS.achievements).map((item, index) => (
+                            <article key={`${item.title}-${index}`} className={`relative overflow-hidden p-5 shadow-lg transition hover:-translate-y-1 hover:shadow-xl ${template.cardClass} ${panelClass}`}>
+                                <div className={`absolute left-0 top-0 h-1.5 w-full ${index % 2 ? 'bg-[var(--school-accent)]' : 'bg-[var(--school-primary)]'}`} />
+                                <p className="text-3xl font-black text-[var(--school-primary)]">{item.value}</p>
+                                <h3 className="mt-3 font-black">{item.title}</h3>
+                                <p className={`mt-2 text-sm font-medium leading-7 ${isDarkTemplate ? mutedTextClass : 'text-slate-500'}`}>{item.description}</p>
+                            </article>
+                        ))}
+                    </div>
+                    <div className="mt-12 grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
+                        <section className={`p-6 shadow-xl ${template.cardClass} ${softPanelClass}`}>
+                            <p className={sectionLeadClass}>শিক্ষা কার্যক্রম</p>
+                            <h3 className="mt-2 text-3xl font-black">{featuredProgram.title || 'Academic programs'}</h3>
+                            <p className={`mt-3 font-medium leading-8 ${isDarkTemplate ? bodyTextClass : 'text-slate-600'}`}>{featuredProgram.description || 'Core academic programs and special initiatives are organized for easy discovery.'}</p>
+                            <div className="mt-6 grid gap-3">
+                                {sidePrograms.map((item, index) => (
+                                    <article key={`side-program-${item.title}-${index}`} className={`rounded-2xl border p-4 ${isDarkTemplate ? 'border-white/10 bg-white/[0.05]' : 'border-slate-100 bg-white'}`}>
+                                    <p className="text-xs font-black uppercase tracking-[0.18em] text-[var(--school-primary)]">কার্যক্রম {index + 2}</p>
+                                        <h4 className="mt-2 font-black">{item.title}</h4>
+                                        <p className={`mt-1 text-sm font-medium leading-6 ${isDarkTemplate ? mutedTextClass : 'text-slate-500'}`}>{item.description}</p>
+                                    </article>
+                                ))}
+                            </div>
+                        </section>
+                        <section>
+                            <div className="mb-5 flex items-end justify-between gap-4">
+                                <div>
+                                    <p className={sectionLeadClass}>গ্যালারি</p>
+                                    <h3 className="mt-2 text-3xl font-black">ক্যাম্পাসের ঝলক</h3>
+                                </div>
+                                <button type="button" onClick={() => navigatePage('about')} className="font-black text-[var(--school-primary)]">আরো দেখুন</button>
+                            </div>
+                            <div className="grid min-h-[420px] gap-4 md:grid-cols-2">
+                                <article className={`relative overflow-hidden md:row-span-2 ${template.cardClass} ${panelClass}`}>
+                                    {featuredGallery.image_url ? (
+                                        <img src={featuredGallery.image_url} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                                    ) : (
+                                        <div className={`absolute inset-0 ${websitePatternClass}`} />
+                                    )}
+                                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 to-transparent" />
+                                    <div className="absolute bottom-0 p-5 text-white">
+                                        <h4 className="text-2xl font-black">{featuredGallery.title || 'Campus life'}</h4>
+                                        <p className="mt-2 text-sm font-medium leading-6 text-white/75">{featuredGallery.caption || 'Classroom, library and activity moments.'}</p>
+                                    </div>
+                                </article>
+                                {sideGallery.map((item, index) => (
+                                    <article key={`gallery-mini-${item.title}-${index}`} className={`overflow-hidden ${template.cardClass} ${panelClass}`}>
+                                        {item.image_url ? (
+                                            <img src={item.image_url} alt="" className="h-32 w-full object-cover" />
+                                        ) : (
+                                            <div className="flex h-32 items-center justify-center bg-[var(--school-primary)]/10 text-3xl">ক্যাম্পাস</div>
+                                        )}
+                                        <div className="p-4">
+                                            <h4 className="font-black">{item.title}</h4>
+                                            <p className={`mt-1 text-sm font-medium ${isDarkTemplate ? mutedTextClass : 'text-slate-500'}`}>{item.caption}</p>
+                                        </div>
+                                    </article>
+                                ))}
+                            </div>
+                        </section>
+                    </div>
+                    <div className="mt-12 grid gap-6 lg:grid-cols-[1fr_0.9fr]">
+                        <section>
+                            <div className="mb-5 flex items-end justify-between gap-4">
+                                <div>
+                                    <p className={sectionLeadClass}>ইভেন্ট</p>
+                                    <h3 className="mt-2 text-3xl font-black">আসন্ন ক্যাম্পাস কার্যক্রম</h3>
+                                </div>
+                            </div>
+                            <div className="grid gap-4 md:grid-cols-3">
+                                {eventItems.slice(0, 3).map((item, index) => (
+                                    <article key={`${item.title}-${index}`} className={`p-5 shadow-lg ${template.cardClass} ${panelClass}`}>
+                                        <p className="inline-flex rounded-full bg-[var(--school-primary)]/10 px-3 py-1 text-xs font-black text-[var(--school-primary)]">{item.date}</p>
+                                        <h4 className="mt-4 font-black">{item.title}</h4>
+                                        <p className={`mt-2 text-sm font-medium leading-7 ${isDarkTemplate ? mutedTextClass : 'text-slate-500'}`}>{item.description}</p>
+                                    </article>
+                                ))}
+                            </div>
+                        </section>
+                        <section className={`p-6 shadow-xl ${template.cardClass} ${panelClass}`}>
+                            <p className={sectionLeadClass}>প্রশ্ন ও ফাইল</p>
+                            <h3 className="mt-2 text-3xl font-black">অভিভাবকের দরকারি তথ্য</h3>
+                            <div className="mt-5 space-y-3">
+                                {safeArray(extraSections.faqs, DEFAULT_EXTRA_SECTIONS.faqs).slice(0, 2).map((item, index) => (
+                                    <details key={`${item.question}-${index}`} className={`rounded-2xl p-4 ${isDarkTemplate ? 'bg-white/[0.05]' : 'bg-slate-50'}`}>
+                                        <summary className="cursor-pointer font-black">{item.question}</summary>
+                                        <p className={`mt-2 text-sm font-medium leading-7 ${isDarkTemplate ? mutedTextClass : 'text-slate-500'}`}>{item.answer}</p>
+                                    </details>
+                                ))}
+                                {safeArray(extraSections.downloads, DEFAULT_EXTRA_SECTIONS.downloads).slice(0, 2).map((item, index) => (
+                                    <a key={`${item.title}-${index}`} href={item.url || '#'} target={item.url ? '_blank' : undefined} rel={item.url ? 'noreferrer' : undefined} className={`block rounded-2xl p-4 ${isDarkTemplate ? 'bg-white/[0.05]' : 'bg-white'}`}>
+                                        <p className="font-black">{item.title}</p>
+                                        <p className={`mt-1 text-sm font-medium ${isDarkTemplate ? mutedTextClass : 'text-slate-500'}`}>{item.note}</p>
+                                    </a>
+                                ))}
+                            </div>
+                        </section>
+                    </div>
+                </div>
+            </section>
+            )}
+
+            {isSectionVisible('updates') && (
+            <section style={{ order: sectionOrder('updates') }} className={`py-20 ${isDarkTemplate ? template.sectionClass : 'bg-white'}`}>
+                <div className="mx-auto grid max-w-7xl gap-8 px-4 lg:grid-cols-[1.05fr_0.95fr]">
+                    <div>
+                        <p className={sectionLeadClass}>সর্বশেষ আপডেট</p>
+                        <h2 className="mt-3 text-4xl font-black leading-tight">নোটিশ বোর্ড ও ভর্তি ডেস্ক</h2>
+                        <div className="mt-8 grid gap-4">
+                            {noticeRows.slice(0, 3).map((notice, index) => (
+                                <article key={notice.id} className={`group flex gap-4 p-5 shadow-lg transition hover:-translate-y-1 hover:shadow-xl ${template.cardClass} ${panelClass}`}>
+                                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[var(--school-primary)]/10 text-[var(--school-primary)]">
+                                        <Megaphone className="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            {notice.is_pinned && <span className="inline-flex rounded-full bg-[var(--school-accent)] px-3 py-1 text-xs font-black text-slate-950">Pinned</span>}
+                                            <span className={`text-xs font-black uppercase tracking-[0.16em] ${isDarkTemplate ? 'text-white/45' : 'text-slate-400'}`}>আপডেট {index + 1}</span>
+                                        </div>
+                                        <h3 className="mt-2 font-black">{notice.title}</h3>
+                                        {notice.body && <p className={`mt-2 text-sm font-medium leading-7 ${isDarkTemplate ? mutedTextClass : 'text-slate-500'}`}>{notice.body}</p>}
+                                    </div>
+                                </article>
+                            ))}
+                        </div>
+                    </div>
+                    <div className={`relative overflow-hidden p-8 text-white shadow-2xl ${template.cardClass}`} style={brandGradient}>
+                        <div className="absolute -right-10 -top-10 h-36 w-36 rounded-full bg-white/15" />
+                        <p className="text-sm font-black uppercase tracking-[0.2em] text-white/70">ভর্তি</p>
+                        <h3 className="mt-3 text-4xl font-black leading-tight">নতুন শিক্ষাবর্ষে ভর্তি চলছে</h3>
+                        <p className="mt-5 font-medium leading-8 text-white/80">
+                            {page?.admission_text || 'Admission details, office contact and required guidance are available for guardians from one place.'}
+                        </p>
+                        <div className="mt-7 grid gap-3">
+                            {admissionFeatures.slice(0, 3).map((item, index) => (
+                                <p key={`admission-feature-${item}-${index}`} className="rounded-2xl bg-white/10 px-4 py-3 text-sm font-bold text-white/85">{item}</p>
+                            ))}
+                        </div>
+                        <button type="button" onClick={() => navigatePage('admission')} className="mt-8 rounded-full bg-white px-6 py-3 font-black text-slate-950 shadow-xl">ভর্তি তথ্য</button>
+                    </div>
+                </div>
+            </section>
+            )}
+
+            {false && isSectionVisible('intro') && (
             <section style={{ order: sectionOrder('intro') }} className={`py-16 ${template.sectionClass}`}>
                 <div className={`mx-auto grid max-w-7xl gap-8 px-4 lg:items-center ${template.previewClass}`}>
                     <div className={`overflow-hidden p-7 ${template.cardClass} ${panelClass}`}>
@@ -628,7 +933,7 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
             </section>
             )}
 
-            {isSectionVisible('teachers') && (
+            {false && isSectionVisible('teachers') && (
             <section style={{ order: sectionOrder('teachers') }} className={`py-16 ${isDarkTemplate ? template.shellClass : ''}`}>
                 <div className="mx-auto max-w-7xl px-4">
                     <div className="mb-8 flex items-end justify-between gap-4">
@@ -655,7 +960,7 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
             </section>
             )}
 
-            {isSectionVisible('journey') && (
+            {false && isSectionVisible('journey') && (
             <section style={{ order: sectionOrder('journey') }} className={`py-16 ${isDarkTemplate ? template.sectionClass : 'bg-white'}`}>
                 <div className="mx-auto grid max-w-7xl gap-6 px-4 lg:grid-cols-[0.82fr_1.18fr] lg:items-center">
                     <div className={`p-6 ${template.cardClass} ${softPanelClass}`}>
@@ -681,7 +986,7 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
             </section>
             )}
 
-            {isSectionVisible('professional') && (
+            {false && isSectionVisible('professional') && (
             <section style={{ order: sectionOrder('professional') }} className={`py-16 ${template.sectionClass}`}>
                 <div className="mx-auto max-w-7xl px-4">
                     <div className="mb-8 max-w-3xl">
@@ -796,7 +1101,7 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
             </section>
             )}
 
-            {isSectionVisible('updates') && (
+            {false && isSectionVisible('updates') && (
             <section style={{ order: sectionOrder('updates') }} className={`py-16 ${template.sectionClass}`}>
                 <div className="mx-auto grid max-w-7xl gap-6 px-4 lg:grid-cols-[1fr_0.9fr]">
                     <div>
