@@ -72,6 +72,12 @@ const HOME_SECTION_OPTIONS = [
 ];
 const DEFAULT_HOME_SECTION_SETTINGS = SCHOOL_WEBSITE_HOME_SECTION_SETTINGS;
 const DEFAULT_EXTRA_SECTIONS = SCHOOL_WEBSITE_EXTRA_SECTIONS;
+const DEFAULT_SLIDER_IMAGES = [
+    'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=1800&q=80',
+    'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=1800&q=80',
+    'https://images.unsplash.com/photo-1498243691581-b145c3f54a5a?auto=format&fit=crop&w=1800&q=80',
+    'https://images.unsplash.com/photo-1523580846011-d3a5bc25702b?auto=format&fit=crop&w=1800&q=80'
+];
 
 function cssFont(fontFamily) {
     if (fontFamily === 'noto_sans_bengali') return '"Noto Sans Bengali", sans-serif';
@@ -190,7 +196,10 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
         safeArray(extraSections.slider, []).filter((item) => item?.title || item?.image_url),
         minimumArray(fallbackSlider, DEFAULT_EXTRA_SECTIONS.slider, 1),
         1
-    );
+    ).map((item, index) => ({
+        ...item,
+        image_url: item.image_url || DEFAULT_SLIDER_IMAGES[index % DEFAULT_SLIDER_IMAGES.length]
+    }));
     const homeSectionSettings = {
         ...DEFAULT_HOME_SECTION_SETTINGS,
         ...(extraSections.home_sections || {})
@@ -271,6 +280,17 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
             ? (seo.title || `${siteName} | DigiGram`)
             : `${activeMenuItem?.label || label} | ${seo.title || siteName}`;
     }, [activeMenuItem?.label, activePage, page?.footer_links?.seo, siteName]);
+
+    useEffect(() => {
+        const previousBodyOverflow = document.body.style.overflowX;
+        const previousHtmlOverflow = document.documentElement.style.overflowX;
+        document.body.style.overflowX = 'hidden';
+        document.documentElement.style.overflowX = 'hidden';
+        return () => {
+            document.body.style.overflowX = previousBodyOverflow;
+            document.documentElement.style.overflowX = previousHtmlOverflow;
+        };
+    }, []);
 
     useEffect(() => {
         const syncPageFromUrl = () => {
@@ -379,7 +399,10 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
     const selectedGuardianClass = guardianUpdates.classes.find((item) => item.id === selectedGuardianClassId) || guardianUpdates.classes[0] || null;
     const pagedClassSections = paginateRows(classSections, classesPage);
     const pagedTeachers = paginateRows(teachers, teachersPage);
-    const galleryItems = safeArray(extraSections.gallery, DEFAULT_EXTRA_SECTIONS.gallery);
+    const galleryItems = safeArray(extraSections.gallery, DEFAULT_EXTRA_SECTIONS.gallery).map((item, index) => ({
+        ...item,
+        image_url: item.image_url || DEFAULT_SLIDER_IMAGES[(index + 1) % DEFAULT_SLIDER_IMAGES.length]
+    }));
     const eventItems = safeArray(extraSections.events, DEFAULT_EXTRA_SECTIONS.events);
     const programItems = safeArray(extraSections.programs, DEFAULT_EXTRA_SECTIONS.programs);
     const pagedFacilities = paginateRows(facilities, facilitiesPage);
@@ -510,14 +533,14 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
                         background: `linear-gradient(90deg, rgba(2, 6, 23, 0.92), ${theme.primary_color}cc, rgba(15, 23, 42, 0.22))`
                     }}
                 />
-                {isDarkTemplate && (
+                {false && isDarkTemplate && (
                     <>
                         <div className="pointer-events-none absolute inset-0 opacity-35 [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:58px_58px]" />
                         <div className="pointer-events-none absolute inset-x-0 top-16 h-px bg-white/15" />
                         <div className="pointer-events-none absolute bottom-0 right-0 h-44 w-[48vw] border-l border-t border-white/10 bg-white/[0.03]" />
                     </>
                 )}
-                {!isDarkTemplate && template.value !== 'editorial' && (
+                {false && !isDarkTemplate && template.value !== 'editorial' && (
                     <>
                         <div className="pointer-events-none absolute inset-0 opacity-30 [background-image:linear-gradient(rgba(255,255,255,0.22)_1px,transparent_1px)] [background-size:100%_62px]" />
                         <div className="pointer-events-none absolute bottom-0 right-0 h-48 w-[42vw] border-l border-t border-white/20 bg-white/10" />
