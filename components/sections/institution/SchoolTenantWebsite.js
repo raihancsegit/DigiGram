@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import {
     BookOpen,
     CalendarDays,
+    ChevronLeft,
+    ChevronRight,
     CheckCircle2,
     ClipboardList,
     GraduationCap,
@@ -166,11 +168,33 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
     const footerLinks = page?.footer_links || {};
     const siteName = footerLinks.site_name || institution.name;
     const extraSections = footerLinks.extra_sections || DEFAULT_EXTRA_SECTIONS;
+    const fallbackSlider = [
+        {
+            title: page?.hero_title || siteName,
+            subtitle: page?.hero_subtitle || design.heroLine,
+            badge: institution.village || design.eyebrow,
+            image_url: page?.banner_image_url || '',
+            button_label: 'ভর্তি তথ্য'
+        },
+        ...safeArray(extraSections.gallery, DEFAULT_EXTRA_SECTIONS.gallery).slice(0, 2).map((item) => ({
+            title: item.title || siteName,
+            subtitle: item.caption || page?.about_text || design.heroLine,
+            badge: 'ক্যাম্পাস',
+            image_url: item.image_url || '',
+            button_label: 'আরও জানুন'
+        }))
+    ].filter((item) => item.title || item.image_url);
+    const sliderItems = minimumArray(
+        safeArray(extraSections.slider, []).filter((item) => item?.title || item?.image_url),
+        minimumArray(fallbackSlider, DEFAULT_EXTRA_SECTIONS.slider, 1),
+        1
+    );
     const homeSectionSettings = {
         ...DEFAULT_HOME_SECTION_SETTINGS,
         ...(extraSections.home_sections || {})
     };
     const [activePage, setActivePage] = useState('home');
+    const [activeSlide, setActiveSlide] = useState(0);
     const [guardianUpdates, setGuardianUpdates] = useState({ classes: [] });
     const [guardianLoading, setGuardianLoading] = useState(false);
     const [selectedGuardianClassId, setSelectedGuardianClassId] = useState('');
@@ -225,6 +249,18 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
         setEventsPage(1);
         setNoticesPage(1);
     }, [activePage]);
+
+    useEffect(() => {
+        setActiveSlide(0);
+    }, [sliderItems.length, activePage]);
+
+    useEffect(() => {
+        if (activePage !== 'home' || sliderItems.length <= 1) return undefined;
+        const timer = window.setInterval(() => {
+            setActiveSlide((current) => (current + 1) % sliderItems.length);
+        }, 5500);
+        return () => window.clearInterval(timer);
+    }, [activePage, sliderItems.length]);
 
     useEffect(() => {
         const seo = page?.footer_links?.seo || {};
@@ -365,6 +401,10 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
         ? 'border border-white/10 bg-white/[0.035] shadow-2xl shadow-black/30'
         : 'border border-white/60 bg-white/95 shadow-2xl shadow-slate-950/15';
     const sectionLeadClass = `text-sm font-black uppercase tracking-[0.18em] ${websiteAccentClass}`;
+    const currentSlide = sliderItems[activeSlide] || sliderItems[0] || {};
+    const goToSlide = (direction) => {
+        setActiveSlide((current) => (current + direction + sliderItems.length) % sliderItems.length);
+    };
 
     return (
         <div
@@ -448,16 +488,20 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
             <div className="flex flex-col">
             {isSectionVisible('hero') && (
             <section
-                className={template.heroClass}
-                style={{
-                    order: sectionOrder('hero'),
-                    ...(page?.banner_image_url ? {
-                    backgroundImage: `linear-gradient(90deg, rgba(15,74,39,.95), rgba(27,110,60,.75)), url(${page.banner_image_url})`,
-                    backgroundPosition: 'center',
-                    backgroundSize: 'cover'
-                    } : {})
-                }}
+                className={`relative overflow-hidden ${isDarkTemplate ? template.heroClass : 'bg-slate-950 text-white'}`}
+                style={{ order: sectionOrder('hero') }}
             >
+                {currentSlide.image_url ? (
+                    <img src={currentSlide.image_url} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                ) : page?.banner_image_url ? (
+                    <img src={page.banner_image_url} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                ) : null}
+                <div
+                    className="absolute inset-0"
+                    style={{
+                        background: `linear-gradient(90deg, ${theme.primary_color}f4, ${theme.primary_color}bf, rgba(15, 23, 42, 0.48))`
+                    }}
+                />
                 {isDarkTemplate && (
                     <>
                         <div className="pointer-events-none absolute inset-0 opacity-35 [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:58px_58px]" />
@@ -471,24 +515,52 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
                         <div className="pointer-events-none absolute bottom-0 right-0 h-48 w-[42vw] border-l border-t border-white/20 bg-white/10" />
                     </>
                 )}
-                <div className={`relative z-10 mx-auto grid max-w-7xl gap-10 px-4 py-20 lg:items-center ${heroLayoutClass}`}>
+                <div className={`relative z-10 mx-auto grid max-w-7xl gap-10 px-4 py-16 lg:min-h-[620px] lg:items-center ${heroLayoutClass}`}>
                     <div>
                         <p className={`mb-4 inline-flex px-4 py-2 text-sm font-bold ${badgeClass}`}>
-                            {institution.village || design.eyebrow} {page?.established_year ? `প্রতিষ্ঠিত ${page.established_year}` : ''}
+                            {currentSlide.badge || institution.village || design.eyebrow} {page?.established_year ? `প্রতিষ্ঠিত ${page.established_year}` : ''}
                         </p>
                         <h2 className={`max-w-3xl text-4xl font-black leading-tight ${template.heroTitleClass}`}>
-                            <span className={heroAccentClass}>{page?.hero_title || siteName}</span>
+                            <span className={heroAccentClass}>{currentSlide.title || page?.hero_title || siteName}</span>
                         </h2>
                         <p className={`mt-4 max-w-2xl text-base font-medium leading-8 ${isDarkTemplate ? bodyTextClass : template.value === 'editorial' ? 'text-slate-600' : 'text-white/80'}`}>
-                            {page?.hero_subtitle || design.heroLine}
+                            {currentSlide.subtitle || page?.hero_subtitle || design.heroLine}
                         </p>
                         <div className="mt-6 flex flex-wrap gap-3">
-                            <button type="button" onClick={() => navigatePage('admission')} style={brandGradient} className={`rounded-md px-5 py-3 font-black ${primaryButtonClass}`}>ভর্তি তথ্য</button>
+                            <button type="button" onClick={() => navigatePage('admission')} style={brandGradient} className={`rounded-md px-5 py-3 font-black ${primaryButtonClass}`}>{currentSlide.button_label || 'ভর্তি তথ্য'}</button>
                             <button type="button" onClick={() => navigatePage('about')} className={`rounded-md px-5 py-3 font-black ${ghostButtonClass}`}>আরও জানুন</button>
                         </div>
+                        {sliderItems.length > 1 && (
+                            <div className="mt-8 flex flex-wrap items-center gap-3">
+                                <button type="button" onClick={() => goToSlide(-1)} className="flex h-11 w-11 items-center justify-center rounded-full border border-white/25 bg-white/10 text-white backdrop-blur hover:bg-white/20" aria-label="Previous slide">
+                                    <ChevronLeft size={20} />
+                                </button>
+                                <button type="button" onClick={() => goToSlide(1)} className="flex h-11 w-11 items-center justify-center rounded-full border border-white/25 bg-white/10 text-white backdrop-blur hover:bg-white/20" aria-label="Next slide">
+                                    <ChevronRight size={20} />
+                                </button>
+                                <div className="flex items-center gap-2">
+                                    {sliderItems.map((item, index) => (
+                                        <button
+                                            key={`slide-dot-${item.title}-${index}`}
+                                            type="button"
+                                            onClick={() => setActiveSlide(index)}
+                                            aria-label={`Go to slide ${index + 1}`}
+                                            className={`h-2.5 rounded-full transition-all ${activeSlide === index ? 'w-8 bg-white' : 'w-2.5 bg-white/40 hover:bg-white/70'}`}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
                     <div className={`p-4 ${template.cardClass} ${heroFrameClass}`}>
                         <div className={`grid gap-4 border p-5 ${template.cardClass} ${websitePatternClass}`}>
+                            <div className="overflow-hidden rounded-2xl border border-white/10 bg-slate-950/15">
+                                {currentSlide.image_url || page?.banner_image_url ? (
+                                    <img src={currentSlide.image_url || page.banner_image_url} alt="" className="h-52 w-full object-cover" />
+                                ) : (
+                                    <div className="flex h-52 items-center justify-center bg-[var(--school-primary)]/20 text-5xl">🏫</div>
+                                )}
+                            </div>
                             <div className="flex flex-wrap items-center justify-between gap-3">
                                 <p className={`text-xs font-black uppercase tracking-[0.22em] ${websiteAccentClass}`}>
                                     {design.websiteProofLabel || design.eyebrow}
@@ -525,7 +597,7 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
             {isSectionVisible('intro') && (
             <section style={{ order: sectionOrder('intro') }} className={`py-16 ${template.sectionClass}`}>
                 <div className={`mx-auto grid max-w-7xl gap-8 px-4 lg:items-center ${template.previewClass}`}>
-                    <div className={`overflow-hidden p-6 ${template.cardClass} ${panelClass}`}>
+                    <div className={`overflow-hidden p-7 ${template.cardClass} ${panelClass}`}>
                         <School className="mb-5 h-12 w-12 text-[var(--school-primary)]" />
                         <p className={sectionLeadClass}>আমাদের সম্পর্কে</p>
                         <h3 className={`mt-2 text-2xl font-black ${template.sectionTitleClass}`}>{siteName}</h3>
@@ -544,7 +616,7 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
                     </div>
                     <div className={`grid gap-4 ${template.value === 'editorial' ? 'sm:grid-cols-1' : 'sm:grid-cols-2'}`}>
                         {classSections.slice(0, 2).map((item, index) => (
-                            <article key={`${item.title}-${index}`} className={`border p-5 ${template.cardClass} ${softPanelClass} ${websitePatternClass}`}>
+                            <article key={`${item.title}-${index}`} className={`border p-6 transition hover:-translate-y-1 hover:shadow-xl ${template.cardClass} ${softPanelClass} ${websitePatternClass}`}>
                                 <div className="mb-3 text-3xl">{classIcons[index % classIcons.length]}</div>
                                 <h3 className="font-black">{item.title}</h3>
                                 <p className={`mt-2 text-sm font-medium leading-7 ${isDarkTemplate ? mutedTextClass : 'text-slate-500'}`}>{item.description}</p>
@@ -568,7 +640,7 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
                     </div>
                     <div className="grid gap-4 md:grid-cols-3">
                         {teachers.slice(0, 3).map((teacher, index) => (
-                            <article key={`${teacher.name}-${index}`} className={`overflow-hidden p-5 text-center ${template.cardClass} ${panelClass}`}>
+                            <article key={`${teacher.name}-${index}`} className={`overflow-hidden p-5 text-center transition hover:-translate-y-1 hover:shadow-xl ${template.cardClass} ${panelClass}`}>
                                 <div className={`-mx-5 -mt-5 mb-5 h-1.5 ${index === 1 ? 'bg-[var(--school-accent)]' : 'bg-[var(--school-primary)]'}`} />
                                 <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[var(--school-primary)] text-lg font-black text-white">
                                     {teacher.name?.slice(0, 1)}
@@ -598,7 +670,7 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
                     </div>
                     <div className="grid gap-4 sm:grid-cols-2">
                         {programItems.slice(0, 4).map((item, index) => (
-                            <article key={`home-program-${item.title}-${index}`} className={`p-5 ${template.cardClass} ${panelClass}`}>
+                            <article key={`home-program-${item.title}-${index}`} className={`p-5 transition hover:-translate-y-1 hover:shadow-xl ${template.cardClass} ${panelClass}`}>
                                 <div className={`mb-4 flex h-11 w-11 items-center justify-center rounded-2xl font-black ${websiteFeatureClass}`}>0{index + 1}</div>
                                 <h3 className="text-lg font-black">{item.title}</h3>
                                 <p className={`mt-2 text-sm font-medium leading-7 ${isDarkTemplate ? mutedTextClass : 'text-slate-500'}`}>{item.description}</p>
@@ -621,7 +693,7 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
                     </div>
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                         {safeArray(extraSections.achievements, DEFAULT_EXTRA_SECTIONS.achievements).map((item, index) => (
-                            <article key={`${item.title}-${index}`} className={`p-5 ${template.cardClass} ${panelClass}`}>
+                            <article key={`${item.title}-${index}`} className={`p-5 transition hover:-translate-y-1 hover:shadow-xl ${template.cardClass} ${panelClass}`}>
                                 <p className="text-3xl font-black text-[var(--school-accent)]">{item.value}</p>
                                 <h3 className="mt-3 font-black">{item.title}</h3>
                                 <p className={`mt-2 text-sm font-medium leading-7 ${isDarkTemplate ? mutedTextClass : 'text-slate-500'}`}>{item.description}</p>

@@ -244,6 +244,7 @@ function WebsiteLivePreview({ institution, content, theme, mode }) {
     const stats = listValue(content.stats, defaults.stats).slice(0, 4);
     const teachers = listValue(content.public_teachers, defaults.teachers).slice(0, 3);
     const gallery = listValue(extraSections.gallery, DEFAULT_EXTRA_SECTIONS.gallery).slice(0, 3);
+    const slider = listValue(extraSections.slider, DEFAULT_EXTRA_SECTIONS.slider).slice(0, 3);
 
     return (
         <div className={`mx-auto overflow-hidden border border-slate-200 shadow-sm ${mode === 'mobile' ? 'max-w-[340px]' : 'w-full'} ${radiusClass} ${frameClass}`}>
@@ -269,11 +270,18 @@ function WebsiteLivePreview({ institution, content, theme, mode }) {
                 </div>
             </div>
 
+            <div className="border-b border-current/10 px-4 py-2">
+                <div className={`flex items-center gap-3 overflow-hidden rounded-2xl px-3 py-2 ${isDark ? 'bg-white/10' : 'bg-slate-100'}`}>
+                    <span className="rounded-full px-3 py-1 text-[10px] font-black text-white" style={{ backgroundColor: theme.accent_color }}>Notice</span>
+                    <p className={`truncate text-xs font-black ${mutedClass}`}>{content.notice_ticker?.[0] || 'Latest notice will appear here'}</p>
+                </div>
+            </div>
+
             <div
                 className={`grid gap-5 px-5 py-8 ${heroAlignClass} ${heroGridClass}`}
                 style={{
-                    background: content.banner_image_url
-                        ? `linear-gradient(90deg, ${theme.primary_color}ee, ${theme.primary_color}aa), url(${content.banner_image_url}) center/cover`
+                    background: (slider[0]?.image_url || content.banner_image_url)
+                        ? `linear-gradient(90deg, ${theme.primary_color}ee, ${theme.primary_color}aa), url(${slider[0]?.image_url || content.banner_image_url}) center/cover`
                         : isEditorial
                             ? '#fcfbf7'
                             : `linear-gradient(135deg, ${theme.primary_color}, ${theme.accent_color})`
@@ -281,13 +289,13 @@ function WebsiteLivePreview({ institution, content, theme, mode }) {
             >
                 <div>
                     <span className={`rounded-full px-3 py-1 text-xs font-black ${isEditorial ? 'border border-slate-900 text-slate-900' : 'bg-white/15 text-white'}`}>
-                        {content.approval_text || institution?.category || 'Education'}
+                        {slider[0]?.badge || content.approval_text || institution?.category || 'Education'}
                     </span>
                     <h3 className={`mt-4 font-black leading-tight ${isEditorial ? 'text-slate-950' : 'text-white'} ${heroTitleClass}`}>
-                        {content.hero_title || siteName}
+                        {slider[0]?.title || content.hero_title || siteName}
                     </h3>
                     <p className={`mt-3 max-w-xl text-sm font-bold leading-6 ${isEditorial ? 'text-slate-600' : 'text-white/80'}`}>
-                        {content.hero_subtitle || content.about_text || 'Website preview will update while you edit.'}
+                        {slider[0]?.subtitle || content.hero_subtitle || content.about_text || 'Website preview will update while you edit.'}
                     </p>
                 </div>
                 <div className={`grid gap-2 ${mode === 'mobile' ? 'grid-cols-2' : 'grid-cols-4'}`}>
@@ -614,6 +622,7 @@ export default function InstitutionWebsiteManager({ institution, initialPage, on
         if (mediaTarget.type === 'banner') setContent({ ...content, banner_image_url: url });
         if (mediaTarget.type === 'teacher') updateList('public_teachers', mediaTarget.index, 'image_url', url);
         if (mediaTarget.type === 'gallery') updateExtraList('gallery', mediaTarget.index, 'image_url', url);
+        if (mediaTarget.type === 'slider') updateExtraList('slider', mediaTarget.index, 'image_url', url);
         if (mediaTarget.type === 'share') updateFooterNested('seo', 'share_image_url', url);
         if (mediaTarget.type === 'favicon') updateFooterNested('seo', 'favicon_url', url);
 
@@ -914,6 +923,36 @@ export default function InstitutionWebsiteManager({ institution, initialPage, on
                                     <button type="button" onClick={() => addListItem('notice_ticker', '')} className="inline-flex items-center gap-2 text-sm font-black text-slate-700">
                                         <Plus size={16} /> ticker যোগ করুন
                                     </button>
+                                    <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                                        <p className="mb-3 text-xs font-black uppercase tracking-[0.18em] text-slate-400">Homepage slider</p>
+                                        <div className="space-y-3">
+                                            {listValue(content.footer_links?.extra_sections?.slider, DEFAULT_EXTRA_SECTIONS.slider).map((item, index) => (
+                                                <div key={`slider-${index}`} className="grid gap-2 rounded-2xl border border-slate-100 bg-white p-3 md:grid-cols-[0.9fr_1fr_1fr_auto]">
+                                                    <div className="grid gap-2">
+                                                        <input value={item.badge || ''} onChange={(e) => updateExtraList('slider', index, 'badge', e.target.value)} placeholder="Badge" className="rounded-xl border border-slate-200 px-3 py-2" />
+                                                        <input value={item.title || ''} onChange={(e) => updateExtraList('slider', index, 'title', e.target.value)} placeholder="Slide title" className="rounded-xl border border-slate-200 px-3 py-2" />
+                                                    </div>
+                                                    <textarea value={item.subtitle || ''} onChange={(e) => updateExtraList('slider', index, 'subtitle', e.target.value)} placeholder="Slide subtitle" className="min-h-24 rounded-xl border border-slate-200 px-3 py-2" />
+                                                    <div className="grid gap-2">
+                                                        <input value={item.image_url || ''} onChange={(e) => updateExtraList('slider', index, 'image_url', e.target.value)} placeholder="Image URL" className="rounded-xl border border-slate-200 px-3 py-2" />
+                                                        <input value={item.button_label || ''} onChange={(e) => updateExtraList('slider', index, 'button_label', e.target.value)} placeholder="Button label" className="rounded-xl border border-slate-200 px-3 py-2" />
+                                                        <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-black text-slate-700">
+                                                            {uploadingField === `slider-${index}` ? <Loader2 size={15} className="animate-spin" /> : <Upload size={15} />}
+                                                            Upload image
+                                                            <input type="file" accept="image/*" className="hidden" onChange={(e) => uploadImage(e.target.files?.[0], `slider-${index}`, (url) => updateExtraList('slider', index, 'image_url', url))} />
+                                                        </label>
+                                                        <button type="button" onClick={() => openMediaTarget('slider', index)} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-black text-slate-700">Choose from library</button>
+                                                    </div>
+                                                    <div className="grid gap-2">
+                                                        <button type="button" onClick={() => moveExtraItem('slider', index, -1)} disabled={index === 0} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-600 disabled:opacity-35">Move up</button>
+                                                        <button type="button" onClick={() => moveExtraItem('slider', index, 1)} disabled={index === listValue(content.footer_links?.extra_sections?.slider, DEFAULT_EXTRA_SECTIONS.slider).length - 1} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-600 disabled:opacity-35">Move down</button>
+                                                        <button type="button" onClick={() => removeExtraItem('slider', index)} className="rounded-xl border border-rose-100 px-3 py-2 text-rose-500"><Trash2 size={16} /></button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            <button type="button" onClick={() => addExtraItem('slider', { title: '', subtitle: '', badge: '', image_url: '', button_label: '' })} className="text-sm font-black text-slate-700">+ slider item</button>
+                                        </div>
+                                    </div>
                                 </div>
                             </SectionCard>
                             )}
