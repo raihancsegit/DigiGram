@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ChevronDown, Clock3, Eye, Globe2, Loader2, Palette, Plus, RotateCcw, Save, Settings2, Trash2, Upload } from 'lucide-react';
 import {
     getInstitutionDesignProfile,
+    getSchoolWebsiteTemplate,
     INSTITUTION_FONT_OPTIONS,
     INSTITUTION_MENU_OPTIONS,
     SCHOOL_WEBSITE_TEMPLATES
@@ -221,8 +222,8 @@ function WebsiteLivePreview({ institution, content, theme, mode }) {
     const footerLinks = content.footer_links || {};
     const extraSections = footerLinks.extra_sections || DEFAULT_EXTRA_SECTIONS;
     const siteName = footerLinks.site_name || institution?.name || 'Institution';
-    const selectedTemplate = SCHOOL_WEBSITE_TEMPLATES.find((item) => item.value === theme.template) || SCHOOL_WEBSITE_TEMPLATES[0];
-    const isDark = theme.template?.startsWith('dark');
+    const selectedTemplate = getSchoolWebsiteTemplate(theme.template);
+    const isDark = selectedTemplate.tone === 'dark';
     const isEditorial = theme.template === 'editorial';
     const frameClass = isDark
         ? 'bg-slate-950 text-white'
