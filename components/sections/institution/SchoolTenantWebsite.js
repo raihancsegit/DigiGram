@@ -27,7 +27,7 @@ import {
     SCHOOL_WEBSITE_HOME_SECTION_SETTINGS
 } from '@/lib/constants/schoolWebsiteDefaults';
 
-const DEFAULT_MENU = ['home', 'about', 'classes', 'teachers', 'guardian', 'facilities', 'admission', 'notices', 'contact'];
+const DEFAULT_MENU = ['home', 'about', 'classes', 'teachers', 'guardian', 'facilities', 'gallery', 'admission', 'notices', 'contact'];
 const PAGE_META = {
     home: { title: 'Home', subtitle: 'Institution overview and latest highlights' },
     about: { title: 'About', subtitle: 'History, values and institution profile' },
@@ -35,6 +35,7 @@ const PAGE_META = {
     teachers: { title: 'Teachers', subtitle: 'Teacher profiles and subject responsibilities' },
     guardian: { title: 'Guardian Updates', subtitle: 'Class-wise lessons, homework, attendance and results' },
     facilities: { title: 'Facilities', subtitle: 'Learning environment and student support' },
+    gallery: { title: 'Gallery', subtitle: 'Campus photos, classroom moments and activities' },
     admission: { title: 'Admission', subtitle: 'Admission information and contact details' },
     notices: { title: 'Notice Board', subtitle: 'Latest notices and institution updates' },
     contact: { title: 'Contact', subtitle: 'Office address, phone and communication information' }
@@ -46,6 +47,7 @@ const SCHOOL_MENU_OPTIONS = [
     { value: 'teachers', label: 'শিক্ষকমণ্ডলী' },
     { value: 'guardian', label: 'অভিভাবক আপডেট' },
     { value: 'facilities', label: 'সুযোগ-সুবিধা' },
+    { value: 'gallery', label: 'গ্যালারি' },
     { value: 'admission', label: 'ভর্তি' },
     { value: 'notices', label: 'নোটিশ বোর্ড' },
     { value: 'contact', label: 'যোগাযোগ' }
@@ -414,7 +416,7 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
 
     return (
         <div
-            className={`min-h-screen ${pageTextClass} ${template.shellClass}`}
+            className={`min-h-screen overflow-x-hidden ${pageTextClass} ${template.shellClass}`}
             style={{
                 '--school-primary': theme.primary_color,
                 '--school-accent': theme.accent_color,
@@ -494,7 +496,7 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
             <div className="flex flex-col">
             {isSectionVisible('hero') && (
             <section
-                className={`relative overflow-hidden ${isDarkTemplate ? template.heroClass : 'bg-slate-950 text-white'}`}
+                className={`relative min-h-[76vh] overflow-hidden bg-slate-950 text-white md:min-h-[82vh] ${isDarkTemplate ? template.heroClass : ''}`}
                 style={{ order: sectionOrder('hero') }}
             >
                 {currentSlide.image_url ? (
@@ -503,9 +505,9 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
                     <img src={page.banner_image_url} alt="" className="absolute inset-0 h-full w-full object-cover" />
                 ) : null}
                 <div
-                    className="absolute inset-0"
+                    className="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/55 to-slate-950/20"
                     style={{
-                        background: `linear-gradient(90deg, ${theme.primary_color}f4, ${theme.primary_color}bf, rgba(15, 23, 42, 0.48))`
+                        background: `linear-gradient(90deg, rgba(2, 6, 23, 0.92), ${theme.primary_color}cc, rgba(15, 23, 42, 0.22))`
                     }}
                 />
                 {isDarkTemplate && (
@@ -521,15 +523,15 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
                         <div className="pointer-events-none absolute bottom-0 right-0 h-48 w-[42vw] border-l border-t border-white/20 bg-white/10" />
                     </>
                 )}
-                <div className={`relative z-10 mx-auto grid max-w-7xl gap-10 px-4 py-16 lg:min-h-[620px] lg:items-center ${heroLayoutClass}`}>
-                    <div>
+                <div className="relative z-10 mx-auto flex min-h-[76vh] max-w-7xl flex-col justify-center px-4 py-16 md:min-h-[82vh]">
+                    <div className="max-w-3xl">
                         <p className={`mb-4 inline-flex px-4 py-2 text-sm font-bold ${badgeClass}`}>
                             {currentSlide.badge || institution.village || design.eyebrow} {page?.established_year ? `প্রতিষ্ঠিত ${page.established_year}` : ''}
                         </p>
-                        <h2 className={`max-w-3xl text-4xl font-black leading-tight ${template.heroTitleClass}`}>
+                        <h2 className="max-w-4xl text-4xl font-black leading-tight text-white drop-shadow-lg md:text-6xl lg:text-7xl">
                             <span className={heroAccentClass}>{currentSlide.title || page?.hero_title || siteName}</span>
                         </h2>
-                        <p className={`mt-4 max-w-2xl text-base font-medium leading-8 ${isDarkTemplate ? bodyTextClass : template.value === 'editorial' ? 'text-slate-600' : 'text-white/80'}`}>
+                        <p className="mt-5 max-w-2xl text-lg font-medium leading-8 text-white/80 md:text-xl">
                             {currentSlide.subtitle || page?.hero_subtitle || design.heroLine}
                         </p>
                         <div className="mt-6 flex flex-wrap gap-3">
@@ -558,7 +560,7 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
                             </div>
                         )}
                     </div>
-                    <div className={`p-4 ${template.cardClass} ${heroFrameClass}`}>
+                    <div className={`hidden p-4 ${template.cardClass} ${heroFrameClass}`}>
                         <div className={`grid gap-4 border p-5 ${template.cardClass} ${websitePatternClass}`}>
                             <div className="overflow-hidden rounded-2xl border border-white/10 bg-slate-950/15">
                                 {currentSlide.image_url || page?.banner_image_url ? (
@@ -1233,7 +1235,7 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
                 </section>
                 )}
 
-                {activePage === 'about' && (
+                {activePage === 'gallery' && (
                 <section className={`${altSectionClass} py-16`}>
                     <div className="mx-auto max-w-7xl px-4">
                         <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
