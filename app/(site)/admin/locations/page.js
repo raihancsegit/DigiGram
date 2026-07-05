@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
     MapPin, Search, Loader2, X, Edit, Trash2, LayoutGrid, Globe, Users, Home
 } from 'lucide-react';
@@ -33,27 +33,12 @@ export default function LocationDirectoryPage() {
     const [editForm, setEditForm] = useState({ name_bn: '', name_en: '', slug: '', population: '', voters: '' });
 
     const [mounted, setMounted] = useState(false);
+    const searchQueryRef = useRef(searchQuery);
 
-    useEffect(() => {
-        setMounted(true);
-        loadLocations();
-    }, [currentPage, typeFilter]);
-
-    // Debounce search
-    useEffect(() => {
-        if (mounted) {
-            const timer = setTimeout(() => {
-                if (currentPage !== 1) setCurrentPage(1);
-                else loadLocations();
-            }, 500);
-            return () => clearTimeout(timer);
-        }
-    }, [searchQuery]);
-
-    const loadLocations = async () => {
+    const loadLocations = useCallback(async (page, type, query) => {
         setLoading(true);
         try {
-            const { data, count } = await adminService.getLocations(typeFilter, currentPage, pageSize, searchQuery);
+            const { data, count } = await adminService.getLocations(type, page, pageSize, query);
             setLocations(data || []);
             setTotalLocations(count || 0);
         } catch (err) {
@@ -61,7 +46,28 @@ export default function LocationDirectoryPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [pageSize]);
+
+    useEffect(() => {
+        searchQueryRef.current = searchQuery;
+    }, [searchQuery]);
+
+    useEffect(() => {
+        const frame = requestAnimationFrame(() => setMounted(true));
+        loadLocations(currentPage, typeFilter, searchQueryRef.current);
+        return () => cancelAnimationFrame(frame);
+    }, [currentPage, loadLocations, typeFilter]);
+
+    // Debounce search
+    useEffect(() => {
+        if (mounted) {
+            const timer = setTimeout(() => {
+                if (currentPage !== 1) setCurrentPage(1);
+                else loadLocations(currentPage, typeFilter, searchQuery);
+            }, 500);
+            return () => clearTimeout(timer);
+        }
+    }, [currentPage, loadLocations, mounted, searchQuery, typeFilter]);
 
     const handleUpdateLocation = async (e) => {
         e.preventDefault();
@@ -86,7 +92,7 @@ export default function LocationDirectoryPage() {
             alert('লোকেশন সফলভাবে আপডেট হয়েছে।');
             setIsEditModalOpen(false);
             setTargetLocation(null);
-            await loadLocations();
+            await loadLocations(currentPage, typeFilter, searchQueryRef.current);
         } catch (err) {
             alert('আপডেট করতে সমস্যা: ' + err.message);
         } finally {
@@ -101,7 +107,7 @@ export default function LocationDirectoryPage() {
             alert('লোকেশন সফলভাবে ডিলিট হয়েছে।');
             setIsDeleteModalOpen(false);
             setTargetLocation(null);
-            await loadLocations();
+            await loadLocations(currentPage, typeFilter, searchQueryRef.current);
         } catch (err) {
             alert('ডিলিট করতে সমস্যা: ' + err.message);
         } finally {

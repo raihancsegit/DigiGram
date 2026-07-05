@@ -1,13 +1,37 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/utils/supabase-admin';
+import { canAccessLocation, canManageInstitution, requireRequestProfile } from '@/lib/utils/server-auth';
+
+async function canManageOwner(profile, ownerType, ownerId) {
+    if (ownerType === 'institution') {
+        if (await canManageInstitution(profile, ownerId)) return true;
+        const { data: membership } = await supabaseAdmin
+            .from('institution_memberships')
+            .select('id')
+            .eq('institution_id', ownerId)
+            .eq('profile_id', profile.id)
+            .eq('is_active', true)
+            .in('member_role', ['admin', 'teacher'])
+            .maybeSingle();
+        return Boolean(membership);
+    }
+    if (ownerType === 'location') return canAccessLocation(profile, ownerId);
+    return false;
+}
 
 export async function POST(request) {
     try {
+        const auth = await requireRequestProfile(request);
+        if (auth.response) return auth.response;
+
         const body = await request.json();
         const { ownerType, ownerId, recipientPhone, message, category, sourceType, sourceId } = body;
 
         if (!ownerType || !ownerId || !recipientPhone || !message || !category) {
             return NextResponse.json({ error: 'Missing SMS queue fields' }, { status: 400 });
+        }
+        if (!(await canManageOwner(auth.profile, ownerType, ownerId))) {
+            return NextResponse.json({ error: 'You cannot send SMS from this account' }, { status: 403 });
         }
 
         const { data: wallet, error: walletError } = await supabaseAdmin

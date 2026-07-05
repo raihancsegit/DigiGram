@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/utils/supabase-admin';
 import { requireRequestProfile } from '@/lib/utils/server-auth';
+import { sendSmsViaGateway } from '@/lib/services/smsProviderGateway';
 
 function monthKey(dateValue) {
     const date = new Date(dateValue);
@@ -33,6 +34,50 @@ function parseGatewayConfig(value) {
     return JSON.parse(value);
 }
 
+function redactObject(value) {
+    if (Array.isArray(value)) return value.map(redactObject);
+    if (!value || typeof value !== 'object') return value;
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => {
+        if (/key|token|secret|password|authorization/i.test(key)) return [key, item ? '********' : ''];
+        return [key, redactObject(item)];
+    }));
+}
+
+function restoreRedactedValues(nextValue, currentValue) {
+    if (Array.isArray(nextValue)) {
+        return nextValue.map((item, index) => restoreRedactedValues(item, currentValue?.[index]));
+    }
+    if (!nextValue || typeof nextValue !== 'object') {
+        return nextValue === '********' ? currentValue : nextValue;
+    }
+    return Object.fromEntries(Object.entries(nextValue).map(([key, item]) => [
+        key,
+        restoreRedactedValues(item, currentValue?.[key])
+    ]));
+}
+
+function publicGateway(gateway) {
+    if (!gateway) return gateway;
+    const { api_key: apiKey, ...safe } = gateway;
+    return {
+        ...safe,
+        config: redactObject(safe.config || {}),
+        has_api_key: Boolean(apiKey)
+    };
+}
+
+function normalizeBdPhone(value) {
+    const rawPhone = String(value || '').replace(/[^\d+]/g, '');
+    const phone = rawPhone.startsWith('+880')
+        ? rawPhone
+        : rawPhone.startsWith('880')
+            ? `+${rawPhone}`
+            : rawPhone.startsWith('01')
+                ? `+88${rawPhone}`
+                : rawPhone;
+    return /^\+8801[3-9]\d{8}$/.test(phone) ? phone : null;
+}
+
 export async function GET(request) {
     try {
         const auth = await requireRequestProfile(request, ['super_admin']);
@@ -44,14 +89,18 @@ export async function GET(request) {
             { data: wallets, error: walletError },
             { data: rechargeRequests, error: rechargeError },
             { data: messages, error: messageError },
-            { data: transactions, error: transactionError }
+            { data: transactions, error: transactionError },
+            { data: deliveryAttempts, error: deliveryAttemptError },
+            { data: deliveryWebhooks, error: deliveryWebhookError }
         ] = await Promise.all([
             supabaseAdmin.from('sms_gateways').select('*').order('created_at', { ascending: false }),
             supabaseAdmin.from('sms_packages').select('*').order('sort_order', { ascending: true }).order('credits', { ascending: true }),
             supabaseAdmin.from('sms_wallets').select('*').order('updated_at', { ascending: false }).limit(100),
             supabaseAdmin.from('sms_recharge_requests').select('*, package:sms_packages(name)').order('created_at', { ascending: false }).limit(100),
             supabaseAdmin.from('sms_messages').select('*').order('queued_at', { ascending: false }).limit(300),
-            supabaseAdmin.from('sms_wallet_transactions').select('*').order('created_at', { ascending: false }).limit(300)
+            supabaseAdmin.from('sms_wallet_transactions').select('*').order('created_at', { ascending: false }).limit(300),
+            supabaseAdmin.from('sms_delivery_attempts').select('*').order('created_at', { ascending: false }).limit(200),
+            supabaseAdmin.from('sms_delivery_webhooks').select('*').order('received_at', { ascending: false }).limit(100)
         ]);
 
         if (gatewayError) throw gatewayError;
@@ -60,7 +109,10 @@ export async function GET(request) {
         if (rechargeError) throw rechargeError;
         if (messageError) throw messageError;
         if (transactionError) throw transactionError;
+        if (deliveryAttemptError && !['42P01', 'PGRST205'].includes(deliveryAttemptError.code)) throw deliveryAttemptError;
+        if (deliveryWebhookError && !['42P01', 'PGRST205'].includes(deliveryWebhookError.code)) throw deliveryWebhookError;
 
+        const safeGateways = (gateways || []).map(publicGateway);
         const locationIds = [...new Set((wallets || []).filter((item) => item.owner_type === 'location').map((item) => item.owner_id))];
         const institutionIds = [...new Set((wallets || []).filter((item) => item.owner_type === 'institution').map((item) => item.owner_id))];
 
@@ -187,7 +239,7 @@ export async function GET(request) {
             .filter((item) => item.status === 'pending')
             .map((item) => ({ ...item, age_hours: ageHours(item.created_at) }))
             .filter((item) => item.age_hours >= 24);
-        const activeGatewayCount = (gateways || []).filter((gateway) => gateway.is_active).length;
+        const activeGatewayCount = safeGateways.filter((gateway) => gateway.is_active).length;
         const latestMonth = monthlyReport[monthlyReport.length - 1] || {};
         const actionQueue = [
             ...stalePendingRecharges.slice(0, 5).map((item) => ({
@@ -246,7 +298,9 @@ export async function GET(request) {
             pendingRecharge: rechargeList.filter((item) => item.status === 'pending').length,
             queuedMessages: messageList.filter((item) => item.status === 'queued').length,
             sentMessages: messageList.filter((item) => item.status === 'sent').length,
+            deliveredMessages: messageList.filter((item) => item.status === 'delivered').length,
             failedMessages: messageList.filter((item) => item.status === 'failed').length,
+            retryingMessages: messageList.filter((item) => item.status === 'queued' && Number(item.attempts || 0) > 0).length,
             totalQueuedWindow: messageList.length,
             approvedRechargeRevenue,
             approvedRechargeCredits,
@@ -259,12 +313,14 @@ export async function GET(request) {
         return NextResponse.json({
             success: true,
             data: {
-                gateways: gateways || [],
+                gateways: safeGateways,
                 packages: packageList,
                 wallets: enrichedWallets,
                 walletBusinessRows,
                 rechargeRequests: rechargeRequests || [],
                 messages: messageList.slice(0, 80),
+                deliveryAttempts: deliveryAttempts || [],
+                deliveryWebhooks: deliveryWebhooks || [],
                 transactions: txList,
                 lowBalanceWallets,
                 categoryStats: Object.values(categoryStats).sort((a, b) => b.total - a.total),
@@ -296,6 +352,7 @@ export async function POST(request) {
             } catch {
                 return NextResponse.json({ error: 'Gateway config must be valid JSON' }, { status: 400 });
             }
+            config.webhook_enabled = body.webhookEnabled !== false;
 
             const { data, error } = await supabaseAdmin
                 .from('sms_gateways')
@@ -306,13 +363,247 @@ export async function POST(request) {
                     api_base_url: body.apiBaseUrl || null,
                     api_key: body.apiKey || null,
                     is_active: Boolean(body.isActive),
-                    config
+                    config,
+                    timeout_ms: Math.min(Math.max(Number(body.timeoutMs || 15000), 1000), 60000),
+                    priority: Math.min(Math.max(Number(body.priority || 100), 1), 999),
+                    webhook_enabled: body.webhookEnabled !== false
                 }])
                 .select()
                 .single();
 
             if (error) throw error;
-            return NextResponse.json({ success: true, data });
+            return NextResponse.json({ success: true, data: publicGateway(data) });
+        }
+
+        if (action === 'toggle_gateway') {
+            if (!body.gatewayId) {
+                return NextResponse.json({ error: 'gatewayId is required' }, { status: 400 });
+            }
+
+            const { data, error } = await supabaseAdmin
+                .from('sms_gateways')
+                .update({
+                    is_active: Boolean(body.isActive),
+                    ...(body.priority ? { priority: Math.min(Math.max(Number(body.priority), 1), 999) } : {}),
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', body.gatewayId)
+                .select()
+                .single();
+            if (error) throw error;
+            return NextResponse.json({ success: true, data: publicGateway(data) });
+        }
+
+        if (action === 'update_gateway') {
+            if (!body.gatewayId) {
+                return NextResponse.json({ error: 'gatewayId is required' }, { status: 400 });
+            }
+
+            const { data: currentGateway, error: currentError } = await supabaseAdmin
+                .from('sms_gateways')
+                .select('*')
+                .eq('id', body.gatewayId)
+                .single();
+            if (currentError) throw currentError;
+
+            let nextConfig = {};
+            try {
+                nextConfig = parseGatewayConfig(body.config || body.configText);
+            } catch {
+                return NextResponse.json({ error: 'Gateway config must be valid JSON' }, { status: 400 });
+            }
+            nextConfig = restoreRedactedValues(nextConfig, parseGatewayConfig(currentGateway.config));
+            nextConfig.webhook_enabled = body.webhookEnabled !== false;
+
+            const { data, error } = await supabaseAdmin
+                .from('sms_gateways')
+                .update({
+                    name: String(body.name || '').trim(),
+                    provider: String(body.provider || '').trim(),
+                    sender_id: body.senderId || null,
+                    api_base_url: body.apiBaseUrl || null,
+                    ...(body.apiKey ? { api_key: body.apiKey } : {}),
+                    is_active: Boolean(body.isActive),
+                    config: nextConfig,
+                    timeout_ms: Math.min(Math.max(Number(body.timeoutMs || 15000), 1000), 60000),
+                    priority: Math.min(Math.max(Number(body.priority || 100), 1), 999),
+                    webhook_enabled: body.webhookEnabled !== false,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', body.gatewayId)
+                .select()
+                .single();
+            if (error) throw error;
+            return NextResponse.json({ success: true, data: publicGateway(data) });
+        }
+
+        if (action === 'delete_gateway') {
+            if (!body.gatewayId) {
+                return NextResponse.json({ error: 'gatewayId is required' }, { status: 400 });
+            }
+
+            const [{ count: messageCount, error: messageCountError }, { count: attemptCount, error: attemptCountError }] = await Promise.all([
+                supabaseAdmin.from('sms_messages').select('id', { count: 'exact', head: true }).eq('gateway_id', body.gatewayId),
+                supabaseAdmin.from('sms_delivery_attempts').select('id', { count: 'exact', head: true }).eq('gateway_id', body.gatewayId)
+            ]);
+            if (messageCountError && !['42703', 'PGRST204'].includes(messageCountError.code)) throw messageCountError;
+            if (attemptCountError && !['42P01', 'PGRST205'].includes(attemptCountError.code)) throw attemptCountError;
+            if (Number(messageCount || 0) > 0 || Number(attemptCount || 0) > 0) {
+                return NextResponse.json({
+                    error: 'এই gateway-এর delivery history আছে। Audit data রাখতে gateway deactivate করুন।'
+                }, { status: 409 });
+            }
+
+            const { error } = await supabaseAdmin
+                .from('sms_gateways')
+                .delete()
+                .eq('id', body.gatewayId);
+            if (error) throw error;
+            return NextResponse.json({ success: true });
+        }
+
+        if (action === 'test_gateway') {
+            if (!body.gatewayId) {
+                return NextResponse.json({ error: 'gatewayId is required' }, { status: 400 });
+            }
+
+            const phone = normalizeBdPhone(body.phone);
+            if (!phone) {
+                return NextResponse.json({ error: 'Valid Bangladesh mobile number is required' }, { status: 400 });
+            }
+
+            const { data: gateway, error: gatewayError } = await supabaseAdmin
+                .from('sms_gateways')
+                .select('*')
+                .eq('id', body.gatewayId)
+                .single();
+            if (gatewayError) throw gatewayError;
+
+            const result = await sendSmsViaGateway(gateway, {
+                id: `gateway-test-${Date.now()}`,
+                recipient_phone: phone,
+                message: String(body.message || 'DigiGram SMS gateway test successful.').slice(0, 500)
+            });
+            const now = new Date().toISOString();
+            await supabaseAdmin
+                .from('sms_gateways')
+                .update({
+                    health_status: result.ok ? 'healthy' : 'down',
+                    consecutive_failures: result.ok ? 0 : Number(gateway.consecutive_failures || 0) + 1,
+                    last_success_at: result.ok ? now : gateway.last_success_at,
+                    last_failure_at: result.ok ? gateway.last_failure_at : now,
+                    last_error: result.ok ? null : String(result.error || 'Gateway test failed').slice(0, 2000),
+                    updated_at: now
+                })
+                .eq('id', gateway.id);
+
+            if (!result.ok) {
+                return NextResponse.json({
+                    error: result.error || 'Gateway test failed',
+                    httpStatus: result.httpStatus || null
+                }, { status: 502 });
+            }
+
+            return NextResponse.json({
+                success: true,
+                data: {
+                    phone,
+                    deliveryStatus: result.deliveryStatus,
+                    providerMessageId: result.providerMessageId,
+                    mocked: gateway.provider === 'mock'
+                }
+            });
+        }
+
+        if (action === 'quick_test_sms') {
+            const phone = normalizeBdPhone(body.phone);
+            if (!phone) {
+                return NextResponse.json({ error: 'Valid Bangladesh mobile number is required' }, { status: 400 });
+            }
+
+            const message = String(body.message || '').trim() || 'DigiGram SMS quick test successful.';
+            if (message.length > 500) {
+                return NextResponse.json({ error: 'Message must be 500 characters or less' }, { status: 400 });
+            }
+
+            const { data: gateway, error: gatewayError } = await supabaseAdmin
+                .from('sms_gateways')
+                .select('*')
+                .eq('is_active', true)
+                .order('priority', { ascending: true })
+                .limit(1)
+                .maybeSingle();
+            if (gatewayError) throw gatewayError;
+            if (!gateway) {
+                return NextResponse.json({ error: 'No active SMS gateway configured' }, { status: 409 });
+            }
+
+            const result = await sendSmsViaGateway(gateway, {
+                id: `quick-test-${Date.now()}`,
+                recipient_phone: phone,
+                message
+            });
+            const now = new Date().toISOString();
+            await supabaseAdmin
+                .from('sms_gateways')
+                .update({
+                    health_status: result.ok ? 'healthy' : 'down',
+                    consecutive_failures: result.ok ? 0 : Number(gateway.consecutive_failures || 0) + 1,
+                    last_success_at: result.ok ? now : gateway.last_success_at,
+                    last_failure_at: result.ok ? gateway.last_failure_at : now,
+                    last_error: result.ok ? null : String(result.error || 'Quick SMS test failed').slice(0, 2000),
+                    updated_at: now
+                })
+                .eq('id', gateway.id);
+
+            if (!result.ok) {
+                return NextResponse.json({
+                    error: result.error || 'Quick SMS test failed',
+                    httpStatus: result.httpStatus || null,
+                    gateway: publicGateway(gateway)
+                }, { status: 502 });
+            }
+
+            return NextResponse.json({
+                success: true,
+                data: {
+                    phone,
+                    gateway: publicGateway(gateway),
+                    deliveryStatus: result.deliveryStatus,
+                    providerMessageId: result.providerMessageId,
+                    mocked: gateway.provider === 'mock'
+                }
+            });
+        }
+
+        if (action === 'retry_failed') {
+            let query = supabaseAdmin
+                .from('sms_messages')
+                .update({
+                    status: 'queued',
+                    attempts: 0,
+                    next_attempt_at: new Date().toISOString(),
+                    locked_at: null,
+                    locked_until: null,
+                    locked_by: null,
+                    error_message: null
+                })
+                .eq('status', 'failed');
+
+            if (Array.isArray(body.messageIds) && body.messageIds.length > 0) {
+                query = query.in('id', body.messageIds.slice(0, 100));
+            }
+
+            const { data, error } = await query.select('id');
+            if (error) {
+                if (['42703', 'PGRST204'].includes(error.code)) {
+                    return NextResponse.json({
+                        error: 'SMS retry migration is not installed. Run database/68_sms_delivery_monitoring.sql.'
+                    }, { status: 409 });
+                }
+                throw error;
+            }
+            return NextResponse.json({ success: true, retried: data?.length || 0 });
         }
 
         if (action === 'create_package') {
@@ -332,6 +623,64 @@ export async function POST(request) {
 
             if (error) throw error;
             return NextResponse.json({ success: true, data });
+        }
+
+        if (action === 'update_package') {
+            if (!body.packageId) {
+                return NextResponse.json({ error: 'packageId is required' }, { status: 400 });
+            }
+            const { data, error } = await supabaseAdmin
+                .from('sms_packages')
+                .update({
+                    name: String(body.name || '').trim(),
+                    credits: Math.max(Number(body.credits || 0), 1),
+                    price: Math.max(Number(body.price || 0), 0),
+                    description: body.description || null,
+                    validity_days: Math.max(Number(body.validityDays || 365), 1),
+                    sort_order: Number(body.sortOrder || 0),
+                    is_active: body.isActive !== false
+                })
+                .eq('id', body.packageId)
+                .select()
+                .single();
+            if (error) throw error;
+            return NextResponse.json({ success: true, data });
+        }
+
+        if (action === 'toggle_package') {
+            if (!body.packageId) {
+                return NextResponse.json({ error: 'packageId is required' }, { status: 400 });
+            }
+            const { data, error } = await supabaseAdmin
+                .from('sms_packages')
+                .update({ is_active: Boolean(body.isActive) })
+                .eq('id', body.packageId)
+                .select()
+                .single();
+            if (error) throw error;
+            return NextResponse.json({ success: true, data });
+        }
+
+        if (action === 'delete_package') {
+            if (!body.packageId) {
+                return NextResponse.json({ error: 'packageId is required' }, { status: 400 });
+            }
+            const { count, error: countError } = await supabaseAdmin
+                .from('sms_recharge_requests')
+                .select('id', { count: 'exact', head: true })
+                .eq('package_id', body.packageId);
+            if (countError) throw countError;
+            if (Number(count || 0) > 0) {
+                return NextResponse.json({
+                    error: 'এই package দিয়ে recharge হয়েছে। হিসাব ঠিক রাখতে package inactive করুন।'
+                }, { status: 409 });
+            }
+            const { error } = await supabaseAdmin
+                .from('sms_packages')
+                .delete()
+                .eq('id', body.packageId);
+            if (error) throw error;
+            return NextResponse.json({ success: true });
         }
 
         if (action === 'approve_recharge' || action === 'reject_recharge') {
@@ -418,21 +767,37 @@ export async function POST(request) {
                 .single();
             if (walletError) throw walletError;
 
-            const nextBalance = Math.max(0, Number(wallet.balance || 0) + credits);
+            const currentBalance = Number(wallet.balance || 0);
+            const nextBalance = Math.max(0, currentBalance + credits);
+            const appliedCredits = nextBalance - currentBalance;
+            if (!appliedCredits) {
+                return NextResponse.json({ error: 'Wallet balance unchanged' }, { status: 409 });
+            }
             const { error: updateError } = await supabaseAdmin
                 .from('sms_wallets')
                 .update({ balance: nextBalance, updated_at: new Date().toISOString() })
                 .eq('id', wallet.id);
             if (updateError) throw updateError;
 
-            await supabaseAdmin.from('sms_wallet_transactions').insert([{
+            const { error: transactionError } = await supabaseAdmin.from('sms_wallet_transactions').insert([{
                 wallet_id: wallet.id,
                 transaction_type: 'adjustment',
-                credits,
+                credits: appliedCredits,
                 note: body.note || 'Manual admin adjustment'
             }]);
+            if (transactionError) {
+                await supabaseAdmin
+                    .from('sms_wallets')
+                    .update({ balance: currentBalance, updated_at: new Date().toISOString() })
+                    .eq('id', wallet.id);
+                throw transactionError;
+            }
 
-            return NextResponse.json({ success: true, data: { ...wallet, balance: nextBalance } });
+            return NextResponse.json({
+                success: true,
+                data: { ...wallet, balance: nextBalance },
+                appliedCredits
+            });
         }
 
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 });

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { 
     HelpCircle, MapPin, Calendar, Phone, 
@@ -25,12 +25,11 @@ export default function GlobalLostFoundSection() {
 
     const isFirstRun = useRef(true);
 
-    const fetchGlobalPosts = async () => {
+    const fetchGlobalPosts = useCallback(async () => {
         if (isFirstRun.current) {
             isFirstRun.current = false;
         }
         setLoading(true);
-        console.log("Fetching global lost & found with timeframe:", timeframe, "from URL:", process.env.NEXT_PUBLIC_SUPABASE_URL);
         try {
             const data = await lostFoundService.getGlobalPosts(1, 6, timeframe);
             setPosts(data || []);
@@ -40,11 +39,11 @@ export default function GlobalLostFoundSection() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [timeframe]);
 
     useEffect(() => {
         fetchGlobalPosts();
-    }, [timeframe]);
+    }, [fetchGlobalPosts]);
 
     if (loading) {
         return (

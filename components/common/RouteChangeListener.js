@@ -13,13 +13,18 @@ export default function RouteChangeListener() {
         // When the pathname or searchParams change, it means navigation happened
         // We show the loader for a brief moment to make it feel smooth
         // and ensure the new page content is ready.
-        setLoading(true);
+        const showTimeout = setTimeout(() => {
+            setLoading(true);
+        }, 0);
         
         const timeout = setTimeout(() => {
             setLoading(false);
         }, 500); // Small delay for the "smooth" feel
 
-        return () => clearTimeout(timeout);
+        return () => {
+            clearTimeout(showTimeout);
+            clearTimeout(timeout);
+        };
     }, [pathname, searchParams]);
 
     return <GlobalLoading isVisible={loading} />;

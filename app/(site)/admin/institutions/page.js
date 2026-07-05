@@ -300,7 +300,7 @@ export default function InstitutionManagementPage() {
 
             {/* Institutions View */}
             {viewMode === 'grid' ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 2xl:grid-cols-3">
                     <AnimatePresence>
                         {filteredInst.map((inst, idx) => {
                             const Icon = TYPE_ICONS[inst.type] || Building2;
@@ -314,7 +314,7 @@ export default function InstitutionManagementPage() {
                                 >
                                     <div className="absolute top-0 right-0 w-24 h-24 bg-slate-50 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:bg-teal-50 transition-colors" />
                                     
-                                    <div className="flex items-center justify-between mb-8">
+                                    <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
                                         <div className="w-16 h-16 rounded-2xl bg-slate-50 text-slate-500 group-hover:bg-teal-600 group-hover:text-white transition-all duration-500 flex items-center justify-center shadow-inner">
                                             <Icon size={32} />
                                         </div>
@@ -348,32 +348,32 @@ export default function InstitutionManagementPage() {
                                             </div>
                                         </div>
 
-                                        <div className="pt-4 border-t border-slate-50 flex items-center justify-between">
+                                        <div className="space-y-4 border-t border-slate-50 pt-4">
                                             <div className="flex flex-col">
                                                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">সাবডোমেইন</span>
                                                 <span className="text-sm font-black text-slate-700">{inst.subdomain || '---'}</span>
                                             </div>
-                                            <div className="flex gap-2">
+                                            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                                                 <a 
                                                     href={inst.custom_domain ? `https://${inst.custom_domain}` : `http://${inst.subdomain}.localhost:3000`} 
                                                     target="_blank"
-                                                    className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-black shadow-lg shadow-slate-900/10 hover:bg-teal-600 transition-all active:scale-95"
+                                                    className="flex min-w-0 items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-xs font-black text-white shadow-lg shadow-slate-900/10 transition-all hover:bg-teal-600 active:scale-95"
                                                 >
                                                     Website
                                                     <ExternalLink size={14} />
                                                 </a>
                                                 <a
                                                     href={inst.type === 'mosque' ? `/m/${inst.id}/admin` : `/school/${inst.id}/admin`}
-                                                    className="flex items-center gap-2 bg-teal-50 text-teal-700 px-4 py-2 rounded-xl text-xs font-black hover:bg-teal-100 transition-all"
+                                                    className="flex min-w-0 items-center justify-center gap-2 rounded-xl bg-teal-50 px-4 py-3 text-xs font-black text-teal-700 transition-all hover:bg-teal-100"
                                                 >
                                                     Portal
                                                 </a>
                                                 <a
-                                                    href={inst.type === 'mosque' ? `/m/${inst.id}/admin` : `/school/${inst.id}/admin`}
-                                                    className="flex items-center gap-2 bg-indigo-50 text-indigo-700 px-4 py-2 rounded-xl text-xs font-black hover:bg-indigo-100 transition-all"
+                                                    href={inst.type === 'mosque' ? `/m/${inst.id}/admin` : `/school/${inst.id}/admin?tab=website`}
+                                                    className="col-span-2 flex min-w-0 items-center justify-center gap-2 rounded-xl bg-indigo-50 px-4 py-3 text-xs font-black text-indigo-700 transition-all hover:bg-indigo-100 sm:col-span-1"
                                                 >
                                                     <Globe2 size={14} />
-                                                    Settings
+                                                    Website CMS
                                                 </a>
                                             </div>
                                         </div>
@@ -428,7 +428,7 @@ export default function InstitutionManagementPage() {
 
             {/* Add Modal */}
             <ModalPortal isOpen={showAddModal} onClose={() => setShowAddModal(false)}>
-                <div className="bg-white rounded-[40px] p-10 max-w-2xl w-full mx-4 border border-slate-100 shadow-2xl relative overflow-hidden">
+                <div className="custom-scrollbar relative mx-2 max-h-[calc(100dvh-1rem)] w-full max-w-2xl overflow-y-auto rounded-[28px] border border-slate-100 bg-white p-5 shadow-2xl sm:mx-4 sm:max-h-[calc(100dvh-3rem)] sm:rounded-[40px] sm:p-10">
                     <div className="absolute top-0 right-0 p-6">
                         <button onClick={() => {
                             setShowAddModal(false);

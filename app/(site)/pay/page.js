@@ -3,12 +3,19 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
-    ArrowLeft, Banknote, CheckCircle2, Clock3, CreditCard,
-    FileCheck2, Loader2, Phone, ReceiptText, RefreshCw, ShieldCheck
+    AlertCircle, ArrowLeft, Banknote, CheckCircle2, ClipboardCopy, Clock3, CreditCard,
+    FileCheck2, Loader2, Phone, ReceiptText, RefreshCw, ShieldCheck, WalletCards
 } from 'lucide-react';
 
 const money = (value) => `৳${Number(value || 0).toLocaleString('bn-BD')}`;
 const dateText = (value) => value ? new Date(value).toLocaleString('bn-BD') : '';
+const toBnDigits = (value) => Number(value || 0).toLocaleString('bn-BD');
+const SERVICE_LABELS = {
+    birth_registration: 'জন্ম নিবন্ধন আবেদন',
+    death_certificate: 'মৃত্যু সনদ আবেদন',
+    warish_certificate: 'ওয়ারিশ সনদ আবেদন',
+    utility_request: 'ইউটিলিটি সেবা আবেদন'
+};
 
 async function postJson(url, payload) {
     const response = await fetch(url, {
@@ -29,6 +36,7 @@ async function postJson(url, payload) {
 export default function CitizenPaymentPage() {
     const [phone, setPhone] = useState('');
     const [otpCode, setOtpCode] = useState('');
+    const [accessToken, setAccessToken] = useState('');
     const [debugCode, setDebugCode] = useState('');
     const [loading, setLoading] = useState(false);
     const [overview, setOverview] = useState(null);
@@ -36,6 +44,7 @@ export default function CitizenPaymentPage() {
     const [error, setError] = useState('');
     const [selectedBill, setSelectedBill] = useState(null);
     const [payment, setPayment] = useState({ provider: '', transactionId: '', amount: '' });
+    const [copiedGateway, setCopiedGateway] = useState('');
 
     useEffect(() => {
         const value = new URLSearchParams(window.location.search).get('phone');
@@ -46,13 +55,28 @@ export default function CitizenPaymentPage() {
         () => (overview?.transactions || []).filter((item) => item.status === 'pending'),
         [overview]
     );
+    const activeGateway = useMemo(
+        () => (overview?.gateways || []).find((gateway) => gateway.provider === payment.provider) || null,
+        [overview, payment.provider]
+    );
+    const payableSummary = useMemo(() => {
+        const taxes = overview?.taxes || [];
+        const services = overview?.services || [];
+        const due = [...taxes, ...services].reduce((total, item) => total + Number(item.outstanding || 0), 0);
+        const pending = pendingTransactions.reduce((total, item) => total + Number(item.amount || 0), 0);
+        return {
+            billCount: taxes.length + services.length,
+            due,
+            pending
+        };
+    }, [overview, pendingTransactions]);
 
     async function requestOtp() {
         setLoading(true);
         setError('');
         setNotice('');
         try {
-            const result = await postJson('/api/citizen/otp', { phone });
+            const result = await postJson('/api/citizen/otp', { phone, purpose: 'citizen_payment' });
             setDebugCode(result.debugCode || '');
             if (result.debugCode) setOtpCode(result.debugCode);
             setNotice('OTP পাঠানো হয়েছে। কোড দিয়ে payment center খুলুন।');
@@ -67,7 +91,13 @@ export default function CitizenPaymentPage() {
         setLoading(true);
         setError('');
         try {
-            const result = await postJson('/api/payments/citizen', { action: 'overview', phone, otpCode });
+            const result = await postJson('/api/payments/citizen', {
+                action: 'overview',
+                phone,
+                otpCode,
+                accessToken
+            });
+            if (result.accessToken) setAccessToken(result.accessToken);
             setOverview(result.data);
             setSelectedBill(null);
             setNotice('আপনার payable bill ও payment history পাওয়া গেছে।');
@@ -90,6 +120,17 @@ export default function CitizenPaymentPage() {
         window.setTimeout(() => document.getElementById('payment-submit')?.scrollIntoView({ behavior: 'smooth' }), 50);
     }
 
+    async function copyGatewayAccount(gateway) {
+        if (!gateway?.account_number) return;
+        try {
+            await navigator.clipboard.writeText(gateway.account_number);
+            setCopiedGateway(gateway.provider);
+            window.setTimeout(() => setCopiedGateway(''), 1400);
+        } catch {
+            setNotice(`Account number: ${gateway.account_number}`);
+        }
+    }
+
     async function submitPayment(event) {
         event.preventDefault();
         setLoading(true);
@@ -100,6 +141,7 @@ export default function CitizenPaymentPage() {
                 action: 'submit',
                 phone,
                 otpCode,
+                accessToken,
                 referenceType: selectedBill.type,
                 referenceId: selectedBill.bill.id,
                 amount: Number(payment.amount),
@@ -190,6 +232,34 @@ export default function CitizenPaymentPage() {
 
                 {overview && (
                     <>
+                        <section className="grid gap-3 sm:grid-cols-3">
+                            <SummaryCard
+                                icon={WalletCards}
+                                label="Payable bill"
+                                value={toBnDigits(payableSummary.billCount)}
+                                hint="Tax ও service fee মিলিয়ে"
+                            />
+                            <SummaryCard
+                                icon={Banknote}
+                                label="Total due"
+                                value={money(payableSummary.due)}
+                                hint="এখন payable amount"
+                            />
+                            <SummaryCard
+                                icon={Clock3}
+                                label="Pending review"
+                                value={money(payableSummary.pending)}
+                                hint="Officer verify বাকি"
+                            />
+                        </section>
+
+                        {(overview.gateways || []).length === 0 && (
+                            <div className="flex items-start gap-3 rounded-3xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm font-bold text-amber-900">
+                                <AlertCircle size={20} className="mt-0.5 shrink-0" />
+                                <span>Active payment method নেই। Admin panel থেকে gateway চালু করলে citizen payment submit করতে পারবে।</span>
+                            </div>
+                        )}
+
                         <div className="grid gap-6 lg:grid-cols-2">
                             <BillPanel title="Holding tax" icon={Banknote}>
                                 {(overview.taxes || []).length === 0 ? <Empty text="কোনো tax due নেই।" /> : overview.taxes.map((bill) => (
@@ -206,7 +276,7 @@ export default function CitizenPaymentPage() {
                                 {(overview.services || []).length === 0 ? <Empty text="কোনো service fee due নেই।" /> : overview.services.map((bill) => (
                                     <BillRow
                                         key={bill.id}
-                                        title={bill.request_type || 'Service request'}
+                                        title={SERVICE_LABELS[bill.request_type] || bill.request_type || 'Service request'}
                                         subtitle={bill.applicant_name || 'Applicant'}
                                         amount={bill.outstanding}
                                         onPay={() => chooseBill('service_request', bill)}
@@ -223,13 +293,42 @@ export default function CitizenPaymentPage() {
                                         <h2 className="mt-2 text-2xl font-black text-slate-900">
                                             {selectedBill.type === 'household_tax'
                                                 ? selectedBill.bill.fiscal_year_label || 'Holding tax'
-                                                : selectedBill.bill.request_type || 'Service fee'}
+                                                : SERVICE_LABELS[selectedBill.bill.request_type] || selectedBill.bill.request_type || 'Service fee'}
                                         </h2>
                                     </div>
                                     <span className="rounded-2xl bg-teal-50 px-4 py-2 text-lg font-black text-teal-800">
                                         {money(selectedBill.bill.outstanding)}
                                     </span>
                                 </div>
+                                {activeGateway && (
+                                    <div className="mb-5 rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                            <div>
+                                                <p className="text-xs font-black uppercase tracking-widest text-slate-500">Payment method</p>
+                                                <h3 className="mt-1 text-lg font-black text-slate-950">{activeGateway.display_name}</h3>
+                                                {activeGateway.account_number && (
+                                                    <p className="mt-1 text-sm font-black text-teal-700">{activeGateway.account_number}</p>
+                                                )}
+                                            </div>
+                                            {activeGateway.account_number && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => copyGatewayAccount(activeGateway)}
+                                                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-white px-4 text-xs font-black uppercase tracking-widest text-slate-700 ring-1 ring-slate-200"
+                                                >
+                                                    <ClipboardCopy size={15} />
+                                                    {copiedGateway === activeGateway.provider ? 'Copied' : 'Copy'}
+                                                </button>
+                                            )}
+                                        </div>
+                                        {activeGateway.instructions && (
+                                            <p className="mt-3 text-sm font-bold leading-6 text-slate-600">{activeGateway.instructions}</p>
+                                        )}
+                                        {activeGateway.test_mode && (
+                                            <p className="mt-3 rounded-2xl bg-amber-100 px-3 py-2 text-xs font-black text-amber-800">Test mode active</p>
+                                        )}
+                                    </div>
+                                )}
                                 <div className="grid gap-4 md:grid-cols-3">
                                     <label className="grid gap-2 text-sm font-black text-slate-700">
                                         Payment method
@@ -242,14 +341,14 @@ export default function CitizenPaymentPage() {
                                     </label>
                                     <label className="grid gap-2 text-sm font-black text-slate-700">
                                         Amount
-                                        <input type="number" min="1" max={selectedBill.bill.outstanding} value={payment.amount} onChange={(event) => setPayment({ ...payment, amount: event.target.value })} required className="min-h-12 rounded-2xl border border-slate-200 px-4 outline-none focus:border-teal-500" />
+                                        <input type="number" inputMode="decimal" min="1" max={selectedBill.bill.outstanding} value={payment.amount} onChange={(event) => setPayment({ ...payment, amount: event.target.value })} required className="min-h-12 rounded-2xl border border-slate-200 px-4 outline-none focus:border-teal-500" />
                                     </label>
                                     <label className="grid gap-2 text-sm font-black text-slate-700">
                                         Transaction ID
                                         <input value={payment.transactionId} onChange={(event) => setPayment({ ...payment, transactionId: event.target.value })} placeholder="Cash হলে খালি রাখুন" className="min-h-12 rounded-2xl border border-slate-200 px-4 outline-none focus:border-teal-500" />
                                     </label>
                                 </div>
-                                <button disabled={loading || !payment.provider} className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-6 font-black text-white disabled:opacity-50 sm:w-auto">
+                                <button disabled={loading || !payment.provider || (overview.gateways || []).length === 0} className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-6 font-black text-white disabled:opacity-50 sm:w-auto">
                                     {loading ? <Loader2 size={18} className="animate-spin" /> : <CreditCard size={18} />}
                                     Payment review-তে পাঠান
                                 </button>
@@ -288,6 +387,21 @@ function MiniStep({ number, label }) {
         <div className="text-center">
             <span className="mx-auto flex h-9 w-9 items-center justify-center rounded-full bg-teal-400 text-sm font-black text-slate-950">{number}</span>
             <p className="mt-2 text-[10px] font-black uppercase tracking-widest text-slate-300">{label}</p>
+        </div>
+    );
+}
+
+function SummaryCard({ icon: Icon, label, value, hint }) {
+    return (
+        <div className="rounded-[26px] border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-teal-50 text-teal-700">
+                    <Icon size={21} />
+                </div>
+                <p className="text-2xl font-black text-slate-950">{value}</p>
+            </div>
+            <p className="mt-3 text-sm font-black text-slate-900">{label}</p>
+            <p className="mt-1 text-xs font-bold text-slate-500">{hint}</p>
         </div>
     );
 }

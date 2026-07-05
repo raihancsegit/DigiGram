@@ -1,14 +1,24 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/utils/supabase-admin';
+import { canAccessLocation, canManageInstitution, requireRequestProfile } from '@/lib/utils/server-auth';
 
 export async function GET(request) {
     try {
+        const auth = await requireRequestProfile(request);
+        if (auth.response) return auth.response;
+
         const { searchParams } = new URL(request.url);
         const ownerType = searchParams.get('ownerType');
         const ownerId = searchParams.get('ownerId');
 
         if (!ownerType || !ownerId) {
             return NextResponse.json({ error: 'ownerType and ownerId are required' }, { status: 400 });
+        }
+        const allowed = ownerType === 'institution'
+            ? await canManageInstitution(auth.profile, ownerId)
+            : ownerType === 'location' && await canAccessLocation(auth.profile, ownerId);
+        if (!allowed) {
+            return NextResponse.json({ error: 'You cannot access this SMS wallet' }, { status: 403 });
         }
 
         const { data: wallet, error: walletError } = await supabaseAdmin

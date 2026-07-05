@@ -61,10 +61,29 @@ export default function MarketAiAssistant({ prices = [], markets = [], commoditi
         loadAiBulletin();
     }, [prices]);
 
+    const toDisplayText = (value) => {
+        if (!value) return '';
+        if (typeof value === 'string') return value;
+        if (Array.isArray(value)) {
+            return value
+                .map((item) => toDisplayText(item))
+                .filter(Boolean)
+                .join('\n');
+        }
+        if (typeof value === 'object') {
+            return Object.values(value)
+                .map((item) => toDisplayText(item))
+                .filter(Boolean)
+                .join('\n');
+        }
+        return String(value);
+    };
+
     const formatBulletPoints = (text) => {
-        if (!text) return [];
+        const safeText = toDisplayText(text);
+        if (!safeText) return [];
         // Support splitting by common bullet symbols (e.g. *, -, bullet points, or new lines)
-        return text
+        return safeText
             .split(/\n|-[ ]?|\*[ ]?/)
             .map(item => item.trim())
             .filter(item => item.length > 0);
@@ -141,7 +160,7 @@ export default function MarketAiAssistant({ prices = [], markets = [], commoditi
                                 আজকের বাজার সারসংক্ষেপ
                             </h4>
                             <p className="text-sm font-bold text-slate-700 leading-relaxed">
-                                {bulletin.summary}
+                                {toDisplayText(bulletin.summary)}
                             </p>
                         </div>
 
@@ -195,7 +214,7 @@ export default function MarketAiAssistant({ prices = [], markets = [], commoditi
                             <div className="pt-4 border-t border-slate-100 flex items-center justify-center text-center">
                                 <p className="text-xs font-black italic text-violet-700/80 bg-violet-50 px-5 py-2.5 rounded-full flex items-center gap-2">
                                     <TrendingUp size={14} className="animate-bounce" />
-                                    “{bulletin.marketPulse}”
+                                    “{toDisplayText(bulletin.marketPulse)}”
                                 </p>
                             </div>
                         )}

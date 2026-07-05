@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/utils/supabase';
 import {
     AlertTriangle, CheckCircle2, ClipboardCheck, Droplets, Fingerprint,
-    LocateFixed, RefreshCw, Search, ShieldCheck, UsersRound
+    LocateFixed, RefreshCw, Search, ShieldCheck, UsersRound, UserCheck, UserX
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
@@ -90,6 +90,105 @@ function RankingTable({ rows, type }) {
     );
 }
 
+function DuplicateReviewCard({ group, saving, onReview, onMerge }) {
+    const [primaryResidentId, setPrimaryResidentId] = useState(group.primaryResidentId || group.items?.[0]?.id || '');
+    const [note, setNote] = useState(group.note || '');
+    const decisionTone = group.decision === 'confirmed_duplicate'
+        ? 'bg-rose-50 text-rose-700'
+        : group.decision === 'different_people'
+            ? 'bg-emerald-50 text-emerald-700'
+            : 'bg-amber-50 text-amber-700';
+    const decisionLabel = group.decision === 'confirmed_duplicate'
+        ? 'ডুপ্লিকেট নিশ্চিত'
+        : group.decision === 'different_people' ? 'আলাদা ব্যক্তি' : 'পর্যালোচনা বাকি';
+
+    return (
+        <article className="border-b border-slate-100 p-5 last:border-b-0">
+            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded-full bg-violet-50 px-3 py-1 text-[11px] font-black text-violet-700">{group.reason}</span>
+                        <span className={`rounded-full px-3 py-1 text-[11px] font-black ${decisionTone}`}>{decisionLabel}</span>
+                        <span className="text-xs font-black text-slate-400">{group.confidence}% confidence</span>
+                    </div>
+                    <p className="mt-2 text-xs font-bold text-slate-400">{group.items?.length || 0}টি record পাশাপাশি যাচাই করুন</p>
+                </div>
+            </div>
+
+            <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                {(group.items || []).map((resident) => (
+                    <label key={resident.id} className={`block cursor-pointer rounded-2xl border p-4 transition ${primaryResidentId === resident.id ? 'border-teal-400 bg-teal-50/70' : 'border-slate-200 bg-slate-50 hover:border-slate-300'}`}>
+                        <div className="flex items-start gap-3">
+                            <input
+                                type="radio"
+                                name={`primary-${group.fingerprint}`}
+                                checked={primaryResidentId === resident.id}
+                                onChange={() => setPrimaryResidentId(resident.id)}
+                                className="mt-1 accent-teal-600"
+                            />
+                            <div className="min-w-0">
+                                <p className="font-black text-slate-900">{resident.bn_name || resident.name || 'নাম নেই'}</p>
+                                <p className="mt-1 text-xs font-bold text-slate-500">
+                                    বাড়ি {resident.household?.houseNo || '—'} · {resident.household?.ownerName || 'মালিক অজানা'}
+                                </p>
+                                <div className="mt-3 grid gap-1 text-xs font-bold text-slate-500">
+                                    <span>NID: {resident.nid || 'নেই'}</span>
+                                    <span>জন্ম নিবন্ধন: {resident.birth_reg_no || 'নেই'}</span>
+                                    <span>জন্মতারিখ: {resident.dob || 'নেই'}</span>
+                                    <span>বাবা: {resident.father_name || 'নেই'} · মা: {resident.mother_name || 'নেই'}</span>
+                                    <span>ফোন: {resident.household?.phone || 'নেই'}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </label>
+                ))}
+            </div>
+
+            <textarea
+                value={note}
+                onChange={(event) => setNote(event.target.value)}
+                placeholder="যাচাই নোট লিখুন (ঐচ্ছিক)"
+                rows={2}
+                className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:border-teal-500"
+            />
+            <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                    disabled={saving === group.fingerprint}
+                    onClick={() => onReview(group, 'confirmed_duplicate', primaryResidentId, note)}
+                    className="inline-flex items-center gap-2 rounded-xl bg-rose-600 px-4 py-2.5 text-xs font-black text-white hover:bg-rose-700 disabled:opacity-50"
+                >
+                    <UserCheck size={15} /> ডুপ্লিকেট নিশ্চিত
+                </button>
+                <button
+                    disabled={saving === group.fingerprint}
+                    onClick={() => onReview(group, 'different_people', null, note)}
+                    className="inline-flex items-center gap-2 rounded-xl bg-emerald-50 px-4 py-2.5 text-xs font-black text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+                >
+                    <UserX size={15} /> আলাদা ব্যক্তি
+                </button>
+                {group.decision !== 'pending' && (
+                    <button
+                        disabled={saving === group.fingerprint}
+                        onClick={() => onReview(group, 'pending', null, note)}
+                        className="rounded-xl bg-slate-100 px-4 py-2.5 text-xs font-black text-slate-600 hover:bg-slate-200 disabled:opacity-50"
+                    >
+                        সিদ্ধান্ত বাতিল
+                    </button>
+                )}
+                {group.decision === 'confirmed_duplicate' && group.reviewId && (
+                    <button
+                        disabled={saving === group.fingerprint || !primaryResidentId}
+                        onClick={() => onMerge(group, primaryResidentId, note)}
+                        className="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2.5 text-xs font-black text-white hover:bg-violet-700 disabled:opacity-50"
+                    >
+                        <Fingerprint size={15} /> নিরাপদ merge
+                    </button>
+                )}
+            </div>
+        </article>
+    );
+}
+
 export default function DataQualityPage() {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -97,6 +196,7 @@ export default function DataQualityPage() {
     const [issueType, setIssueType] = useState('all');
     const [search, setSearch] = useState('');
     const [saving, setSaving] = useState(null);
+    const [duplicatePage, setDuplicatePage] = useState(1);
 
     const apiRequest = useCallback(async (options = {}) => {
         const { data: sessionData } = await supabase.auth.getSession();
@@ -168,6 +268,53 @@ export default function DataQualityPage() {
         }
     };
 
+    const reviewDuplicate = async (group, decision, primaryResidentId, note) => {
+        setSaving(group.fingerprint);
+        try {
+            await apiRequest({
+                method: 'POST',
+                body: JSON.stringify({
+                    action: 'review_duplicate',
+                    fingerprint: group.fingerprint,
+                    residentIds: group.items.map((item) => item.id),
+                    decision,
+                    primaryResidentId,
+                    note
+                })
+            });
+            toast.success('Duplicate review সংরক্ষণ হয়েছে।');
+            await loadData();
+        } catch (error) {
+            toast.error(error.message);
+        } finally {
+            setSaving(null);
+        }
+    };
+
+    const mergeDuplicate = async (group, primaryResidentId, note) => {
+        const duplicateResidentIds = group.items.map((item) => item.id).filter((id) => id !== primaryResidentId);
+        if (!window.confirm(`${duplicateResidentIds.length}টি duplicate record primary নাগরিকের সাথে merge করবেন? Governance Center থেকে rollback করা যাবে।`)) return;
+        setSaving(group.fingerprint);
+        try {
+            await apiRequest({
+                method: 'POST',
+                body: JSON.stringify({
+                    action: 'merge_duplicate',
+                    reviewId: group.reviewId,
+                    primaryResidentId,
+                    duplicateResidentIds,
+                    note
+                })
+            });
+            toast.success('নিরাপদ merge সম্পন্ন হয়েছে।');
+            await loadData();
+        } catch (error) {
+            toast.error(error.message);
+        } finally {
+            setSaving(null);
+        }
+    };
+
     if (loading) {
         return (
             <div className="flex min-h-[60vh] items-center justify-center">
@@ -180,6 +327,13 @@ export default function DataQualityPage() {
     const ranking = tab === 'union'
         ? data?.unionRanking
         : tab === 'ward' ? data?.wardRanking : data?.volunteerRanking;
+    const duplicateGroups = data?.duplicateGroups || [];
+    const duplicatePageSize = 5;
+    const duplicatePageCount = Math.max(1, Math.ceil(duplicateGroups.length / duplicatePageSize));
+    const pagedDuplicateGroups = duplicateGroups.slice(
+        (duplicatePage - 1) * duplicatePageSize,
+        duplicatePage * duplicatePageSize
+    );
 
     return (
         <div className="space-y-7 pb-20">
@@ -213,6 +367,40 @@ export default function DataQualityPage() {
                 <MetricCard icon={Droplets} label="Blood group gap" value={summary.missingBlood} detail="জরুরি blood data অসম্পূর্ণ" tone="violet" />
                 <MetricCard icon={LocateFixed} label="GPS gap" value={summary.missingGps} detail="বাড়ির map pin নেই" tone="blue" />
                 <MetricCard icon={UsersRound} label="Duplicate risk" value={summary.duplicates} detail="সম্ভাব্য duplicate resident" tone="amber" />
+            </section>
+
+            <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
+                <div className="flex flex-col gap-3 border-b border-slate-100 p-5 md:flex-row md:items-center md:justify-between">
+                    <div>
+                        <h2 className="text-xl font-black text-slate-900">Duplicate Citizen Review</h2>
+                        <p className="mt-1 text-sm font-bold text-slate-400">NID, জন্ম নিবন্ধন, ফোন ও পারিবারিক তথ্য মিলিয়ে records পাশাপাশি দেখুন।</p>
+                    </div>
+                    <span className="w-fit rounded-full bg-violet-50 px-4 py-2 text-xs font-black text-violet-700">{duplicateGroups.length}টি group</span>
+                </div>
+                {data?.duplicateReviewSetupRequired && (
+                    <div className="m-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-900">
+                        সিদ্ধান্ত সংরক্ষণ করতে Supabase SQL Editor-এ <code>database/71_duplicate_citizen_review.sql</code> চালান।
+                    </div>
+                )}
+                <div>
+                    {pagedDuplicateGroups.map((group) => (
+                        <DuplicateReviewCard
+                            key={group.fingerprint}
+                            group={group}
+                            saving={saving}
+                            onReview={reviewDuplicate}
+                            onMerge={mergeDuplicate}
+                        />
+                    ))}
+                    {!duplicateGroups.length && <p className="p-10 text-center text-sm font-bold text-slate-400">কোনো duplicate signal পাওয়া যায়নি।</p>}
+                </div>
+                {duplicateGroups.length > duplicatePageSize && (
+                    <div className="flex items-center justify-between border-t border-slate-100 p-4">
+                        <button disabled={duplicatePage <= 1} onClick={() => setDuplicatePage((page) => page - 1)} className="rounded-xl bg-slate-100 px-4 py-2 text-xs font-black text-slate-700 disabled:opacity-40">আগের</button>
+                        <span className="text-xs font-black text-slate-400">{duplicatePage} / {duplicatePageCount}</span>
+                        <button disabled={duplicatePage >= duplicatePageCount} onClick={() => setDuplicatePage((page) => page + 1)} className="rounded-xl bg-slate-950 px-4 py-2 text-xs font-black text-white disabled:opacity-40">পরের</button>
+                    </div>
+                )}
             </section>
 
             <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">

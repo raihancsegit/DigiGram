@@ -1,5 +1,6 @@
 export { default as HomeHeroSection } from './HomeHeroSection';
 export { default as HomeCitizenQuickActions } from './HomeCitizenQuickActions';
+export { default as HomeCitizenGateway } from './HomeCitizenGateway';
 export { default as ServicesSection } from './ServicesSection';
 export { default as PortalHowItWorks } from './PortalHowItWorks';
 export { default as HomeImpactSection } from './HomeImpactSection';

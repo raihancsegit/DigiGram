@@ -87,10 +87,30 @@ export async function POST(request, { params }) {
         }
 
         const progress = progressResult.data || [];
+        const lessonIds = (lessonsResult.data || []).map((lesson) => lesson.id);
+        let homeworkSubmissions = [];
+        if (lessonIds.length > 0) {
+            const { data: submissionRows, error: submissionError } = await supabaseAdmin
+                .from('school_homework_submissions')
+                .select('lesson_id,status,answer_text,file_url,teacher_note,score,submitted_at,reviewed_at')
+                .eq('student_id', student.id)
+                .in('lesson_id', lessonIds);
+            if (submissionError && submissionError.code !== '42P01') throw submissionError;
+            homeworkSubmissions = submissionRows || [];
+        }
+        const attendanceSummary = (attendanceResult.data || []).reduce((summary, item) => {
+            summary.total += 1;
+            summary[item.status] = (summary[item.status] || 0) + 1;
+            return summary;
+        }, { total: 0, present: 0, absent: 0, late: 0, leave: 0, excused: 0 });
+        attendanceSummary.attendance_rate = attendanceSummary.total
+            ? Math.round(((attendanceSummary.present + attendanceSummary.late + attendanceSummary.excused) / attendanceSummary.total) * 100)
+            : null;
         const lessons = (lessonsResult.data || []).map((lesson) => ({
             ...lesson,
             subject_name: (subjectsResult.data || []).find((item) => item.id === lesson.subject_id)?.name || 'Subject',
-            progress: progress.find((item) => item.lesson_id === lesson.id) || null
+            progress: progress.find((item) => item.lesson_id === lesson.id) || null,
+            homework_submission: homeworkSubmissions.find((item) => item.lesson_id === lesson.id) || null
         }));
 
         const examSummaries = [];
@@ -114,6 +134,7 @@ export async function POST(request, { params }) {
                 },
                 classInfo: classResult.data,
                 attendance: attendanceResult.data || [],
+                attendanceSummary,
                 lessons,
                 results: examSummaries
             }

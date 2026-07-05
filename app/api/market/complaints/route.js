@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/utils/supabase-admin';
+import { canAccessLocation, requireRequestProfile } from '@/lib/utils/server-auth';
 
 function normalizePhone(phone) {
     const digits = String(phone || '').replace(/[^0-9]/g, '');
@@ -9,10 +10,19 @@ function normalizePhone(phone) {
 
 export async function GET(request) {
     try {
+        const auth = await requireRequestProfile(request, ['super_admin', 'chairman', 'market_manager']);
+        if (auth.response) return auth.response;
+
         const { searchParams } = new URL(request.url);
         const locationId = searchParams.get('locationId');
         const marketId = searchParams.get('marketId');
         const limit = Math.min(Number(searchParams.get('limit') || 30), 100);
+        if (
+            auth.profile.role !== 'super_admin'
+            && (!locationId || !(await canAccessLocation(auth.profile, locationId)))
+        ) {
+            return NextResponse.json({ error: 'Market complaint scope is outside your assigned area' }, { status: 403 });
+        }
 
         let query = supabaseAdmin
             .from('market_complaints')
@@ -45,6 +55,17 @@ export async function POST(request) {
             return NextResponse.json({ error: 'Valid mobile number is required' }, { status: 400 });
         }
 
+        const recentCutoff = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+        const { count: recentCount, error: rateError } = await supabaseAdmin
+            .from('market_complaints')
+            .select('id', { count: 'exact', head: true })
+            .eq('complainant_phone', phone)
+            .gte('created_at', recentCutoff);
+        if (rateError) throw rateError;
+        if (Number(recentCount || 0) > 0) {
+            return NextResponse.json({ error: 'Please wait before submitting another complaint' }, { status: 429 });
+        }
+
         const payload = {
             location_id: body.locationId,
             market_id: body.marketId || null,
@@ -71,6 +92,9 @@ export async function POST(request) {
 
 export async function PATCH(request) {
     try {
+        const auth = await requireRequestProfile(request, ['super_admin', 'chairman', 'market_manager']);
+        if (auth.response) return auth.response;
+
         const body = await request.json();
         const allowedStatuses = ['pending', 'reviewing', 'resolved', 'rejected'];
 
@@ -84,8 +108,21 @@ export async function PATCH(request) {
             reviewed_at: ['resolved', 'rejected'].includes(body.status) ? new Date().toISOString() : null
         };
 
-        if (body.reviewedBy) {
-            payload.reviewed_by = body.reviewedBy;
+        payload.reviewed_by = auth.profile.id;
+
+        const { data: complaint } = await supabaseAdmin
+            .from('market_complaints')
+            .select('id,location_id')
+            .eq('id', body.id)
+            .maybeSingle();
+        if (!complaint) {
+            return NextResponse.json({ error: 'Complaint not found' }, { status: 404 });
+        }
+        if (
+            auth.profile.role !== 'super_admin'
+            && !(await canAccessLocation(auth.profile, complaint.location_id))
+        ) {
+            return NextResponse.json({ error: 'Market complaint is outside your assigned area' }, { status: 403 });
         }
 
         const { data, error } = await supabaseAdmin

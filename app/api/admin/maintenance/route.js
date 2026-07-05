@@ -29,6 +29,153 @@ function readinessStatus(errors = []) {
     return errors.filter(Boolean).length === 0 ? 'ready' : 'needs_sql';
 }
 
+const OPTIONAL_SCHEMA_ERRORS = new Set(['42P01', '42703', 'PGRST204', 'PGRST205']);
+
+function isOptionalSchemaError(error) {
+    return OPTIONAL_SCHEMA_ERRORS.has(error?.code);
+}
+
+async function deleteAllRows(supabaseAdmin, tableName) {
+    const { count, error } = await supabaseAdmin
+        .from(tableName)
+        .delete({ count: 'exact' })
+        .not('id', 'is', null);
+
+    if (error) {
+        if (isOptionalSchemaError(error)) {
+            return { table: tableName, skipped: true, count: 0, reason: error.message };
+        }
+        throw new Error(`${tableName}: ${error.message}`);
+    }
+
+    return { table: tableName, skipped: false, count: count || 0 };
+}
+
+async function hardResetExceptSuperAdmin(supabaseAdmin) {
+    const deleteOrder = [
+        'data_access_logs',
+        'officer_activity_events',
+        'officer_devices',
+        'notifications',
+        'sms_delivery_webhooks',
+        'sms_delivery_attempts',
+        'sms_messages',
+        'sms_campaigns',
+        'sms_recharge_requests',
+        'sms_wallet_transactions',
+        'sms_wallets',
+        'sms_automation_rules',
+        'sms_templates',
+        'sms_gateways',
+        'sms_packages',
+        'payment_transactions',
+        'payment_gateways',
+        'school_lesson_quiz_attempts',
+        'school_lesson_quiz_questions',
+        'school_lesson_quizzes',
+        'school_lesson_progress',
+        'school_exam_entries',
+        'school_exams',
+        'school_attendance',
+        'school_results',
+        'school_lessons',
+        'school_subjects',
+        'school_students',
+        'school_admission_applications',
+        'school_audit_logs',
+        'school_classes',
+        'institution_page_publish_history',
+        'institution_notices',
+        'institution_memberships',
+        'institution_transactions',
+        'institution_pages',
+        'business_ads',
+        'local_businesses',
+        'market_price_alert_subscriptions',
+        'market_price_history',
+        'market_complaints',
+        'market_demands',
+        'market_prices',
+        'market_commodities',
+        'markets',
+        'lost_found_sms_blasts',
+        'lost_found_claims',
+        'lost_found_posts',
+        'citizen_consents',
+        'citizen_merge_events',
+        'duplicate_citizen_reviews',
+        'citizen_blood_requests',
+        'citizen_reminders',
+        'citizen_complaints',
+        'citizen_appointments',
+        'citizen_life_support_cases',
+        'citizen_otps',
+        'service_request_sms',
+        'service_request_events',
+        'service_request_documents',
+        'service_requests',
+        'household_tax_payments',
+        'household_taxes',
+        'household_documents',
+        'household_serial_counters',
+        'residents',
+        'households',
+        'volunteer_logs',
+        'volunteers',
+        'villages',
+        'blood_donors',
+        'fuel_refill_logs',
+        'fuel_activity_logs',
+        'fuel_tokens',
+        'fuel_pump_settings',
+        'vehicle_docs',
+        'vehicles',
+        'local_news',
+        'newsletter_subscribers',
+        'donation_ledger',
+        'donation_projects',
+        'donation_settings',
+        'emergency_contacts',
+        'data_quality_tasks',
+        'system_recovery_snapshots',
+        'demo_data_records',
+        'demo_data_batches',
+        'location_services',
+        'institutions',
+        'locations'
+    ];
+
+    const deleted = [];
+    for (const tableName of deleteOrder) {
+        deleted.push(await deleteAllRows(supabaseAdmin, tableName));
+    }
+
+    const { data: nonSuperProfiles, error: profileReadError } = await supabaseAdmin
+        .from('profiles')
+        .select('id,email,role')
+        .neq('role', 'super_admin');
+    if (profileReadError && !isOptionalSchemaError(profileReadError)) throw profileReadError;
+
+    let deletedUsers = 0;
+    for (const profile of nonSuperProfiles || []) {
+        const { error } = await supabaseAdmin.auth.admin.deleteUser(profile.id);
+        if (!error) deletedUsers += 1;
+    }
+
+    const { count: deletedProfiles } = await supabaseAdmin
+        .from('profiles')
+        .delete({ count: 'exact' })
+        .neq('role', 'super_admin');
+
+    return {
+        deleted,
+        deletedUsers,
+        deletedProfiles: deletedProfiles || 0,
+        skippedTables: deleted.filter((item) => item.skipped).map((item) => item.table),
+        totalDeletedRows: deleted.reduce((sum, item) => sum + (item.count || 0), 0)
+    };
+}
+
 export async function GET(request) {
     try {
         const auth = await requireRequestProfile(request, ['super_admin']);
@@ -272,29 +419,17 @@ export async function POST(request) {
         const supabaseAdmin = createAdminClient();
 
         if (action === 'wipe') {
-            console.log('Starting full wipe...');
-            await supabaseAdmin.from('residents').delete().neq('id', '0');
-            await supabaseAdmin.from('households').delete().neq('id', '0');
-            await supabaseAdmin.from('villages').delete().neq('id', '0');
-            await supabaseAdmin.from('local_news').delete().neq('id', '0');
-            await supabaseAdmin.from('donation_projects').delete().neq('id', '0');
-            await supabaseAdmin.from('markets').delete().neq('id', '0');
-            await supabaseAdmin.from('location_services').delete().neq('location_id', '0');
-            
-            // Wipe locations from bottom up
-            await supabaseAdmin.from('locations').delete().eq('type', 'village');
-            await supabaseAdmin.from('locations').delete().eq('type', 'ward');
-            await supabaseAdmin.from('locations').delete().eq('type', 'union');
-            await supabaseAdmin.from('locations').delete().eq('type', 'upazila');
-            await supabaseAdmin.from('locations').delete().eq('type', 'district');
-
-            const { data: nonAdmins } = await supabaseAdmin.from('profiles').select('id').neq('role', 'super_admin');
-            if (nonAdmins) {
-                for (const p of nonAdmins) {
-                    try { await supabaseAdmin.auth.admin.deleteUser(p.id); } catch(e) {}
-                }
+            if (body.confirmation !== 'DELETE_ALL_EXCEPT_SUPER_ADMIN') {
+                return NextResponse.json({
+                    error: 'Full reset confirmation missing. Type DELETE_ALL_EXCEPT_SUPER_ADMIN to continue.'
+                }, { status: 400 });
             }
-            return NextResponse.json({ success: true, message: 'সব ডাটা মুছে ফেলা হয়েছে।' });
+            const result = await hardResetExceptSuperAdmin(supabaseAdmin);
+            return NextResponse.json({
+                success: true,
+                message: 'সব application data মুছে ফেলা হয়েছে। শুধু super admin profile/auth রাখা হয়েছে।',
+                data: result
+            });
         }
 
         if (action === 'repair_migration_links') {
@@ -388,8 +523,6 @@ export async function POST(request) {
         }
 
         if (action === 'seed') {
-            console.log('Starting full hierarchy seed...');
-
             // 1. District: Rajshahi
             const { data: district } = await supabaseAdmin.from('locations').upsert({
                 id: '11111111-1111-1111-1111-111111111111',

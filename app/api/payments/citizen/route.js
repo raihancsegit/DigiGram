@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/utils/supabase-admin';
-import { normalizeCitizenPhone, verifyCitizenOtp } from '@/lib/utils/citizen-otp';
+import {
+    createCitizenAccessToken,
+    normalizeCitizenPhone,
+    verifyCitizenAccessToken,
+    verifyCitizenOtp
+} from '@/lib/utils/citizen-otp';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,7 +16,8 @@ function isMissingPaymentSchema(error) {
 async function requireCitizen(request) {
     const body = await request.json();
     const phone = normalizeCitizenPhone(body.phone);
-    const verified = await verifyCitizenOtp(phone, body.otpCode);
+    const hasSession = verifyCitizenAccessToken(phone, body.accessToken);
+    const verified = hasSession || await verifyCitizenOtp(phone, body.otpCode);
     if (!verified) {
         return {
             body,
@@ -19,7 +25,12 @@ async function requireCitizen(request) {
             response: NextResponse.json({ error: 'OTP ভুল অথবা মেয়াদ শেষ হয়েছে' }, { status: 401 })
         };
     }
-    return { body, phone, response: null };
+    return {
+        body,
+        phone,
+        accessToken: hasSession ? body.accessToken : createCitizenAccessToken(phone),
+        response: null
+    };
 }
 
 async function loadOverview(phone) {
@@ -88,7 +99,11 @@ export async function POST(request) {
         const { body, phone } = auth;
 
         if (body.action === 'overview') {
-            return NextResponse.json({ success: true, data: await loadOverview(phone) });
+            return NextResponse.json({
+                success: true,
+                data: await loadOverview(phone),
+                accessToken: auth.accessToken
+            });
         }
 
         if (body.action !== 'submit') {
@@ -173,7 +188,7 @@ export async function POST(request) {
             .single();
         if (error) throw error;
 
-        return NextResponse.json({ success: true, data });
+        return NextResponse.json({ success: true, data, accessToken: auth.accessToken });
     } catch (error) {
         console.error('Citizen payment failed:', error);
         if (isMissingPaymentSchema(error)) {

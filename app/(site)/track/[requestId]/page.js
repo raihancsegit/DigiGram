@@ -37,6 +37,7 @@ const STATUS_LABELS = {
 const REQUEST_LABELS = {
     birth_registration: 'জন্ম নিবন্ধন আবেদন',
     death_certificate: 'মৃত্যু সনদ আবেদন',
+    warish_certificate: 'ওয়ারিশ সনদ আবেদন',
     utility_request: 'ইউটিলিটি সেবা আবেদন'
 };
 

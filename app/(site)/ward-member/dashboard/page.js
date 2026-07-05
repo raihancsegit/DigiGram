@@ -93,7 +93,7 @@ export default function WardMemberDashboard() {
 
         const initializeWardPortal = async () => {
             try {
-                const { data: { session } } = await supabase.auth.getSession();
+                const { data: { session } } = await getSessionWithTimeout();
 
                 if (!session) {
                     if (active) setAuthChecked(true);
@@ -249,13 +249,13 @@ export default function WardMemberDashboard() {
         <div className="min-h-screen bg-slate-50 font-sans pb-20">
             {/* Header / Top Bar */}
             <header className="bg-white border-b border-slate-200 sticky top-0 z-30">
-                <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <Link href="/" className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
+                <div className="max-w-7xl mx-auto px-3 sm:px-4 min-h-16 flex flex-wrap items-center justify-between gap-2 py-2">
+                    <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+                        <Link href="/" className="shrink-0 p-2 hover:bg-slate-100 rounded-xl transition-colors">
                             <ArrowLeft size={20} className="text-slate-500" />
                         </Link>
-                        <h1 className="text-lg font-black text-slate-800 flex items-center gap-2">
-                            <ShieldCheck className="text-teal-600" />
+                        <h1 className="min-w-0 text-sm sm:text-lg font-black text-slate-800 flex flex-wrap items-center gap-2">
+                            <ShieldCheck className="shrink-0 text-teal-600" />
                             অফিসিয়াল পোর্টাল 
                             <span className="hidden sm:inline-block ml-2 px-2 py-0.5 rounded-md bg-teal-50 text-teal-600 text-[10px] font-black uppercase tracking-wider border border-teal-100">
                                 মেম্বার এক্সেস
@@ -263,13 +263,13 @@ export default function WardMemberDashboard() {
                         </h1>
                     </div>
                     
-                    <div className="flex items-center gap-1 sm:gap-2">
+                    <div className="flex shrink-0 items-center gap-1 sm:gap-2">
                         <Link 
                             href="/ward-member/settings"
-                            className="flex items-center gap-2 text-slate-600 font-bold text-xs sm:text-sm hover:bg-slate-100 px-3 sm:px-4 py-2 rounded-xl transition-all"
+                            className="flex items-center gap-2 text-slate-600 font-bold text-xs sm:text-sm hover:bg-slate-100 px-2 sm:px-4 py-2 rounded-xl transition-all"
                         >
                             <Settings size={18} />
-                            <span className="hidden xs:inline">সেটিংস</span>
+                            <span className="hidden sm:inline">সেটিংস</span>
                         </Link>
                         <NotificationBell 
                             role={user?.role} 
@@ -280,20 +280,20 @@ export default function WardMemberDashboard() {
                                 await dispatch(performLogout());
                                 router.push('/login');
                             }}
-                            className="flex items-center gap-2 text-red-500 font-bold text-xs sm:text-sm hover:bg-red-50 px-3 sm:px-4 py-2 rounded-xl transition-all"
+                            className="flex items-center gap-2 text-red-500 font-bold text-xs sm:text-sm hover:bg-red-50 px-2 sm:px-4 py-2 rounded-xl transition-all"
                         >
                             <LogOut size={18} />
-                            <span className="hidden xs:inline">লগআউট</span>
+                            <span className="hidden sm:inline">লগআউট</span>
                         </button>
                     </div>
                 </div>
             </header>
 
-            <main className="max-w-7xl mx-auto px-4 py-6 md:py-8">
+            <main className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6 md:py-8">
                 {/* Portal Connection Status Bar */}
-                <div className="flex items-center justify-between mb-8 px-6 py-3 rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden relative">
+                <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between mb-6 sm:mb-8 px-4 sm:px-6 py-3 rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden relative">
                     <div className="absolute left-0 top-0 bottom-0 w-1 bg-teal-500" />
-                    <div className="flex items-center gap-6">
+                    <div className="flex min-w-0 flex-wrap items-center gap-3 sm:gap-6">
                         <div className="flex items-center gap-2">
                             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">সার্ভার স্ট্যাটাস:</span>
@@ -304,7 +304,7 @@ export default function WardMemberDashboard() {
                             <span className="text-xs font-black text-slate-600">{toBnDigits(new Date().toLocaleTimeString('bn-BD', { hour: '2-digit', minute: '2-digit' }))}</span>
                         </div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex max-w-full items-center gap-3">
                         <span className="text-[10px] font-black text-teal-600 bg-teal-50 px-2 py-0.5 rounded border border-teal-100">ওয়ার্ড {toBnDigits((wardInfo?.name_bn || '').match(/\d+/)?.[0] || '')} এডমিন</span>
                     </div>
                 </div>
@@ -313,7 +313,7 @@ export default function WardMemberDashboard() {
                 <motion.div 
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-gradient-to-br from-slate-900 to-teal-900 rounded-[32px] p-8 md:p-12 text-white shadow-xl mb-10 relative overflow-hidden"
+                    className="bg-gradient-to-br from-slate-900 to-teal-900 rounded-[24px] sm:rounded-[32px] p-5 sm:p-8 md:p-12 text-white shadow-xl mb-8 sm:mb-10 relative overflow-hidden"
                 >
                     <div className="absolute top-0 right-0 p-8 opacity-10">
                         <ShieldCheck size={160} strokeWidth={1} />
@@ -331,7 +331,7 @@ export default function WardMemberDashboard() {
                                         <Image src={user.avatar_url} alt="Avatar" fill className="object-cover" />
                                     </div>
                                 )}
-                                <h2 className="text-3xl md:text-5xl font-black leading-tight">
+                                <h2 className="text-2xl sm:text-3xl md:text-5xl font-black leading-tight">
                                     স্বাগতম, <br className="block sm:hidden" />
                                     <span className="text-teal-400">{user.first_name} {user.last_name || ''}</span>
                                 </h2>
@@ -515,7 +515,7 @@ export default function WardMemberDashboard() {
                         >
                             {/* Left: Input Form */}
                             <div className="lg:col-span-7 space-y-8">
-                                <section className="bg-white rounded-[32px] p-6 md:p-10 border border-slate-200 shadow-sm">
+                                <section className="bg-white rounded-[24px] sm:rounded-[32px] p-4 sm:p-6 md:p-10 border border-slate-200 shadow-sm">
                                     <div className="flex items-center gap-3 mb-8">
                                         <div className="w-12 h-12 rounded-2xl bg-teal-50 flex items-center justify-center text-teal-600">
                                             <PlusCircle size={28} />
@@ -531,8 +531,8 @@ export default function WardMemberDashboard() {
 
                             {/* Right: Existing News */}
                             <div className="lg:col-span-5 space-y-8">
-                                <section className="bg-white rounded-[32px] p-6 md:p-8 border border-slate-200 shadow-sm">
-                                    <div className="flex items-center justify-between mb-8">
+                                <section className="bg-white rounded-[24px] sm:rounded-[32px] p-4 sm:p-6 md:p-8 border border-slate-200 shadow-sm">
+                                    <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between mb-6 sm:mb-8">
                                         <h3 className="text-xl font-black text-slate-800 flex items-center gap-2">
                                             <Newspaper className="text-teal-600" />
                                             আমার শেয়ার করা খবর
@@ -585,7 +585,7 @@ export default function WardMemberDashboard() {
                             animate={{ opacity: 1, x: 0 }}
                             exit={{ opacity: 0, x: 20 }}
                         >
-                            <div className="bg-white rounded-[40px] p-6 md:p-10 border border-slate-200 shadow-sm">
+                            <div className="bg-white rounded-[28px] sm:rounded-[40px] p-4 sm:p-6 md:p-10 border border-slate-200 shadow-sm">
                                 <div className="flex items-center gap-4 mb-8">
                                     <div className="w-12 h-12 rounded-2xl bg-teal-50 flex items-center justify-center text-teal-600">
                                         <ShieldCheck size={28} />
@@ -631,7 +631,7 @@ export default function WardMemberDashboard() {
                             animate={{ opacity: 1, x: 0 }}
                             exit={{ opacity: 0, x: 20 }}
                         >
-                            <div className="bg-white rounded-[40px] p-6 md:p-10 border border-slate-200 shadow-sm">
+                            <div className="bg-white rounded-[28px] sm:rounded-[40px] p-4 sm:p-6 md:p-10 border border-slate-200 shadow-sm">
                                 <WardServiceRequestManager wardId={user.access_scope_id} />
                             </div>
                         </motion.div>
@@ -670,8 +670,8 @@ export default function WardMemberDashboard() {
                             animate={{ opacity: 1, x: 0 }}
                             exit={{ opacity: 0, x: 20 }}
                         >
-                            <div className="bg-white rounded-[40px] p-6 md:p-12 border border-slate-200 shadow-sm">
-                                <div className="flex items-center gap-4 mb-10">
+                            <div className="bg-white rounded-[28px] sm:rounded-[40px] p-4 sm:p-6 md:p-12 border border-slate-200 shadow-sm">
+                                <div className="flex flex-col items-start gap-4 mb-8 sm:mb-10 sm:flex-row sm:items-center">
                                     <div className="w-14 h-14 rounded-3xl bg-slate-950 flex items-center justify-center text-teal-300 shadow-xl shrink-0">
                                         <Home size={28} />
                                     </div>
@@ -689,9 +689,9 @@ export default function WardMemberDashboard() {
                             initial={{ opacity: 0, x: 20 }}
                             animate={{ opacity: 1, x: 0 }}
                             exit={{ opacity: 0, x: -20 }}
-                            className="bg-white rounded-[40px] p-6 md:p-12 border border-slate-200 shadow-sm"
+                            className="bg-white rounded-[28px] sm:rounded-[40px] p-4 sm:p-6 md:p-12 border border-slate-200 shadow-sm"
                         >
-                            <div className="flex items-center gap-4 mb-10">
+                            <div className="flex flex-col items-start gap-4 mb-8 sm:mb-10 sm:flex-row sm:items-center">
                                 <div className="w-14 h-14 rounded-3xl bg-teal-500 flex items-center justify-center text-white shadow-xl shadow-teal-100 shrink-0">
                                     <Settings size={28} />
                                 </div>
@@ -709,8 +709,8 @@ export default function WardMemberDashboard() {
                             animate={{ opacity: 1, x: 0 }}
                             exit={{ opacity: 0, x: -20 }}
                         >
-                            <div className="bg-white rounded-[40px] p-6 md:p-12 border border-slate-200 shadow-sm">
-                                <div className="flex items-center gap-4 mb-10">
+                            <div className="bg-white rounded-[28px] sm:rounded-[40px] p-4 sm:p-6 md:p-12 border border-slate-200 shadow-sm">
+                                <div className="flex flex-col items-start gap-4 mb-8 sm:mb-10 sm:flex-row sm:items-center">
                                     <div className="w-14 h-14 rounded-3xl bg-teal-900 flex items-center justify-center text-teal-400 shadow-xl shrink-0">
                                         <Home size={28} />
                                     </div>
@@ -727,6 +727,15 @@ export default function WardMemberDashboard() {
             </main>
         </div>
     );
+}
+
+function getSessionWithTimeout(timeoutMs = 6000) {
+    return Promise.race([
+        supabase.auth.getSession(),
+        new Promise((resolve) => {
+            setTimeout(() => resolve({ data: { session: null }, error: null }), timeoutMs);
+        })
+    ]);
 }
 
 async function loadWardActionQueue(wardId) {

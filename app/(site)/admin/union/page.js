@@ -226,8 +226,7 @@ export default function UnionManagementPage() {
                 setUnions(prev => prev.filter(item => item.id !== targetId));
             }
 
-            const result = await adminService.deleteLocation(targetId);
-            console.log("Delete result:", result);
+            await adminService.deleteLocation(targetId);
             
             // Re-fetch to ensure sync
             await loadData();
@@ -285,11 +284,10 @@ export default function UnionManagementPage() {
         try {
             if (selectedItemForAction && selectedItemForAction.type === 'ward') {
                 // Update existing ward
-                const result = await adminService.updateLocation(selectedItemForAction.id, {
+                await adminService.updateLocation(selectedItemForAction.id, {
                     name_bn: newWard.name_bn,
                     name_en: newWard.name_en
                 });
-                console.log("Update result:", result);
                 
                 // Optimistic update
                 setDisplayItems(prev => prev.map(item => item.id === selectedItemForAction.id ? { ...item, ...newWard } : item));
@@ -1418,7 +1416,7 @@ export default function UnionManagementPage() {
                                                 setSubmitting(true);
                                                 try {
                                                     if (selectedItemForAction && selectedItemForAction.type === 'village') {
-                                                        const result = await adminService.updateLocation(selectedItemForAction.id, {
+                                                        await adminService.updateLocation(selectedItemForAction.id, {
                                                             name_bn: newVillage.name_bn,
                                                             name_en: newVillage.name_en,
                                                             stats: {
@@ -1426,7 +1424,6 @@ export default function UnionManagementPage() {
                                                                 ...newVillage.stats
                                                             }
                                                         });
-                                                        console.log("Village update result:", result);
                                                         // Optimistic update
                                                         setDisplayItems(prev => prev.map(item => item.id === selectedItemForAction.id ? { ...item, ...newVillage } : item));
                                                         alert("গ্রাম সফলভাবে আপডেট হয়েছে।");
@@ -1435,7 +1432,7 @@ export default function UnionManagementPage() {
                                                         const parentSlug = parent?.slug || 'ward';
                                                         const slug = `${parentSlug}-${newVillage.name_en.toLowerCase().replace(/\s+/g, '-')}`;
                                                         
-                                                        const result = await adminService.createLocation({
+                                                        await adminService.createLocation({
                                                             name_bn: newVillage.name_bn,
                                                             name_en: newVillage.name_en,
                                                             slug,
@@ -1443,7 +1440,6 @@ export default function UnionManagementPage() {
                                                             parent_id: parent.id,
                                                             stats: newVillage.stats
                                                         });
-                                                        console.log("Village create result:", result);
                                                         alert("নতুন গ্রাম যোগ হয়েছে।");
                                                     }
                                                     await loadData();

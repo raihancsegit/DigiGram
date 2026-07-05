@@ -3,7 +3,7 @@
 
 import { useSelector, useDispatch } from 'react-redux';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -25,7 +25,6 @@ import DonationManager from '@/components/sections/admin/DonationManager';
 import MarketManagement from '@/components/sections/admin/market/MarketManagement';
 import NotificationBell from '@/components/ui/NotificationBell';
 import { toBnDigits, parseBnInt } from '@/lib/utils/format';
-import UnionNewsForm from '@/components/sections/union/UnionNewsForm';
 import UnionManagementSection from '@/components/sections/union/UnionManagementSection';
 import UnionServiceManager from '@/components/sections/union/UnionServiceManager';
 import UnionTaxDashboard from '@/components/sections/union/UnionTaxDashboard';
@@ -56,24 +55,17 @@ export default function ChairmanDashboard() {
     const [actionQueue, setActionQueue] = useState([]);
     const [unionImpact, setUnionImpact] = useState({ wards: [], families: [], totals: {} });
     const [loading, setLoading] = useState(true);
+    const [authChecked, setAuthChecked] = useState(false);
     const tabClass = (id, tone = 'teal') => `flex items-center gap-2 px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all shrink-0 ${menuStyles.tab(activeTab === id, tone)}`;
 
-    useEffect(() => {
-        if (!isAuthenticated || user?.role !== 'chairman') {
-            router.push('/login');
-            return;
-        }
-        loadData();
-    }, [isAuthenticated, router]);
-
-    const loadData = async () => {
-        if (!user || user.role !== 'chairman') return;
+    const loadData = useCallback(async (currentUser) => {
+        if (!currentUser || currentUser.role !== 'chairman') return;
         setLoading(true);
         try {
-            const profile = await authService.getProfile(user.id);
+            const profile = await authService.getProfile(currentUser.id);
             if (profile) {
                 dispatch(login({
-                    ...user,
+                    ...currentUser,
                     first_name: profile.first_name,
                     last_name: profile.last_name,
                     avatar_url: profile.avatar_url
@@ -83,7 +75,7 @@ export default function ChairmanDashboard() {
             const { data: unionData } = await supabase
                 .from('locations')
                 .select('name_bn, name_en, slug, survey_status, real_stats, stats')
-                .eq('id', user.access_scope_id)
+                .eq('id', currentUser.access_scope_id)
                 .single();
             if(unionData) {
                 setUnionName(unionData.name_bn);
@@ -91,16 +83,16 @@ export default function ChairmanDashboard() {
                 setUnionInfo(unionData);
             }
 
-            const wardsData = await getWardsWithDetailsByUnion(user.access_scope_id);
+            const wardsData = await getWardsWithDetailsByUnion(currentUser.access_scope_id);
             setWards(wardsData);
             
-            const news = await wardService.getNewsByLocation(user.access_scope_id);
+            const news = await wardService.getNewsByLocation(currentUser.access_scope_id);
             setNewsList(news);
 
-            const services = await getActiveServices(user.access_scope_id);
+            const services = await getActiveServices(currentUser.access_scope_id);
             setActiveServices(services);
 
-            const queue = await loadUnionActionQueue(user.access_scope_id, wardsData.map((ward) => ward.id));
+            const queue = await loadUnionActionQueue(currentUser.access_scope_id, wardsData.map((ward) => ward.id));
             setActionQueue(queue);
 
             const impact = await loadUnionImpactBoard(wardsData);
@@ -110,7 +102,65 @@ export default function ChairmanDashboard() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [dispatch]);
+
+    useEffect(() => {
+        let active = true;
+
+        const initializeChairmanPortal = async () => {
+            try {
+                const { data: { session } } = await getSessionWithTimeout();
+
+                if (!session) {
+                    if (active) setAuthChecked(true);
+                    router.push('/login');
+                    return;
+                }
+
+                let currentUser = user;
+                if (!isAuthenticated || !currentUser) {
+                    const profile = await authService.getProfile(session.user.id);
+                    if (!profile || profile.role !== 'chairman') {
+                        if (active) setAuthChecked(true);
+                        router.push('/login');
+                        return;
+                    }
+
+                    currentUser = {
+                        id: session.user.id,
+                        email: session.user.email,
+                        role: profile.role,
+                        access_scope_id: profile.access_scope_id,
+                        first_name: profile.first_name,
+                        last_name: profile.last_name,
+                        avatar_url: profile.avatar_url
+                    };
+                    if (active) dispatch(login(currentUser));
+                }
+
+                if (currentUser.role !== 'chairman') {
+                    if (active) setAuthChecked(true);
+                    router.push('/login');
+                    return;
+                }
+
+                if (active) {
+                    setAuthChecked(true);
+                    await loadData(currentUser);
+                }
+            } catch (err) {
+                console.error('Chairman portal auth check failed:', err);
+                if (active) setAuthChecked(true);
+                router.push('/login');
+            }
+        };
+
+        initializeChairmanPortal();
+
+        return () => {
+            active = false;
+        };
+    }, [dispatch, isAuthenticated, loadData, router, user]);
 
     const handleDeleteNews = async (newsId) => {
         if(!confirm('আপনি কি সত্যিই এই খবরটি মুছতে চান?')) return;
@@ -188,7 +238,7 @@ export default function ChairmanDashboard() {
         ].filter((item) => item.id);
     }, [user?.access_scope_id, unionName, wards]);
 
-    if (!isAuthenticated || !user || loading) {
+    if (!authChecked || loading) {
         return (
             <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
                 <motion.div 
@@ -209,13 +259,13 @@ export default function ChairmanDashboard() {
     return (
         <div className="min-h-screen bg-slate-50 font-sans pb-20">
             <header className="bg-white border-b border-slate-200 sticky top-0 z-30">
-                <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <Link href="/" className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
+                <div className="max-w-7xl mx-auto px-3 sm:px-4 min-h-16 flex flex-wrap items-center justify-between gap-2 py-2">
+                    <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+                        <Link href="/" className="shrink-0 p-2 hover:bg-slate-100 rounded-xl transition-colors">
                             <ArrowLeft size={20} className="text-slate-500" />
                         </Link>
-                        <h1 className="text-lg font-black text-slate-800 flex items-center gap-2">
-                            <ShieldCheck className="text-indigo-600" />
+                        <h1 className="min-w-0 text-sm sm:text-lg font-black text-slate-800 flex flex-wrap items-center gap-2">
+                            <ShieldCheck className="shrink-0 text-indigo-600" />
                             সেন্ট্রাল পোর্টাল 
                             <span className="hidden sm:inline-block ml-2 px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-600 text-[10px] font-black uppercase tracking-wider border border-indigo-100">
                                 চেয়ারম্যান এক্সেস
@@ -223,13 +273,13 @@ export default function ChairmanDashboard() {
                         </h1>
                     </div>
                     
-                    <div className="flex items-center gap-1 sm:gap-2">
+                    <div className="flex shrink-0 items-center gap-1 sm:gap-2">
                         <Link 
                             href="/chairman/settings"
-                            className="flex items-center gap-2 text-slate-600 font-bold text-xs sm:text-sm hover:bg-slate-100 px-3 sm:px-4 py-2 rounded-xl transition-all"
+                            className="flex items-center gap-2 text-slate-600 font-bold text-xs sm:text-sm hover:bg-slate-100 px-2 sm:px-4 py-2 rounded-xl transition-all"
                         >
                             <Settings size={18} />
-                            <span className="hidden xs:inline">সেটিংস</span>
+                            <span className="hidden sm:inline">সেটিংস</span>
                         </Link>
                         <NotificationBell 
                             role={user?.role} 
@@ -240,26 +290,26 @@ export default function ChairmanDashboard() {
                                 await dispatch(performLogout());
                                 router.push('/login');
                             }}
-                            className="flex items-center gap-2 text-red-500 font-bold text-xs sm:text-sm hover:bg-red-50 px-3 sm:px-4 py-2 rounded-xl transition-all"
+                            className="flex items-center gap-2 text-red-500 font-bold text-xs sm:text-sm hover:bg-red-50 px-2 sm:px-4 py-2 rounded-xl transition-all"
                         >
                             <LogOut size={18} />
-                            <span className="hidden xs:inline">লগআউট</span>
+                            <span className="hidden sm:inline">লগআউট</span>
                         </button>
                     </div>
                 </div>
             </header>
 
-            <main className="max-w-7xl mx-auto px-4 py-6 md:py-8">
-                <div className="flex items-center justify-between mb-8 px-6 py-3 rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden relative">
+            <main className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6 md:py-8">
+                <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between mb-6 sm:mb-8 px-4 sm:px-6 py-3 rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden relative">
                     <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-500" />
-                    <div className="flex items-center gap-6">
+                    <div className="flex min-w-0 flex-wrap items-center gap-3 sm:gap-6">
                         <div className="flex items-center gap-2">
                             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">সার্ভার স্ট্যাটাস:</span>
                             <span className="text-xs font-black text-emerald-600">সংযুক্ত</span>
                         </div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex max-w-full items-center gap-3">
                         <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">{unionName} এডমিন</span>
                     </div>
                 </div>
@@ -276,6 +326,12 @@ export default function ChairmanDashboard() {
                     onOpenQuality={() => setActiveTab('citizen-quality')}
                     onOpenTax={() => setActiveTab('tax')}
                     onOpenSms={() => setActiveTab('sms-outbox')}
+                />
+
+                <ChairmanQuickCommand
+                    totals={aggregatedTotals}
+                    queueCount={actionQueue.length}
+                    onSelect={setActiveTab}
                 />
                 
                 <div className="mb-8">
@@ -395,7 +451,7 @@ export default function ChairmanDashboard() {
                             animate={{ opacity: 1, x: 0 }}
                             exit={{ opacity: 0, x: 20 }}
                         >
-                            <div className="bg-white rounded-[40px] p-6 md:p-10 border border-slate-200 shadow-sm">
+                            <div className="bg-white rounded-[28px] sm:rounded-[40px] p-4 sm:p-6 md:p-10 border border-slate-200 shadow-sm">
                                 <div className="flex items-center gap-4 mb-8">
                                     <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600">
                                         <MapPin size={28} />
@@ -451,7 +507,7 @@ export default function ChairmanDashboard() {
                             animate={{ opacity: 1, x: 0 }}
                             exit={{ opacity: 0, x: 20 }}
                         >
-                            <div className="bg-white rounded-[40px] p-6 md:p-10 border border-slate-200 shadow-sm">
+                            <div className="bg-white rounded-[28px] sm:rounded-[40px] p-4 sm:p-6 md:p-10 border border-slate-200 shadow-sm">
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                     {activeServices.map((item, idx) => (
                                         <div key={idx} className="p-6 rounded-[32px] bg-white border border-slate-200 hover:border-indigo-500/30 transition-all">
@@ -484,13 +540,13 @@ export default function ChairmanDashboard() {
                         </motion.div>
                     ) : activeTab === 'tax' ? (
                         <motion.div key="tax" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
-                            <div className="bg-white rounded-[40px] p-6 md:p-12 border border-slate-200 shadow-sm">
+                            <div className="bg-white rounded-[28px] sm:rounded-[40px] p-4 sm:p-6 md:p-12 border border-slate-200 shadow-sm">
                                 <UnionTaxDashboard unionId={user.access_scope_id} />
                             </div>
                         </motion.div>
                     ) : activeTab === 'citizen-quality' ? (
                         <motion.div key="citizen-quality" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
-                            <div className="bg-white rounded-[40px] p-6 md:p-12 border border-slate-200 shadow-sm">
+                            <div className="bg-white rounded-[28px] sm:rounded-[40px] p-4 sm:p-6 md:p-12 border border-slate-200 shadow-sm">
                                 <UnionCitizenQualityDashboard unionId={user.access_scope_id} />
                             </div>
                         </motion.div>
@@ -504,7 +560,7 @@ export default function ChairmanDashboard() {
                         </motion.div>
                     ) : activeTab === 'sms-outbox' ? (
                         <motion.div key="sms-outbox" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
-                            <div className="bg-white rounded-[40px] p-6 md:p-12 border border-slate-200 shadow-sm">
+                            <div className="bg-white rounded-[28px] sm:rounded-[40px] p-4 sm:p-6 md:p-12 border border-slate-200 shadow-sm">
                                 <UnionSmsOutbox
                                     unionId={user.access_scope_id}
                                     heading="Union SMS Broadcast & Profit Center"
@@ -525,8 +581,8 @@ export default function ChairmanDashboard() {
                             animate={{ opacity: 1, x: 0 }}
                             exit={{ opacity: 0, x: -20 }}
                         >
-                            <div className="bg-white rounded-[40px] p-6 md:p-12 border border-slate-200 shadow-sm">
-                                <div className="flex items-center gap-4 mb-10">
+                            <div className="bg-white rounded-[28px] sm:rounded-[40px] p-4 sm:p-6 md:p-12 border border-slate-200 shadow-sm">
+                                <div className="flex flex-col items-start gap-4 mb-8 sm:mb-10 sm:flex-row sm:items-center">
                                     <div className="w-14 h-14 rounded-3xl bg-teal-900 flex items-center justify-center text-teal-400 shadow-xl shrink-0">
                                         <FileText size={28} />
                                     </div>
@@ -657,6 +713,91 @@ function UnionImpactBoard({ impact, onOpenQuality, onOpenTax, onOpenSms }) {
             </div>
         </section>
     );
+}
+
+function ChairmanQuickCommand({ totals, queueCount, onSelect }) {
+    const commands = [
+        {
+            id: 'citizen-quality',
+            title: 'Citizen Quality',
+            detail: 'NID, birth, blood ও duplicate review',
+            Icon: ClipboardCheck,
+            tone: 'bg-teal-50 text-teal-700 border-teal-100'
+        },
+        {
+            id: 'service-requests',
+            title: 'Applications',
+            detail: 'সনদ, আবেদন ও office serial',
+            Icon: FileText,
+            tone: 'bg-sky-50 text-sky-700 border-sky-100'
+        },
+        {
+            id: 'sms-outbox',
+            title: 'SMS Center',
+            detail: 'Reminder, broadcast, service ready',
+            Icon: MessageSquare,
+            tone: 'bg-indigo-50 text-indigo-700 border-indigo-100'
+        },
+        {
+            id: 'tax',
+            title: 'Tax',
+            detail: 'Holding tax collection overview',
+            Icon: Banknote,
+            tone: 'bg-amber-50 text-amber-700 border-amber-100'
+        },
+        {
+            id: 'management',
+            title: 'Union Profile',
+            detail: 'Profile, phone, service settings',
+            Icon: Settings,
+            tone: 'bg-slate-50 text-slate-700 border-slate-100'
+        }
+    ];
+
+    return (
+        <section className="mb-8 rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-[36px] sm:p-6">
+            <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.24em] text-teal-700">Chairman Command</p>
+                    <h3 className="text-2xl font-black text-slate-900">আজকের দ্রুত কাজ</h3>
+                    <p className="mt-1 text-sm font-bold text-slate-500">
+                        {toBnDigits(queueCount || 0)} priority item · {toBnDigits(totals.population || 0)} citizen data · {toBnDigits(totals.voters || 0)} voter
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    onClick={() => onSelect('overview')}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-xs font-black uppercase tracking-widest text-white transition hover:bg-teal-700 sm:w-auto"
+                >
+                    <ArrowUpRight size={15} />
+                    Ward overview
+                </button>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                {commands.map((command) => (
+                    <button
+                        key={command.id}
+                        type="button"
+                        onClick={() => onSelect(command.id)}
+                        className={`flex min-h-[116px] flex-col items-start rounded-[24px] border p-4 text-left transition hover:-translate-y-0.5 hover:shadow-lg ${command.tone}`}
+                    >
+                        <command.Icon size={22} />
+                        <span className="mt-4 text-sm font-black">{command.title}</span>
+                        <span className="mt-1 text-xs font-bold opacity-75">{command.detail}</span>
+                    </button>
+                ))}
+            </div>
+        </section>
+    );
+}
+
+function getSessionWithTimeout(timeoutMs = 6000) {
+    return Promise.race([
+        supabase.auth.getSession(),
+        new Promise((resolve) => {
+            setTimeout(() => resolve({ data: { session: null }, error: null }), timeoutMs);
+        })
+    ]);
 }
 
 async function loadUnionActionQueue(unionId, wardIds = []) {

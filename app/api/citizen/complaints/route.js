@@ -89,6 +89,26 @@ export async function POST(request) {
             return NextResponse.json({ error: 'Phone and title are required' }, { status: 400 });
         }
 
+        const recentCutoff = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+        const dailyCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        const [{ count: recentCount, error: recentError }, { count: dailyCount, error: dailyError }] = await Promise.all([
+            supabaseAdmin
+                .from('citizen_complaints')
+                .select('id', { count: 'exact', head: true })
+                .eq('phone', phone)
+                .gte('created_at', recentCutoff),
+            supabaseAdmin
+                .from('citizen_complaints')
+                .select('id', { count: 'exact', head: true })
+                .eq('phone', phone)
+                .gte('created_at', dailyCutoff)
+        ]);
+        if (recentError) throw recentError;
+        if (dailyError) throw dailyError;
+        if (Number(recentCount || 0) > 0 || Number(dailyCount || 0) >= 5) {
+            return NextResponse.json({ error: 'Complaint submission limit reached. Please try again later.' }, { status: 429 });
+        }
+
         const scopeType = body.scopeType || null;
         const scopeId = body.scopeId || null;
         const priority = VALID_PRIORITY.has(body.priority) ? body.priority : 'normal';

@@ -13,6 +13,7 @@ import { householdService } from '@/lib/services/householdService';
 import { adminService } from '@/lib/services/adminService';
 import { smsService } from '@/lib/services/smsService';
 import { toBnDigits } from '@/lib/utils/format';
+import { parseBulkHouseholdNotebookText } from '@/lib/utils/householdNotebookParser';
 import HouseholdEntryForm from './HouseholdEntryForm';
 import HouseholdLockerManager from './HouseholdLockerManager';
 import ModalPortal from '@/components/common/ModalPortal';
@@ -48,9 +49,14 @@ export default function WardHouseholdManager({ wardId, assignedVillage = null, v
     const [selectedHouseholdForLocker, setSelectedHouseholdForLocker] = useState(null);
     const [saving, setSaving] = useState(false);
     const [sendingReminderKey, setSendingReminderKey] = useState(null);
+    const [showBulkImportModal, setShowBulkImportModal] = useState(false);
+    const [bulkImportText, setBulkImportText] = useState('');
+    const [bulkDrafts, setBulkDrafts] = useState([]);
+    const [bulkImporting, setBulkImporting] = useState(false);
 
     const followUpItems = useMemo(() => buildFamilyFollowUpItems(households), [households]);
     const priorityFamilies = useMemo(() => buildHouseholdPriorityCards(households, followUpItems), [households, followUpItems]);
+    const villageProgress = useMemo(() => buildVillageProgress(selectedVillage, households, followUpItems), [selectedVillage, households, followUpItems]);
     const filteredFollowUps = useMemo(() => {
         if (followUpFilter === 'all') return followUpItems;
         return followUpItems.filter((item) => item.issueTypes.includes(followUpFilter));
@@ -208,7 +214,11 @@ export default function WardHouseholdManager({ wardId, assignedVillage = null, v
         if (!confirm('আপনি কি সত্যিই এই বাড়িটি ডিলিট করতে চান? এর ভেতরের সকল সদস্যদের ডাটাও ডিলিট হয়ে যাবে।')) return;
         
         try {
-            await householdService.deleteHousehold(id);
+            if (user?.role === 'super_admin') {
+                await householdService.adminHouseholdAction('delete_household', { id });
+            } else {
+                await householdService.deleteHousehold(id);
+            }
             setHouseholds(households.filter(h => h.id !== id));
             
             // Recalculate stats for UI optimism
@@ -255,6 +265,99 @@ export default function WardHouseholdManager({ wardId, assignedVillage = null, v
         }
     };
 
+    function handleBuildBulkDrafts() {
+        if (!bulkImportText.trim()) {
+            toast.error('খাতার লেখা paste করুন।');
+            return;
+        }
+
+        const drafts = parseBulkHouseholdNotebookText(bulkImportText).map((draft) => ({
+            ...draft,
+            warnings: buildBulkDraftWarnings(draft, households)
+        }));
+
+        setBulkDrafts(drafts);
+        if (!drafts.length) {
+            toast.error('কোনো বাড়ির draft তৈরি হয়নি। format আবার check করুন।');
+            return;
+        }
+        toast.success(`${toBnDigits(drafts.length)}টি বাড়ির draft ready.`);
+    }
+
+    async function handleSaveBulkDrafts() {
+        if (!selectedVillage?.id || !canCreateHousehold) {
+            toast.error('এই গ্রামে বাড়ি যোগ করার অনুমতি নেই।');
+            return;
+        }
+        const validDrafts = bulkDrafts.filter((draft) => draft.household?.owner_name || draft.household?.house_no);
+        if (!validDrafts.length) {
+            toast.error('Save করার মতো valid draft নেই।');
+            return;
+        }
+
+        setBulkImporting(true);
+        const loadingToast = toast.loading(`${toBnDigits(validDrafts.length)}টি বাড়ি save হচ্ছে...`);
+        let saved = 0;
+        try {
+            for (const draft of validDrafts) {
+                const householdData = {
+                    house_no: draft.household.house_no || null,
+                    owner_name: draft.household.owner_name || 'নাম নেই',
+                    phone: draft.household.phone || null,
+                    religion: draft.household.religion || 'Islam',
+                    housing_type: 'Semi-Paka',
+                    economic_status: 'Middle',
+                    water_source: 'tube-well',
+                    electricity_meter: false,
+                    ward_id: wardId,
+                    village_id: selectedVillage.id,
+                    location_village_id: selectedLocationVillageId || null,
+                    added_by_user_id: user?.id || null
+                };
+                const createdHouse = await householdService.createHousehold(householdData);
+
+                for (const resident of draft.residents || []) {
+                    if (!resident.name) continue;
+                    await householdService.createResident({
+                        name: resident.name,
+                        gender: resident.gender || 'Male',
+                        is_voter: !!resident.is_voter,
+                        relation_with_head: resident.relation_with_head || 'Other',
+                        dob: resident.dob || null,
+                        nid: resident.nid || null,
+                        birth_reg_no: resident.birth_reg_no || null,
+                        father_name: resident.father_name || null,
+                        mother_name: resident.mother_name || null,
+                        address: resident.address || draft.meta?.address || null,
+                        blood_group: resident.blood_group || null,
+                        occupation: resident.occupation || null,
+                        education_level: resident.education_level || null,
+                        marital_status: resident.marital_status || 'Married',
+                        disability_status: resident.disability_status || 'None',
+                        student_status: resident.student_status || 'not_student',
+                        household_id: createdHouse.id
+                    });
+                }
+
+                await householdService.syncHouseholdStats(createdHouse.id);
+                saved += 1;
+            }
+
+            toast.dismiss(loadingToast);
+            toast.success(`${toBnDigits(saved)}টি বাড়ি save হয়েছে।`);
+            setShowBulkImportModal(false);
+            setBulkImportText('');
+            setBulkDrafts([]);
+            await loadInitialData();
+        } catch (err) {
+            console.error('Bulk household import failed:', err);
+            toast.dismiss(loadingToast);
+            toast.error(err.message || 'Bulk import save করতে সমস্যা হয়েছে।');
+        } finally {
+            setBulkImporting(false);
+        }
+    }
+
     async function handleSendFollowUpSms(item) {
         if (!item?.phone) {
             toast.error('এই পরিবারের ফোন নম্বর নেই। আগে ফোন নম্বর আপডেট করুন।');
@@ -293,7 +396,7 @@ export default function WardHouseholdManager({ wardId, assignedVillage = null, v
 
     if (isAssignedVillageMode && !selectedVillage?.id) {
         return (
-            <div className="rounded-[32px] border border-amber-100 bg-amber-50 p-8 text-center">
+            <div className="rounded-[24px] sm:rounded-[32px] border border-amber-100 bg-amber-50 p-5 sm:p-8 text-center">
                 <AlertCircle className="text-amber-600 mx-auto mb-4" size={32} />
                 <h4 className="text-lg font-black text-slate-800">ভলান্টিয়ারের গ্রাম লোড হয়নি</h4>
                 <p className="text-sm font-bold text-slate-500 mt-2">
@@ -367,7 +470,7 @@ export default function WardHouseholdManager({ wardId, assignedVillage = null, v
                         {!isAssignedVillageMode && (user?.role === 'super_admin' || user?.role === 'ward_member') && (
                         <div 
                             onClick={() => setShowVillageModal(true)}
-                            className="p-8 rounded-[32px] border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-center group hover:border-teal-400 transition-all cursor-pointer bg-slate-50/50 hover:bg-teal-50/30"
+                            className="p-5 sm:p-8 rounded-[24px] sm:rounded-[32px] border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-center group hover:border-teal-400 transition-all cursor-pointer bg-slate-50/50 hover:bg-teal-50/30"
                         >
                             <div className="w-14 h-14 rounded-2xl bg-white border border-slate-200 flex items-center justify-center text-slate-400 group-hover:text-teal-600 group-hover:border-teal-200 transition-all mb-4">
                                 <Plus size={24} />
@@ -380,7 +483,7 @@ export default function WardHouseholdManager({ wardId, assignedVillage = null, v
                         {villages.map(village => (
                             <div 
                                 key={village.id}
-                                className="p-8 rounded-[32px] bg-white border border-slate-100 shadow-sm hover:shadow-xl hover:border-teal-100 transition-all group"
+                                className="p-5 sm:p-8 rounded-[24px] sm:rounded-[32px] bg-white border border-slate-100 shadow-sm hover:shadow-xl hover:border-teal-100 transition-all group"
                             >
                                 <div className="flex items-start justify-between mb-6">
                                     <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-600 group-hover:bg-teal-600 group-hover:text-white transition-all">
@@ -493,8 +596,8 @@ export default function WardHouseholdManager({ wardId, assignedVillage = null, v
                         className="space-y-8"
                     >
                         {/* Village Header */}
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
+                        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                            <div className="flex min-w-0 items-center gap-4">
                                 {!isAssignedVillageMode && (
                                     <button
                                         onClick={() => {
@@ -511,7 +614,7 @@ export default function WardHouseholdManager({ wardId, assignedVillage = null, v
                                     <p className="text-sm font-bold text-slate-400">{selectedVillage.para_name || 'মূল গ্রাম'} এর ডাটা ম্যানেজমেন্ট</p>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-3">
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                                 <button className="px-6 py-3 rounded-xl bg-white border border-slate-200 text-slate-600 font-black text-xs uppercase tracking-widest hover:bg-slate-50 transition-all flex items-center gap-2">
                                     <Filter size={16} /> ফিল্টার
                                 </button>
@@ -531,8 +634,57 @@ export default function WardHouseholdManager({ wardId, assignedVillage = null, v
                                     }
                                     return null;
                                 })()}
+                                {canCreateHousehold && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowBulkImportModal(true)}
+                                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-xs font-black uppercase tracking-widest text-white shadow-lg shadow-indigo-100 transition-all hover:bg-slate-950"
+                                    >
+                                        <FileText size={16} /> খাতা import
+                                    </button>
+                                )}
                             </div>
                         </div>
+
+                        <section className="rounded-[32px] border border-teal-100 bg-white p-4 shadow-sm sm:p-6">
+                            <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                                <div>
+                                    <p className="text-[10px] font-black uppercase tracking-[0.24em] text-teal-700">Village Progress</p>
+                                    <h4 className="text-2xl font-black text-slate-900">গ্রামের কাজ কতদূর</h4>
+                                    <p className="mt-1 text-sm font-bold text-slate-500">
+                                        বাড়ি entry, member data quality, follow-up এবং priority family একসাথে।
+                                    </p>
+                                </div>
+                                <span className={`w-fit rounded-full px-4 py-2 text-xs font-black ${villageProgress.completeness >= 80 ? 'bg-emerald-50 text-emerald-700' : villageProgress.completeness >= 50 ? 'bg-amber-50 text-amber-700' : 'bg-rose-50 text-rose-700'}`}>
+                                    {toBnDigits(villageProgress.completeness)}% data complete
+                                </span>
+                            </div>
+                            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                                {[
+                                    ['Entry Progress', `${toBnDigits(villageProgress.houseCount)} / ${toBnDigits(villageProgress.estimatedHouses)}`, `${toBnDigits(villageProgress.entryPercent)}% বাড়ি entry`, Home, 'teal'],
+                                    ['Members', toBnDigits(villageProgress.memberCount), `${toBnDigits(villageProgress.voterCount)} voter`, Users, 'blue'],
+                                    ['Missing Data', toBnDigits(villageProgress.missingDataCount), 'NID/Birth/Blood follow-up', AlertCircle, 'amber'],
+                                    ['Priority Family', toBnDigits(priorityFamilies.length), 'আজ আগে ধরবেন', Smartphone, 'rose']
+                                ].map(([label, value, detail, Icon, tone]) => (
+                                    <div key={label} className="rounded-[24px] border border-slate-100 bg-slate-50 p-4">
+                                        <div className={`mb-3 flex h-11 w-11 items-center justify-center rounded-2xl ${
+                                            tone === 'teal' ? 'bg-teal-50 text-teal-700' :
+                                            tone === 'blue' ? 'bg-blue-50 text-blue-700' :
+                                            tone === 'amber' ? 'bg-amber-50 text-amber-700' :
+                                            'bg-rose-50 text-rose-700'
+                                        }`}>
+                                            <Icon size={20} />
+                                        </div>
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{label}</p>
+                                        <p className="mt-1 text-2xl font-black text-slate-900">{value}</p>
+                                        <p className="mt-1 text-xs font-bold text-slate-500">{detail}</p>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="mt-4 h-3 overflow-hidden rounded-full bg-slate-100">
+                                <div className="h-full rounded-full bg-teal-500 transition-all" style={{ width: `${Math.min(100, villageProgress.entryPercent)}%` }} />
+                            </div>
+                        </section>
 
                         <div className="rounded-[30px] border border-slate-200 bg-white p-3 shadow-sm">
                             <div className="grid gap-2 sm:grid-cols-3">
@@ -797,7 +949,7 @@ export default function WardHouseholdManager({ wardId, assignedVillage = null, v
                             )}
                         </section>
 
-                        <div className="bg-white rounded-[32px] border border-slate-100 p-8 shadow-sm">
+                        <div className="bg-white rounded-[24px] sm:rounded-[32px] border border-slate-100 p-5 sm:p-8 shadow-sm">
                             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                                 <h4 className="font-black text-slate-800 text-xl flex items-center gap-2">
                                     <Home className="text-teal-500" size={24} />
@@ -824,12 +976,15 @@ export default function WardHouseholdManager({ wardId, assignedVillage = null, v
                                         const query = searchQuery.toLowerCase();
                                         const matchesOwner = h.owner_name?.toLowerCase().includes(query);
                                         const matchesHouse = h.house_no?.toLowerCase().includes(query);
+                                        const matchesPhone = h.phone?.toLowerCase().includes(query);
                                         const matchesResidents = h.residents?.some(r => 
                                             r.name?.toLowerCase().includes(query) || 
                                             r.nid?.toLowerCase().includes(query) ||
+                                            r.birth_reg_no?.toLowerCase().includes(query) ||
+                                            r.phone?.toLowerCase().includes(query) ||
                                             r.id?.toString().toLowerCase().includes(query)
                                         );
-                                        return matchesOwner || matchesHouse || matchesResidents;
+                                        return matchesOwner || matchesHouse || matchesPhone || matchesResidents;
                                     });
                                     const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE) || 1;
                                     const currentHouses = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
@@ -983,7 +1138,7 @@ export default function WardHouseholdManager({ wardId, assignedVillage = null, v
             {/* Village Modal */}
             {showVillageModal && (
                 <ModalPortal>
-                    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
+                    <div className="fixed inset-0 z-[99999] flex items-stretch justify-center p-0 sm:items-center sm:p-4">
                         <motion.div 
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
@@ -995,7 +1150,7 @@ export default function WardHouseholdManager({ wardId, assignedVillage = null, v
                             initial={{ opacity: 0, scale: 0.95, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                            className="bg-white rounded-[40px] p-8 md:p-10 w-full max-w-xl shadow-2xl relative max-h-[90vh] overflow-y-auto custom-scrollbar"
+                            className="relative h-[100dvh] w-full max-w-xl overflow-y-auto bg-white p-5 shadow-2xl sm:h-auto sm:max-h-[90vh] sm:rounded-[40px] sm:p-8 md:p-10 custom-scrollbar"
                         >
                             <button onClick={() => setShowVillageModal(false)} className="absolute top-6 right-6 w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-rose-50 hover:text-rose-500 transition-colors">
                                 <X size={20} />
@@ -1061,7 +1216,7 @@ export default function WardHouseholdManager({ wardId, assignedVillage = null, v
             {/* Volunteer Modal */}
             {showVolunteerModal && (
                 <ModalPortal>
-                    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
+                    <div className="fixed inset-0 z-[99999] flex items-stretch justify-center p-0 sm:items-center sm:p-4">
                         <motion.div 
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
@@ -1073,7 +1228,7 @@ export default function WardHouseholdManager({ wardId, assignedVillage = null, v
                             initial={{ opacity: 0, scale: 0.95, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                            className="bg-white rounded-[40px] p-8 md:p-10 w-full max-w-xl shadow-2xl relative max-h-[90vh] overflow-y-auto custom-scrollbar"
+                            className="relative h-[100dvh] w-full max-w-xl overflow-y-auto bg-white p-5 shadow-2xl sm:h-auto sm:max-h-[90vh] sm:rounded-[40px] sm:p-8 md:p-10 custom-scrollbar"
                         >
                             <button onClick={() => setShowVolunteerModal(false)} className="absolute top-6 right-6 w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-rose-50 hover:text-rose-500 transition-colors">
                                 <X size={20} />
@@ -1176,6 +1331,137 @@ export default function WardHouseholdManager({ wardId, assignedVillage = null, v
                     </div>
                 </ModalPortal>
             )}
+
+            {showBulkImportModal && (
+                <ModalPortal>
+                    <div className="fixed inset-0 z-[99999] flex items-stretch justify-center overflow-hidden p-0 sm:items-center sm:p-4">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setShowBulkImportModal(false)}
+                            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.96, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.96, y: 20 }}
+                            className="relative flex h-[100dvh] max-h-[100dvh] w-full min-w-0 flex-col overflow-hidden rounded-none bg-white shadow-2xl sm:h-auto sm:max-h-[92dvh] sm:max-w-5xl sm:rounded-[32px]"
+                        >
+                            <div className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-100 bg-slate-50 p-4 sm:p-6">
+                                <div className="min-w-0">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.24em] text-indigo-600">Bulk Khata Import</p>
+                                    <h3 className="text-xl font-black text-slate-900 sm:text-2xl">একসাথে অনেক বাড়ি draft করুন</h3>
+                                    <p className="mt-1 text-xs font-bold leading-5 text-slate-500">
+                                        প্রতিটি বাড়ি আলাদা করতে --- বা “নতুন বাড়ি” লিখুন। Preview দেখে save করুন।
+                                    </p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowBulkImportModal(false)}
+                                    className="shrink-0 rounded-xl border border-slate-200 bg-white p-2 text-slate-400 transition hover:text-rose-500"
+                                >
+                                    <X size={22} />
+                                </button>
+                            </div>
+
+                            <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
+                                <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(300px,0.8fr)]">
+                                    <div className="space-y-3">
+                                        <textarea
+                                            value={bulkImportText}
+                                            onChange={(event) => {
+                                                setBulkImportText(event.target.value);
+                                                setBulkDrafts([]);
+                                            }}
+                                            className="min-h-[420px] w-full rounded-[24px] border border-slate-200 bg-slate-50 p-4 text-sm font-bold leading-6 text-slate-700 outline-none transition focus:border-indigo-400 focus:bg-white focus:ring-4 focus:ring-indigo-500/10"
+                                            placeholder={`গ্রাম: পূর্বপাড়া
+বাড়ি নং: ১২৩
+পরিবার প্রধান: মোঃ আব্দুল করিম
+মোবাইল: 017xxxxxxxx
+সদস্য:
+1. মোঃ আব্দুল করিম, বয়স: 55, পুরুষ, NID: 1234567890
+2. রহিমা বেগম, বয়স: 48, নারী
+---
+গ্রাম: পূর্বপাড়া
+বাড়ি নং: ১২৪
+পরিবার প্রধান: মোঃ সুমন মিয়া
+মোবাইল: 018xxxxxxxx`}
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={handleBuildBulkDrafts}
+                                            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-5 py-4 text-xs font-black uppercase tracking-widest text-white transition hover:bg-slate-950"
+                                        >
+                                            <FileText size={16} />
+                                            Draft বানান
+                                        </button>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        <div className="rounded-[24px] border border-indigo-100 bg-indigo-50 p-4">
+                                            <p className="text-sm font-black text-slate-900">Preview</p>
+                                            <p className="mt-1 text-xs font-bold text-slate-500">
+                                                {toBnDigits(bulkDrafts.length)}টি বাড়ি ready. Warning থাকলে আগে check করুন।
+                                            </p>
+                                        </div>
+                                        <div className="max-h-[420px] space-y-3 overflow-y-auto pr-1">
+                                            {bulkDrafts.length === 0 ? (
+                                                <div className="rounded-[24px] border border-dashed border-slate-200 p-8 text-center text-sm font-bold text-slate-400">
+                                                    Draft বানালে এখানে preview দেখাবে।
+                                                </div>
+                                            ) : bulkDrafts.map((draft, index) => (
+                                                <div key={draft.id} className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm">
+                                                    <div className="flex items-start justify-between gap-3">
+                                                        <div className="min-w-0">
+                                                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">#{toBnDigits(index + 1)} draft</p>
+                                                            <h4 className="mt-1 truncate text-base font-black text-slate-900">{draft.household?.owner_name || 'নাম নেই'}</h4>
+                                                            <p className="mt-1 text-xs font-bold text-slate-500">
+                                                                Holding: {draft.household?.house_no || 'missing'} · Member: {toBnDigits(draft.residents?.length || 0)}
+                                                            </p>
+                                                        </div>
+                                                        <span className="rounded-2xl bg-teal-50 px-3 py-2 text-xs font-black text-teal-700">
+                                                            {draft.household?.phone || 'phone নেই'}
+                                                        </span>
+                                                    </div>
+                                                    {draft.warnings?.length > 0 && (
+                                                        <div className="mt-3 flex flex-wrap gap-1.5">
+                                                            {draft.warnings.map((warning) => (
+                                                                <span key={warning} className="rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-black text-amber-700">
+                                                                    {warning}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex shrink-0 flex-col gap-2 border-t border-slate-100 bg-white p-4 sm:flex-row sm:items-center sm:justify-end sm:p-5">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowBulkImportModal(false)}
+                                    className="rounded-2xl bg-slate-100 px-5 py-3 text-xs font-black uppercase tracking-widest text-slate-600 transition hover:bg-slate-200"
+                                >
+                                    Close
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleSaveBulkDrafts}
+                                    disabled={bulkImporting || bulkDrafts.length === 0}
+                                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 py-3 text-xs font-black uppercase tracking-widest text-white transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    {bulkImporting ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                                    Save drafts
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                </ModalPortal>
+            )}
             {/* Household Locker Modal */}
             <AnimatePresence>
                 {selectedHouseholdForLocker && (
@@ -1224,6 +1510,62 @@ function getHouseholdMapHref(house) {
     const lng = house?.lng ?? house?.longitude ?? house?.gps_lng;
     if (!lat || !lng) return '';
     return `https://www.google.com/maps?q=${lat},${lng}`;
+}
+
+function buildVillageProgress(village, households = [], followUpItems = []) {
+    const estimatedHouses = Math.max(
+        Number(village?.total_estimated_houses || 0),
+        households.length,
+        1
+    );
+    const houseCount = households.length;
+    const entryPercent = Math.min(100, Math.round((houseCount / estimatedHouses) * 100));
+    const memberCount = households.reduce((sum, house) => sum + (house.stats?.total_members || house.residents?.length || 0), 0);
+    const voterCount = households.reduce((sum, house) => sum + (house.stats?.voters || 0), 0);
+    const missingDataCount = followUpItems.filter((item) => (
+        item.issueTypes.includes('nid') ||
+        item.issueTypes.includes('birth') ||
+        item.issueTypes.includes('blood') ||
+        item.issueTypes.includes('empty')
+    )).length;
+    const completeness = memberCount > 0
+        ? Math.max(0, Math.round(((memberCount * 3 - missingDataCount) / Math.max(1, memberCount * 3)) * 100))
+        : (houseCount > 0 ? 35 : 0);
+
+    return {
+        estimatedHouses,
+        houseCount,
+        entryPercent,
+        memberCount,
+        voterCount,
+        missingDataCount,
+        completeness
+    };
+}
+
+function buildBulkDraftWarnings(draft, existingHouseholds = []) {
+    const warnings = [...(draft.meta?.warnings || [])];
+    const houseNo = String(draft.household?.house_no || '').trim().toLowerCase();
+    const phone = String(draft.household?.phone || '').replace(/\D/g, '');
+    const draftNids = (draft.residents || []).map((resident) => String(resident.nid || '').replace(/\D/g, '')).filter(Boolean);
+
+    if (houseNo && existingHouseholds.some((house) => String(house.house_no || '').trim().toLowerCase() === houseNo)) {
+        warnings.push('Existing house/holding number matched.');
+    }
+    if (phone && existingHouseholds.some((house) => String(house.phone || '').replace(/\D/g, '') === phone)) {
+        warnings.push('Existing phone number matched.');
+    }
+
+    const existingNids = new Set(
+        existingHouseholds.flatMap((house) => house.residents || [])
+            .map((resident) => String(resident.nid || '').replace(/\D/g, ''))
+            .filter(Boolean)
+    );
+    draftNids.forEach((nid) => {
+        if (existingNids.has(nid)) warnings.push(`Existing NID matched: ${nid}`);
+    });
+
+    return [...new Set(warnings)];
 }
 
 function getResidentAge(dob) {

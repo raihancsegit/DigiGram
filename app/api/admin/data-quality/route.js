@@ -46,6 +46,27 @@ function normalize(value) {
     return text(value).toLowerCase().replace(/[^0-9a-z\u0980-\u09ff]/g, '');
 }
 
+function duplicateFingerprints(resident, phone = '') {
+    const fingerprints = [];
+    const nid = normalize(resident.nid);
+    const birth = normalize(resident.birth_reg_no);
+    const name = normalize(resident.bn_name || resident.name);
+    const father = normalize(resident.father_name);
+    const mother = normalize(resident.mother_name);
+    const normalizedPhone = normalize(phone);
+
+    if (nid.length >= 8) fingerprints.push({ fingerprint: `nid:${nid}`, matchType: 'nid', reason: 'একই NID নম্বর', confidence: 100 });
+    if (birth.length >= 8) fingerprints.push({ fingerprint: `birth:${birth}`, matchType: 'birth', reason: 'একই জন্ম নিবন্ধন নম্বর', confidence: 100 });
+    if (normalizedPhone.length >= 10 && name) {
+        fingerprints.push({ fingerprint: `phone_name:${normalizedPhone}:${name}`, matchType: 'phone_name', reason: 'একই ফোন ও নাগরিকের নাম', confidence: 82 });
+    }
+    if (name && father && mother) {
+        fingerprints.push({ fingerprint: `family:${name}:${father}:${mother}:${resident.dob || ''}`, matchType: 'family', reason: 'নাম, বাবা-মা ও জন্মতারিখ একই', confidence: resident.dob ? 92 : 76 });
+    }
+
+    return fingerprints;
+}
+
 function locationName(location) {
     return location?.name_bn || location?.name_en || 'নামহীন এলাকা';
 }
@@ -117,7 +138,7 @@ export async function GET(request) {
 
         const [locations, households, residents, profiles] = await Promise.all([
             fetchAll('locations', 'id,name_bn,name_en,type,parent_id'),
-            fetchAll('households', 'id,house_no,owner_name,ward_id,location_village_id,lat,lng,added_by_user_id'),
+            fetchAll('households', 'id,house_no,owner_name,phone,ward_id,location_village_id,lat,lng,added_by_user_id'),
             fetchAll('residents', 'id,household_id,name,bn_name,nid,birth_reg_no,blood_group,dob,father_name,mother_name'),
             fetchAll('profiles', 'id,first_name,last_name,role,access_scope_id')
         ]);
@@ -127,6 +148,7 @@ export async function GET(request) {
         const wardMetrics = new Map();
         const volunteerMetrics = new Map();
         const householdScopes = new Map();
+        const householdById = new Map(households.map((row) => [row.id, row]));
         const issues = [];
 
         locations.filter((row) => row.type === 'union').forEach((row) => {
@@ -177,6 +199,7 @@ export async function GET(request) {
         const duplicateGroups = new Map();
         for (const resident of residents) {
             const scope = householdScopes.get(resident.household_id) || {};
+            const household = householdById.get(resident.household_id);
             const metrics = [
                 wardMetrics.get(scope.wardId),
                 unionMetrics.get(scope.unionId),
@@ -197,23 +220,59 @@ export async function GET(request) {
                 issues.push(makeIssue('missing_blood_group', 'resident', resident.id, label, scope, resident.household_id));
             }
 
-            const identityKey = text(resident.nid)
-                ? `nid:${normalize(resident.nid)}`
-                : text(resident.birth_reg_no)
-                    ? `birth:${normalize(resident.birth_reg_no)}`
-                    : resident.dob && resident.name
-                        ? `bio:${normalize(resident.name)}:${normalize(resident.father_name)}:${normalize(resident.mother_name)}:${resident.dob}`
-                        : null;
-            if (identityKey) {
-                const group = duplicateGroups.get(identityKey) || [];
-                group.push({ resident, scope });
-                duplicateGroups.set(identityKey, group);
+            for (const match of duplicateFingerprints(resident, household?.phone)) {
+                const group = duplicateGroups.get(match.fingerprint) || { ...match, items: [] };
+                group.items.push({
+                    resident: {
+                        ...resident,
+                        household: household ? {
+                            id: household.id,
+                            houseNo: household.house_no,
+                            ownerName: household.owner_name,
+                            phone: household.phone
+                        } : null
+                    },
+                    scope
+                });
+                duplicateGroups.set(match.fingerprint, group);
             }
         }
 
+        let duplicateReviews = [];
+        let duplicateReviewSetupRequired = false;
+        const { data: reviewRows, error: reviewError } = await supabaseAdmin
+            .from('duplicate_citizen_reviews')
+            .select('*')
+            .order('updated_at', { ascending: false });
+        if (reviewError) {
+            if (missingTable(reviewError)) duplicateReviewSetupRequired = true;
+            else throw reviewError;
+        } else {
+            duplicateReviews = reviewRows || [];
+        }
+
+        const reviewByFingerprint = new Map(duplicateReviews.map((review) => [review.fingerprint, review]));
+        const duplicateResidentIds = new Set();
+        const duplicateGroupRows = [];
         for (const group of duplicateGroups.values()) {
-            if (group.length < 2) continue;
-            for (const { resident, scope } of group) {
+            if (group.items.length < 2) continue;
+            const review = reviewByFingerprint.get(group.fingerprint) || null;
+            duplicateGroupRows.push({
+                fingerprint: group.fingerprint,
+                reviewId: review?.id || null,
+                matchType: group.matchType,
+                reason: group.reason,
+                confidence: group.confidence,
+                decision: review?.decision || 'pending',
+                note: review?.note || '',
+                primaryResidentId: review?.primary_resident_id || null,
+                items: group.items.map(({ resident, scope }) => ({ ...resident, scope }))
+            });
+            if (review?.decision === 'different_people') continue;
+
+            for (const { resident, scope } of group.items) {
+                if (duplicateResidentIds.has(resident.id)) continue;
+                duplicateResidentIds.add(resident.id);
                 [
                     wardMetrics.get(scope.wardId),
                     unionMetrics.get(scope.unionId),
@@ -229,6 +288,7 @@ export async function GET(request) {
                 ));
             }
         }
+        duplicateGroupRows.sort((a, b) => b.confidence - a.confidence || b.items.length - a.items.length);
 
         let tasks = [];
         let setupRequired = false;
@@ -264,6 +324,7 @@ export async function GET(request) {
             wardRanking,
             volunteerRanking: finalize(volunteerMetrics).filter((row) => row.households || row.residents),
             issues: issues.slice(0, 3000),
+            duplicateGroups: duplicateGroupRows.slice(0, 200),
             tasks,
             assignees: profiles
                 .filter((row) => ['ward_member', 'volunteer'].includes(row.role))
@@ -272,7 +333,8 @@ export async function GET(request) {
                     name: `${text(row.first_name)} ${text(row.last_name)}`.trim() || 'নামহীন কর্মকর্তা',
                     role: row.role
                 })),
-            setupRequired
+            setupRequired,
+            duplicateReviewSetupRequired
         });
     } catch (error) {
         console.error('Data quality command center load failed:', error);
@@ -287,6 +349,71 @@ export async function POST(request) {
             return NextResponse.json({ error: 'অনুমতি নেই।' }, { status: 403 });
         }
         const body = await request.json();
+
+        if (body.action === 'review_duplicate') {
+            const validDecisions = new Set(['pending', 'confirmed_duplicate', 'different_people']);
+            if (!body.fingerprint || !validDecisions.has(body.decision) || !Array.isArray(body.residentIds) || body.residentIds.length < 2) {
+                return NextResponse.json({ error: 'সঠিক duplicate group ও সিদ্ধান্ত নির্বাচন করুন।' }, { status: 400 });
+            }
+
+            const { data: candidateResidents, error: candidateError } = await supabaseAdmin
+                .from('residents')
+                .select('id,name,bn_name,nid,birth_reg_no,dob,father_name,mother_name,household:households(phone)')
+                .in('id', body.residentIds);
+            if (candidateError) throw candidateError;
+            if ((candidateResidents || []).length !== body.residentIds.length) {
+                return NextResponse.json({ error: 'Duplicate group-এর কিছু নাগরিক পাওয়া যায়নি।' }, { status: 404 });
+            }
+
+            const fingerprintValid = (candidateResidents || []).every((resident) => (
+                duplicateFingerprints(resident, resident.household?.phone)
+                    .some((match) => match.fingerprint === body.fingerprint)
+            ));
+            if (!fingerprintValid) {
+                return NextResponse.json({ error: 'এই নাগরিকরা একই duplicate signal-এর অন্তর্ভুক্ত নয়।' }, { status: 409 });
+            }
+            if (body.primaryResidentId && !body.residentIds.includes(body.primaryResidentId)) {
+                return NextResponse.json({ error: 'Primary নাগরিকটি এই group-এর মধ্যে নেই।' }, { status: 400 });
+            }
+
+            const matchType = body.fingerprint.split(':', 1)[0];
+            const { data, error } = await supabaseAdmin
+                .from('duplicate_citizen_reviews')
+                .upsert({
+                    fingerprint: body.fingerprint,
+                    match_type: matchType,
+                    resident_ids: body.residentIds,
+                    decision: body.decision,
+                    primary_resident_id: body.primaryResidentId || null,
+                    note: text(body.note).slice(0, 1000) || null,
+                    reviewed_by: profile.id,
+                    reviewed_at: body.decision === 'pending' ? null : new Date().toISOString()
+                }, { onConflict: 'fingerprint' })
+                .select()
+                .single();
+            if (error) throw error;
+            return NextResponse.json({ success: true, data });
+        }
+
+        if (body.action === 'merge_duplicate') {
+            if (!body.reviewId || !body.primaryResidentId || !Array.isArray(body.duplicateResidentIds) || !body.duplicateResidentIds.length) {
+                return NextResponse.json({ error: 'Confirmed review, primary citizen and duplicate records are required.' }, { status: 400 });
+            }
+            const eventIds = [];
+            for (const duplicateResidentId of body.duplicateResidentIds) {
+                if (duplicateResidentId === body.primaryResidentId) continue;
+                const { data, error } = await supabaseAdmin.rpc('merge_duplicate_resident', {
+                    target_review_id: body.reviewId,
+                    target_primary_resident_id: body.primaryResidentId,
+                    target_duplicate_resident_id: duplicateResidentId,
+                    actor_id: profile.id,
+                    merge_note: text(body.note).slice(0, 1000) || null
+                });
+                if (error) throw error;
+                eventIds.push(data);
+            }
+            return NextResponse.json({ success: true, eventIds });
+        }
 
         if (body.action === 'create_task') {
             const issue = body.issue;

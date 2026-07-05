@@ -351,7 +351,8 @@ function WebsiteLivePreview({ institution, content, theme, mode }) {
 
 export default function InstitutionWebsiteManager({ institution, initialPage, onInstitutionUpdate }) {
     const design = getInstitutionDesignProfile(institution?.category);
-    const schoolMode = SCHOOL_CATEGORIES.includes(institution?.category);
+    const schoolMode = SCHOOL_CATEGORIES.includes(institution?.category)
+        || ['school', 'college', 'madrasa', 'madrassa'].includes(institution?.type);
     const editablePage = initialPage?.draft_content && Object.keys(initialPage.draft_content).length
         ? initialPage.draft_content
         : initialPage;

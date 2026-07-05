@@ -18,6 +18,7 @@ export default function MaintenancePage() {
     const [stats, setStats] = useState(null);
     const [audit, setAudit] = useState(null);
     const [selection, setSelection] = useState({});
+    const [demoStatus, setDemoStatus] = useState(null);
 
     useEffect(() => {
         loadStats();
@@ -27,21 +28,66 @@ export default function MaintenancePage() {
         try {
             const data = await adminService.getGlobalStats();
             const auditData = await adminService.getMigrationAudit();
+            const demoResponse = await authenticatedFetch('/api/admin/demo-data');
+            const demoData = await demoResponse.json();
             setStats(data);
             setAudit(auditData);
+            setDemoStatus(demoData);
         } catch (err) {
             console.error(err);
         }
     };
 
+    const handleDemoAction = async (action) => {
+        const isRemove = action === 'remove';
+        const isReset = action === 'reset';
+        if (!confirm(
+            isReset
+                ? 'পুরনো registered demo data থাকলে remove করে নতুন demo data তৈরি হবে। Real data untouched থাকবে। চালাবেন?'
+                : isRemove
+                ? 'শুধু registry-তে থাকা demo data remove হবে। Real data অপরিবর্তিত থাকবে। চালাবেন?'
+                : 'Household, citizen service, market, lost-found, business, school, SMS ও governance demo data তৈরি হবে। চালাবেন?'
+        )) return;
+
+        setLoadingAction(`demo-${action}`);
+        const loadingToast = toast.loading(
+            isReset
+                ? 'Demo data reset হচ্ছে...'
+                : isRemove ? 'Demo data remove হচ্ছে...' : 'সব module-এর demo data তৈরি হচ্ছে...'
+        );
+        try {
+            const response = await authenticatedFetch('/api/admin/demo-data', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action })
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || 'Demo operation failed');
+            toast.success(result.message, { id: loadingToast });
+            await loadStats();
+        } catch (error) {
+            toast.error(error.message, { id: loadingToast });
+        } finally {
+            setLoadingAction(null);
+        }
+    };
+
     const handleAction = async (action) => {
-        const confirmMsg = action === 'wipe' 
-            ? 'আপনি কি নিশ্চিত যে আপনি সব টেস্ট ডাটা মুছে ফেলতে চান? এটি আর ফিরিয়ে আনা যাবে না!' 
+        const confirmMsg = action === 'wipe'
+            ? 'সব union, ward, gram, household, institution, school, citizen, SMS data delete হবে। শুধু super admin থাকবে। চালাবেন?'
             : action === 'repair_migration_links'
                 ? 'নিরাপদ migration repair চালানো হবে। শুধু নিশ্চিতভাবে মেলানো data update হবে। চালাবেন?'
                 : 'সিস্টেম এখন ৪টি ইউনিয়ন, ২৪টি ওয়ার্ড এবং ৪৮টি গ্রাম তৈরি করবে। এতে কিছুক্ষণ সময় লাগতে পারে। আপনি কি নিশ্চিত?';
         
         if (!confirm(confirmMsg)) return;
+        let confirmation = null;
+        if (action === 'wipe') {
+            confirmation = window.prompt('Final confirmation লিখুন: DELETE_ALL_EXCEPT_SUPER_ADMIN');
+            if (confirmation !== 'DELETE_ALL_EXCEPT_SUPER_ADMIN') {
+                toast.error('Confirmation match করেনি, reset cancel হয়েছে।');
+                return;
+            }
+        }
 
         setLoadingAction(action);
         const loadingToast = toast.loading(
@@ -56,7 +102,7 @@ export default function MaintenancePage() {
             const response = await authenticatedFetch('/api/admin/maintenance', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action })
+                body: JSON.stringify({ action, confirmation })
             });
 
             const result = await response.json();
@@ -164,8 +210,8 @@ export default function MaintenancePage() {
                         <div className="flex items-center gap-2 text-teal-300 font-black text-xs uppercase tracking-widest mb-2">
                             <Gauge size={14} /> Production Readiness
                         </div>
-                        <h2 className="text-2xl md:text-3xl font-black">System readiness à¦à¦• à¦œà¦¾à§Ÿà¦—à¦¾à§Ÿ</h2>
-                        <p className="mt-2 text-sm font-bold text-slate-400">Household, SMS business, citizen workload à¦“ institution portal gap à¦à¦–à¦¾à¦¨à§‡ à¦¦à§‡à¦–à¦¾ à¦¯à¦¾à¦¬à§‡à¥¤</p>
+                        <h2 className="text-2xl md:text-3xl font-black">System readiness এক জায়গায়</h2>
+                        <p className="mt-2 text-sm font-bold text-slate-400">Household, SMS business, citizen workload ও institution portal gap এখানে দেখা যাবে।</p>
                     </div>
                     <span className={`inline-flex w-fit items-center gap-2 rounded-full px-4 py-2 text-xs font-black uppercase tracking-widest ${
                         readiness?.status === 'ready' ? 'bg-emerald-400/15 text-emerald-200' : 'bg-amber-400/15 text-amber-200'
@@ -573,6 +619,105 @@ export default function MaintenancePage() {
                 />
             </section>
 
+            <section className="overflow-hidden rounded-[36px] border border-slate-200 bg-white shadow-sm">
+                <div className="grid gap-6 border-b border-slate-100 p-6 md:grid-cols-[1fr_auto] md:items-center md:p-8">
+                    <div>
+                        <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-indigo-600">
+                            <Database size={15} /> Demo Data Lab
+                        </div>
+                        <h2 className="mt-3 text-2xl font-black text-slate-900 md:text-3xl">এক click-এ পুরো system test করুন</h2>
+                        <p className="mt-2 max-w-3xl text-sm font-bold leading-7 text-slate-500">
+                            Household, citizen service, market, lost-found, business, school, SMS এবং governance module-এ linked sample data তৈরি হবে।
+                            Cleanup শুধু registry-তে থাকা generated row মুছবে।
+                        </p>
+                    </div>
+                    <span className={`w-fit rounded-full px-4 py-2 text-xs font-black ${
+                        demoStatus?.activeBatch ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'
+                    }`}>
+                        {demoStatus?.activeBatch ? 'Demo active' : 'No active demo'}
+                    </span>
+                </div>
+
+                {demoStatus?.setupRequired && (
+                    <div className="m-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-black text-amber-800">
+                        প্রথমে Supabase SQL Editor-এ <code>database/73_demo_data_registry.sql</code> চালান।
+                    </div>
+                )}
+
+                {demoStatus?.activeBatch && (
+                    <div className="m-6 rounded-3xl border border-emerald-200 bg-emerald-50/70 p-5">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <p className="font-black text-emerald-900">{demoStatus.activeBatch.batch_key}</p>
+                                <p className="mt-1 text-xs font-bold text-emerald-700">
+                                    মোট {demoStatus.activeBatch.summary?.created || 0}টি demo row · Test phone: {demoStatus.activeBatch.summary?.demoPhone || '01700009999'}
+                                </p>
+                            </div>
+                            <span className="w-fit rounded-full bg-white px-3 py-1 text-xs font-black text-emerald-700">
+                                {demoStatus.activeBatch.status}
+                            </span>
+                        </div>
+                        <div className="mt-4 flex flex-wrap gap-2">
+                            {Object.entries(demoStatus.activeBatch.summary?.modules || {}).map(([key, item]) => (
+                                <span key={key} title={item.reason || ''} className={`rounded-full px-3 py-1.5 text-[10px] font-black ${
+                                    item.status === 'created' || item.status === 'ready'
+                                        ? 'bg-white text-emerald-700'
+                                        : item.status === 'skipped'
+                                            ? 'bg-amber-100 text-amber-700'
+                                            : 'bg-rose-100 text-rose-700'
+                                }`}>
+                                    {key}: {item.count ?? item.status}
+                                </span>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                <div className="grid gap-4 p-6 md:grid-cols-3 md:p-8">
+                    <button
+                        type="button"
+                        onClick={() => handleDemoAction('seed')}
+                        disabled={loadingAction !== null || demoStatus?.setupRequired || Boolean(demoStatus?.activeBatch)}
+                        className="flex min-h-28 items-center justify-between gap-4 rounded-3xl bg-indigo-600 p-5 text-left text-white shadow-lg shadow-indigo-100 transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-45"
+                    >
+                        <div>
+                            <p className="text-lg font-black">সব Demo Data যোগ করুন</p>
+                            <p className="mt-1 text-xs font-bold text-indigo-100">সব প্রধান functionality-র linked sample content</p>
+                        </div>
+                        {loadingAction === 'demo-seed' ? <Loader2 className="animate-spin" /> : <Zap size={25} />}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => handleDemoAction('reset')}
+                        disabled={loadingAction !== null || demoStatus?.setupRequired}
+                        className="flex min-h-28 items-center justify-between gap-4 rounded-3xl border-2 border-teal-200 bg-teal-50 p-5 text-left text-teal-800 transition hover:border-teal-300 hover:bg-teal-100 disabled:cursor-not-allowed disabled:opacity-45"
+                    >
+                        <div>
+                            <p className="text-lg font-black">Reset করে Demo দিন</p>
+                            <p className="mt-1 text-xs font-bold text-teal-600">Active demo থাকলে remove, তারপর নতুন demo seed</p>
+                        </div>
+                        {loadingAction === 'demo-reset' ? <Loader2 className="animate-spin" /> : <RefreshCw size={25} />}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => handleDemoAction('remove')}
+                        disabled={loadingAction !== null || !demoStatus?.activeBatch}
+                        className="flex min-h-28 items-center justify-between gap-4 rounded-3xl border-2 border-rose-200 bg-rose-50 p-5 text-left text-rose-700 transition hover:border-rose-300 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-45"
+                    >
+                        <div>
+                            <p className="text-lg font-black">সব Demo Data Remove করুন</p>
+                            <p className="mt-1 text-xs font-bold text-rose-500">Real data untouched, exact registered rows only</p>
+                        </div>
+                        {loadingAction === 'demo-remove' ? <Loader2 className="animate-spin" /> : <Trash2 size={25} />}
+                    </button>
+                </div>
+                {!demoStatus?.activeBatch && !demoStatus?.setupRequired && (
+                    <p className="-mt-4 px-8 pb-8 text-xs font-bold text-slate-500">
+                        Remove button disabled থাকলে active registered demo নেই। নতুন demo দিতে “Reset করে Demo দিন” বা “সব Demo Data যোগ করুন” ব্যবহার করুন।
+                    </p>
+                )}
+            </section>
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Seed Tool */}
                 <section className="bg-white rounded-[40px] p-10 border border-slate-200 shadow-sm flex flex-col h-full">
@@ -611,8 +756,8 @@ export default function MaintenancePage() {
                             <Trash2 size={28} />
                         </div>
                         <div>
-                            <h3 className="text-xl font-black text-slate-800">সিস্টেম ক্লিনআপ</h3>
-                            <p className="text-sm font-bold text-slate-400 mt-1">সব টেস্ট ডাটা মুছে দিয়ে ফ্রেশ স্টার্ট করুন</p>
+                            <h3 className="text-xl font-black text-slate-800">Full Reset</h3>
+                            <p className="text-sm font-bold text-slate-400 mt-1">শুধু super admin রেখে সব data delete করুন</p>
                         </div>
                     </div>
 
@@ -622,7 +767,7 @@ export default function MaintenancePage() {
                             <div>
                                 <p className="font-black text-sm uppercase mb-1">সতর্কবাণী</p>
                                 <p className="text-xs font-bold leading-relaxed opacity-80">
-                                    এটি ডিলিট করলে সব টেস্ট ইউনিয়ন, ওয়ার্ড, গ্রাম এবং সংশ্লিষ্ট সকল হাউসহোল্ড ও সদস্যদের ডাটা পার্মানেন্টলি মুছে যাবে। এটি রিয়েল ডাটার ওপর প্রভাব ফেলবে না (শুধু TEST- প্রিফিক্স যুক্ত ডাটা)।
+                                    এটি চালালে union, ward, gram, household, resident, institution, school/college/madrasha, citizen request, SMS, market, donation, lost-found সহ application data delete হবে। শুধু super admin auth/profile থাকবে। এটি undo করা যাবে না।
                                 </p>
                             </div>
                         </div>
@@ -634,7 +779,7 @@ export default function MaintenancePage() {
                         className="w-full py-5 border-2 border-rose-200 text-rose-600 rounded-3xl font-black flex items-center justify-center gap-3 hover:bg-rose-600 hover:text-white transition-all disabled:opacity-50"
                     >
                         {loadingAction === 'wipe' ? <Loader2 className="animate-spin" /> : <Trash2 size={20} />}
-                        সব টেস্ট ডাটা মুছুন (Wipe)
+                        সব Data Delete করুন
                     </button>
                 </section>
             </div>

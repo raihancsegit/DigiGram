@@ -8,7 +8,7 @@ import {
     MapPin, Home, Sparkles, Building2, School, BookOpen, Clock, Heart, MoveRight, 
     Newspaper, Phone, Droplets, Users, ArrowLeft, ShieldCheck, UserCircle,
     Store, Sprout, AlertCircle, PhoneCall, Shield, Megaphone, Activity, UserCheck, BellRing, LogIn,
-    Search, Mic, MicOff, Send, Loader2, SearchX, ArrowRight
+    Search, Mic, MicOff, Send, Loader2, SearchX, ArrowRight, Table2, LayoutGrid, Eye, Filter, X
 } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
 import { useRef, useEffect } from 'react';
@@ -57,6 +57,91 @@ export default function VillagePortalClient({ ctx, ward, village }) {
     const isMyVillage = isAuthenticated && 
         user?.role === 'volunteer' && 
         user?.access_scope_id === village.id;
+    const canViewPrivateHouseholds = isAuthenticated && [
+        'super_admin',
+        'admin',
+        'chairman',
+        'member',
+        'secretary',
+        'officer',
+        'union_admin',
+        'ward_admin',
+        'volunteer'
+    ].includes(user?.role);
+    const [publicBloodData, setPublicBloodData] = useState({ donors: [], bloodGroups: {} });
+    const [bloodSearch, setBloodSearch] = useState('');
+    const [bloodGroupFilter, setBloodGroupFilter] = useState('all');
+    const [bloodCurrentPage, setBloodCurrentPage] = useState(1);
+    const [bloodPageSize, setBloodPageSize] = useState(8);
+
+    useEffect(() => {
+        let mounted = true;
+
+        async function loadPublicBloodData() {
+            try {
+                const response = await fetch(`/api/public/households?villageId=${encodeURIComponent(village.id)}`, { cache: 'no-store' });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || 'Blood donor list load failed');
+                if (mounted) {
+                    setPublicBloodData({
+                        donors: result.data?.donors || [],
+                        bloodGroups: result.data?.blood_groups || {}
+                    });
+                }
+            } catch (err) {
+                console.error('Public blood donor list failed:', err);
+            }
+        }
+
+        if (village?.id) loadPublicBloodData();
+
+        return () => {
+            mounted = false;
+        };
+    }, [village?.id]);
+    const bloodGroupBreakdown = Object.keys(stats.blood_groups || {}).length > 0
+        ? stats.blood_groups
+        : publicBloodData.bloodGroups;
+    const bloodSummaryPlaceholders = Object.entries(bloodGroupBreakdown || {}).flatMap(([group, count]) => (
+        Array.from({ length: Number(count || 0) }, (_, index) => ({
+            id: `summary-${group}-${index}`,
+            name: 'নাম আপডেট বাকি',
+            group,
+            house_no: null
+        }))
+    ));
+    const displayBloodDonors = villageBloodDonors.length > 0
+        ? villageBloodDonors
+        : (publicBloodData.donors.length > 0 ? publicBloodData.donors : bloodSummaryPlaceholders);
+    const bloodGroups = useMemo(() => (
+        Object.keys(bloodGroupBreakdown || {}).length > 0
+            ? Object.keys(bloodGroupBreakdown || {})
+            : Array.from(new Set(displayBloodDonors.map((donor) => donor.group).filter(Boolean)))
+    ), [bloodGroupBreakdown, displayBloodDonors]);
+    const filteredBloodDonors = useMemo(() => {
+        const term = bloodSearch.trim().toLowerCase();
+
+        return displayBloodDonors.filter((donor) => {
+            const matchesGroup = bloodGroupFilter === 'all' || donor.group === bloodGroupFilter;
+            const haystack = [
+                donor.name,
+                donor.group,
+                donor.phone,
+                donor.house_no
+            ].filter(Boolean).join(' ').toLowerCase();
+            const matchesSearch = !term || haystack.includes(term);
+
+            return matchesGroup && matchesSearch;
+        });
+    }, [bloodGroupFilter, bloodSearch, displayBloodDonors]);
+    const bloodTotalPages = Math.max(1, Math.ceil(filteredBloodDonors.length / bloodPageSize));
+    const safeBloodPage = Math.min(bloodCurrentPage, bloodTotalPages);
+    const bloodStartIndex = (safeBloodPage - 1) * bloodPageSize;
+    const visibleBloodDonors = filteredBloodDonors.slice(bloodStartIndex, bloodStartIndex + bloodPageSize);
+
+    useEffect(() => {
+        setBloodCurrentPage(1);
+    }, [bloodGroupFilter, bloodSearch, bloodPageSize]);
 
     // Dynamic Institutions from DB
     // stats is already defined above as either real_stats or fallback stats
@@ -615,64 +700,166 @@ export default function VillagePortalClient({ ctx, ward, village }) {
 
                         {/* Village Blood Donors */}
                         <div className="p-6 sm:p-8 rounded-[32px] bg-white border border-slate-200/60 shadow-sm overflow-hidden">
-                            <h2 className="text-xl font-black text-slate-800 mb-6 flex items-center gap-2">
-                                <span className="p-2 rounded-xl bg-rose-50 text-rose-500">
-                                    <Droplets size={20} />
-                                </span>
-                                গ্রামের রক্তদাতা
-                            </h2>
+                            <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                <h2 className="text-xl font-black text-slate-800 flex items-center gap-2">
+                                    <span className="p-2 rounded-xl bg-rose-50 text-rose-500">
+                                        <Droplets size={20} />
+                                    </span>
+                                    গ্রামের রক্তদাতা
+                                </h2>
+                                <div className="flex flex-wrap items-center gap-2 text-xs font-black text-slate-500">
+                                    <span className="rounded-full bg-slate-50 px-3 py-1.5">
+                                        মোট {toBnDigits(String(filteredBloodDonors.length))} জন
+                                    </span>
+                                    <span className="rounded-full bg-slate-50 px-3 py-1.5">
+                                        পৃষ্ঠা {toBnDigits(String(safeBloodPage))} / {toBnDigits(String(bloodTotalPages))}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="mb-5 rounded-3xl border border-rose-100 bg-rose-50/40 p-4">
+                                <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-center">
+                                    <label className="relative block">
+                                        <Search className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-rose-400" size={18} />
+                                        <input
+                                            type="search"
+                                            value={bloodSearch}
+                                            onChange={(event) => setBloodSearch(event.target.value)}
+                                            placeholder="রক্তদাতার নাম, গ্রুপ, ফোন বা হোল্ডিং লিখুন"
+                                            className="h-12 w-full rounded-2xl border border-rose-100 bg-white pl-11 pr-4 text-sm font-bold text-slate-800 outline-none transition focus:border-rose-300 focus:ring-4 focus:ring-rose-100"
+                                        />
+                                    </label>
+                                    <div className="flex flex-wrap gap-2">
+                                        {[8, 16, 32].map((size) => (
+                                            <button
+                                                key={size}
+                                                type="button"
+                                                onClick={() => setBloodPageSize(size)}
+                                                className={`h-10 rounded-2xl px-4 text-xs font-black transition ${
+                                                    bloodPageSize === size
+                                                        ? 'bg-rose-600 text-white shadow-lg shadow-rose-200'
+                                                        : 'bg-white text-slate-600 hover:bg-rose-100'
+                                                }`}
+                                            >
+                                                {toBnDigits(String(size))} করে
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
                             
                             {/* Blood Group Breakdown */}
-                            {stats.blood_groups && Object.keys(stats.blood_groups).length > 0 && (
+                            {bloodGroups.length > 0 && (
                                 <div className="flex flex-wrap gap-2 mb-6">
-                                    {Object.entries(stats.blood_groups).map(([group, count]) => (
-                                        <div key={group} className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-rose-50 border border-rose-100">
-                                            <span className="text-sm font-black text-rose-600">{group}</span>
-                                            <span className="text-xs font-bold text-rose-500 bg-white px-2 py-0.5 rounded-md shadow-sm">
-                                                {toBnDigits(count.toString())} জন
-                                            </span>
-                                        </div>
-                                    ))}
+                                    <button
+                                        type="button"
+                                        onClick={() => setBloodGroupFilter('all')}
+                                        className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-sm font-black transition ${
+                                            bloodGroupFilter === 'all'
+                                                ? 'bg-rose-600 text-white border-rose-600 shadow-lg shadow-rose-100'
+                                                : 'bg-white text-rose-600 border-rose-100 hover:bg-rose-50'
+                                        }`}
+                                    >
+                                        সব গ্রুপ
+                                        <span className="text-xs font-bold bg-white/20 px-2 py-0.5 rounded-md">
+                                            {toBnDigits(String(displayBloodDonors.length))}
+                                        </span>
+                                    </button>
+                                    {bloodGroups.map((group) => {
+                                        const count = bloodGroupBreakdown?.[group] ?? displayBloodDonors.filter((donor) => donor.group === group).length;
+
+                                        return (
+                                            <button
+                                                key={group}
+                                                type="button"
+                                                onClick={() => setBloodGroupFilter(group)}
+                                                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition ${
+                                                    bloodGroupFilter === group
+                                                        ? 'bg-rose-600 text-white border-rose-600 shadow-lg shadow-rose-100'
+                                                        : 'bg-rose-50 text-rose-600 border-rose-100 hover:bg-rose-100'
+                                                }`}
+                                            >
+                                                <span className={`text-sm font-black ${bloodGroupFilter === group ? 'text-white' : 'text-rose-600'}`}>{group}</span>
+                                                <span className="text-xs font-bold text-rose-500 bg-white px-2 py-0.5 rounded-md shadow-sm">
+                                                    {toBnDigits(String(count))} জন
+                                                </span>
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             )}
 
-                            {villageBloodDonors.length === 0 ? (
+                            {filteredBloodDonors.length === 0 ? (
                                 <div className="text-center py-12 rounded-2xl bg-rose-50/30 border-2 border-dashed border-rose-100">
                                     <Droplets className="mx-auto text-rose-200 mb-3" size={40} />
-                                    <p className="font-bold text-slate-400 text-sm italic">এই গ্রামে এখনো কোনো রক্তদাতা তালিকাভুক্ত হয়নি</p>
+                                    <p className="font-bold text-slate-400 text-sm italic">এই সার্চ বা ফিল্টারে কোনো রক্তদাতা পাওয়া যায়নি</p>
                                 </div>
                             ) : (
-                                <div className="overflow-x-auto -mx-6 sm:mx-0">
-                                    <table className="w-full text-left border-collapse">
-                                        <thead>
-                                            <tr className="bg-slate-50 text-[10px] font-black uppercase text-slate-400 tracking-widest">
-                                                <th className="p-4 border-b border-slate-100 first:pl-6">রক্তদাতা</th>
-                                                <th className="p-4 border-b border-slate-100">গ্রুপ</th>
-                                                <th className="p-4 border-b border-slate-100 last:pr-6 text-right">যোগাযোগ</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-50">
-                                            {villageBloodDonors.map((donor, idx) => (
-                                                <tr key={donor.id || idx} className="hover:bg-slate-50 transition-colors">
-                                                    <td className="p-4 pl-6">
-                                                        <p className="font-black text-slate-800 text-sm">{donor.name}</p>
-                                                    </td>
-                                                    <td className="p-4">
-                                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-600 font-black text-xs border border-rose-100">
-                                                            {donor.group}
-                                                        </span>
-                                                    </td>
-                                                    <td className="p-4 pr-6 text-right">
-                                                        <a href={`tel:${donor.phone}`} className="inline-flex items-center gap-2 text-teal-600 hover:text-teal-700 font-black text-sm">
-                                                            <Phone size={14} />
-                                                            {toBnDigits(donor.phone)}
-                                                        </a>
-                                                    </td>
+                                <>
+                                    <div className="overflow-x-auto -mx-6 sm:mx-0">
+                                        <table className="w-full text-left border-collapse">
+                                            <thead>
+                                                <tr className="bg-slate-50 text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                                                    <th className="p-4 border-b border-slate-100 first:pl-6">রক্তদাতা</th>
+                                                    <th className="p-4 border-b border-slate-100">গ্রুপ</th>
+                                                    <th className="p-4 border-b border-slate-100 last:pr-6 text-right">যোগাযোগ</th>
                                                 </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-50">
+                                                {visibleBloodDonors.map((donor, idx) => (
+                                                    <tr key={donor.id || `${donor.group}-${bloodStartIndex + idx}`} className="hover:bg-slate-50 transition-colors">
+                                                        <td className="p-4 pl-6">
+                                                            <p className="font-black text-slate-800 text-sm">{donor.name}</p>
+                                                        </td>
+                                                        <td className="p-4">
+                                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-600 font-black text-xs border border-rose-100">
+                                                                {donor.group}
+                                                            </span>
+                                                        </td>
+                                                        <td className="p-4 pr-6 text-right">
+                                                            {donor.phone ? (
+                                                                <a href={`tel:${donor.phone}`} className="inline-flex items-center gap-2 text-teal-600 hover:text-teal-700 font-black text-sm">
+                                                                    <Phone size={14} />
+                                                                    {toBnDigits(donor.phone)}
+                                                                </a>
+                                                            ) : (
+                                                                <span className="inline-flex items-center gap-2 rounded-full bg-slate-50 px-3 py-1.5 text-xs font-black text-slate-500">
+                                                                    <Home size={14} />
+                                                                    {donor.house_no ? `হোল্ডিং ${toBnDigits(String(donor.house_no))}` : 'যোগাযোগের জন্য লগইন'}
+                                                                </span>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div className="mt-5 flex flex-col gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
+                                        <p className="text-xs font-black text-slate-400">
+                                            {toBnDigits(String(bloodStartIndex + 1))}-{toBnDigits(String(Math.min(bloodStartIndex + bloodPageSize, filteredBloodDonors.length)))} দেখানো হচ্ছে
+                                        </p>
+                                        <div className="flex gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => setBloodCurrentPage((page) => Math.max(1, page - 1))}
+                                                disabled={safeBloodPage === 1}
+                                                className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 px-4 py-2 text-xs font-black text-slate-600 disabled:cursor-not-allowed disabled:opacity-40"
+                                            >
+                                                <ArrowLeft size={16} />
+                                                আগের পৃষ্ঠা
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setBloodCurrentPage((page) => Math.min(bloodTotalPages, page + 1))}
+                                                disabled={safeBloodPage === bloodTotalPages}
+                                                className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 px-4 py-2 text-xs font-black text-slate-600 disabled:cursor-not-allowed disabled:opacity-40"
+                                            >
+                                                পরের পৃষ্ঠা
+                                                <ArrowRight size={16} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                </>
                             )}
                         </div>
 
@@ -834,11 +1021,15 @@ export default function VillagePortalClient({ ctx, ward, village }) {
 
                     {/* Village Households - Full Width Section */}
                     <div className="lg:col-span-12 mt-12">
-                        <WardHouseholdManager 
-                            wardId={ward.id} 
-                            assignedVillage={village}
-                            volunteerMode={user?.role === 'volunteer'} 
-                        />
+                        {canViewPrivateHouseholds ? (
+                            <WardHouseholdManager
+                                wardId={ward.id}
+                                assignedVillage={village}
+                                volunteerMode={user?.role === 'volunteer'}
+                            />
+                        ) : (
+                            <PublicHouseholdSummary villageId={village.id} onLogin={() => setIsLoginModalOpen(true)} />
+                        )}
                     </div>
                 </div>
 
@@ -853,5 +1044,374 @@ export default function VillagePortalClient({ ctx, ward, village }) {
             locationName={`${vName}, ${union.name}`}
         />
         </div>
+    );
+}
+
+function PublicHouseholdSummary({ villageId, onLogin }) {
+    const [loading, setLoading] = useState(true);
+    const [households, setHouseholds] = useState([]);
+    const [error, setError] = useState('');
+    const [houseSearch, setHouseSearch] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(12);
+    const [activeFilter, setActiveFilter] = useState('all');
+    const [viewMode, setViewMode] = useState('card');
+    const [selectedHousehold, setSelectedHousehold] = useState(null);
+
+    useEffect(() => {
+        let mounted = true;
+
+        async function loadPublicHouseholds() {
+            try {
+                setLoading(true);
+                setError('');
+                const response = await fetch(`/api/public/households?villageId=${encodeURIComponent(villageId)}`, { cache: 'no-store' });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || 'Household list load failed');
+                if (mounted) setHouseholds(result.data?.households || []);
+            } catch (err) {
+                console.error('Public household summary failed:', err);
+                if (mounted) setError(err.message || 'Household list load failed');
+            } finally {
+                if (mounted) setLoading(false);
+            }
+        }
+
+        if (villageId) loadPublicHouseholds();
+
+        return () => {
+            mounted = false;
+        };
+    }, [villageId]);
+
+    const totals = households.reduce((acc, household) => {
+        const stats = household.stats || {};
+        return {
+            homes: acc.homes + 1,
+            members: acc.members + (stats.total_members || 0),
+            voters: acc.voters + (stats.voters || 0),
+            blood: acc.blood + (stats.blood_donors || 0)
+        };
+    }, { homes: 0, members: 0, voters: 0, blood: 0 });
+
+    const filteredHouseholds = useMemo(() => {
+        const query = houseSearch.trim().toLowerCase();
+        let next = households;
+
+        if (activeFilter === 'incomplete') {
+            next = next.filter((household) => !household.water_source || !household.latrine_status || !household.electricity_meter);
+        } else if (activeFilter === 'blood') {
+            next = next.filter((household) => Number(household.stats?.blood_donors || 0) > 0);
+        } else if (activeFilter === 'voter') {
+            next = next.filter((household) => Number(household.stats?.voters || 0) > 0);
+        } else if (activeFilter === 'large') {
+            next = next.filter((household) => Number(household.stats?.total_members || 0) >= 5);
+        }
+
+        if (!query) return next;
+
+        return next.filter((household) => (
+            String(household.owner_name || '').toLowerCase().includes(query) ||
+            String(household.house_no || '').toLowerCase().includes(query)
+        ));
+    }, [activeFilter, houseSearch, households]);
+
+    const totalPages = Math.max(1, Math.ceil(filteredHouseholds.length / pageSize));
+    const safePage = Math.min(currentPage, totalPages);
+    const startIndex = (safePage - 1) * pageSize;
+    const visibleHouseholds = filteredHouseholds.slice(startIndex, startIndex + pageSize);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [activeFilter, houseSearch, pageSize]);
+
+    const filterOptions = [
+        { key: 'all', label: 'সব বাড়ি' },
+        { key: 'incomplete', label: 'তথ্য বাকি' },
+        { key: 'blood', label: 'রক্তদাতা আছে' },
+        { key: 'voter', label: 'ভোটার আছে' },
+        { key: 'large', label: 'বড় পরিবার' }
+    ];
+
+    return (
+        <section className="overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-xl shadow-slate-200/50">
+            <div className="flex flex-col gap-5 border-b border-slate-100 p-6 md:flex-row md:items-center md:justify-between md:p-8">
+                <div>
+                    <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-teal-50 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-teal-700">
+                        <ShieldCheck size={14} />
+                        Public summary
+                    </div>
+                    <h2 className="text-2xl font-black text-slate-900">বাড়ির তালিকা</h2>
+                    <p className="mt-2 max-w-2xl text-sm font-bold leading-relaxed text-slate-500">
+                        লগইন ছাড়া শুধু নিরাপদ সারাংশ দেখা যাবে। মোবাইল, NID, জন্ম সনদ ও ডকুমেন্টস দেখতে অনুমোদিত লগইন প্রয়োজন।
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    onClick={onLogin}
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white shadow-lg shadow-slate-200 transition-all hover:bg-teal-700 active:scale-95"
+                >
+                    <LogIn size={16} />
+                    অফিসার লগইন
+                </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 border-b border-slate-100 p-4 md:grid-cols-4 md:p-6">
+                {[
+                    ['মোট বাড়ি', totals.homes, Home],
+                    ['জনসংখ্যা', totals.members, Users],
+                    ['ভোটার', totals.voters, UserCheck],
+                    ['রক্তদাতা', totals.blood, Droplets]
+                ].map(([label, value, Icon]) => (
+                    <div key={label} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                        <Icon size={18} className="mb-3 text-teal-600" />
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{label}</p>
+                        <p className="mt-1 text-2xl font-black text-slate-900">{toBnDigits(String(value || 0))}</p>
+                    </div>
+                ))}
+            </div>
+
+            <div className="p-4 md:p-6">
+                {loading ? (
+                    <div className="flex items-center justify-center gap-3 rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-10 text-sm font-black text-slate-500">
+                        <Loader2 size={18} className="animate-spin text-teal-600" />
+                        বাড়ির তালিকা লোড হচ্ছে
+                    </div>
+                ) : error ? (
+                    <div className="rounded-3xl border border-rose-100 bg-rose-50 p-8 text-center">
+                        <SearchX size={28} className="mx-auto mb-3 text-rose-500" />
+                        <p className="text-sm font-black text-rose-700">{error}</p>
+                    </div>
+                ) : households.length === 0 ? (
+                    <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-10 text-center">
+                        <Home size={30} className="mx-auto mb-3 text-slate-300" />
+                        <p className="text-sm font-black text-slate-500">এই গ্রামে এখনো বাড়ির ডাটা পাওয়া যায়নি।</p>
+                    </div>
+                ) : (
+                    <div className="space-y-5">
+                        <div className="rounded-3xl border border-slate-100 bg-slate-50 p-4">
+                            <p className="mb-3 text-xs font-black uppercase tracking-widest text-slate-500">বাড়ি খুঁজুন</p>
+                            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                                <div className="relative flex-1">
+                                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                    <input
+                                        value={houseSearch}
+                                        onChange={(event) => setHouseSearch(event.target.value)}
+                                        className="h-12 w-full rounded-2xl border border-slate-200 bg-white pl-11 pr-4 text-sm font-bold text-slate-800 outline-none transition focus:border-teal-300 focus:ring-4 focus:ring-teal-50"
+                                        placeholder="মালিকের নাম বা হোল্ডিং নম্বর লিখুন"
+                                    />
+                                </div>
+                                <div className="flex flex-wrap items-center gap-2">
+                                    {[12, 24, 48].map((size) => (
+                                        <button
+                                            key={size}
+                                            type="button"
+                                            onClick={() => setPageSize(size)}
+                                            className={`h-10 rounded-xl px-4 text-xs font-black transition ${pageSize === size ? 'bg-slate-950 text-white' : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-100'}`}
+                                        >
+                                            {toBnDigits(String(size))} করে
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="mt-3 flex flex-col gap-2 text-xs font-black text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+                                <span>মোট {toBnDigits(String(filteredHouseholds.length))}টি বাড়ি পাওয়া গেছে</span>
+                                <span>পৃষ্ঠা {toBnDigits(String(safePage))} / {toBnDigits(String(totalPages))}</span>
+                            </div>
+                            <div className="mt-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <span className="inline-flex h-9 items-center gap-1 rounded-xl bg-white px-3 text-xs font-black text-slate-500">
+                                        <Filter size={14} />
+                                        ফিল্টার
+                                    </span>
+                                    {filterOptions.map((option) => (
+                                        <button
+                                            key={option.key}
+                                            type="button"
+                                            onClick={() => setActiveFilter(option.key)}
+                                            className={`h-9 rounded-xl px-3 text-xs font-black transition ${activeFilter === option.key ? 'bg-teal-600 text-white' : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-100'}`}
+                                        >
+                                            {option.label}
+                                        </button>
+                                    ))}
+                                </div>
+                                <div className="grid grid-cols-2 rounded-2xl border border-slate-200 bg-white p-1">
+                                    <button
+                                        type="button"
+                                        onClick={() => setViewMode('card')}
+                                        className={`inline-flex h-9 items-center justify-center gap-2 rounded-xl px-3 text-xs font-black ${viewMode === 'card' ? 'bg-slate-950 text-white' : 'text-slate-500'}`}
+                                    >
+                                        <LayoutGrid size={14} />
+                                        কার্ড
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setViewMode('table')}
+                                        className={`inline-flex h-9 items-center justify-center gap-2 rounded-xl px-3 text-xs font-black ${viewMode === 'table' ? 'bg-slate-950 text-white' : 'text-slate-500'}`}
+                                    >
+                                        <Table2 size={14} />
+                                        টেবিল
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {filteredHouseholds.length === 0 ? (
+                            <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-10 text-center">
+                                <SearchX size={30} className="mx-auto mb-3 text-slate-300" />
+                                <p className="text-sm font-black text-slate-500">এই নামে বা হোল্ডিং নম্বরে কোনো বাড়ি পাওয়া যায়নি।</p>
+                            </div>
+                        ) : (
+                            <>
+                    {viewMode === 'card' ? (
+                        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                            {visibleHouseholds.map((household) => {
+                                const stats = household.stats || {};
+                                return (
+                                    <article key={household.id} className="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm transition-all hover:border-teal-100 hover:shadow-md">
+                                        <div className="mb-5 flex items-start justify-between gap-3">
+                                            <div className="min-w-0">
+                                                <h3 className="break-words text-lg font-black text-slate-900">{household.owner_name || 'নাম নেই'}</h3>
+                                                <p className="mt-1 text-xs font-bold text-slate-400">হোল্ডিং: {toBnDigits(String(household.house_no || '-'))}</p>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => setSelectedHousehold(household)}
+                                                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-teal-50 text-teal-600 transition hover:bg-teal-600 hover:text-white"
+                                                aria-label="পরিবার সারাংশ দেখুন"
+                                            >
+                                                <Eye size={21} />
+                                            </button>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-2 text-xs font-black">
+                                            <span className="rounded-2xl bg-slate-50 px-3 py-2 text-slate-600">সদস্য {toBnDigits(String(stats.total_members || 0))}</span>
+                                            <span className="rounded-2xl bg-slate-50 px-3 py-2 text-slate-600">ভোটার {toBnDigits(String(stats.voters || 0))}</span>
+                                            <span className="rounded-2xl bg-slate-50 px-3 py-2 text-slate-600">পুরুষ {toBnDigits(String(stats.males || 0))}</span>
+                                            <span className="rounded-2xl bg-slate-50 px-3 py-2 text-slate-600">মহিলা {toBnDigits(String(stats.females || 0))}</span>
+                                        </div>
+                                    </article>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <div className="overflow-hidden rounded-3xl border border-slate-100 bg-white">
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full text-left text-sm">
+                                    <thead className="bg-slate-50 text-[11px] font-black uppercase tracking-widest text-slate-400">
+                                        <tr>
+                                            <th className="px-4 py-3">মালিক</th>
+                                            <th className="px-4 py-3">হোল্ডিং</th>
+                                            <th className="px-4 py-3">সদস্য</th>
+                                            <th className="px-4 py-3">ভোটার</th>
+                                            <th className="px-4 py-3">রক্তদাতা</th>
+                                            <th className="px-4 py-3 text-right">অ্যাকশন</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {visibleHouseholds.map((household) => {
+                                            const stats = household.stats || {};
+                                            return (
+                                                <tr key={household.id} className="align-middle hover:bg-teal-50/50">
+                                                    <td className="px-4 py-3 font-black text-slate-900">{household.owner_name || 'নাম নেই'}</td>
+                                                    <td className="px-4 py-3 font-bold text-slate-500">{toBnDigits(String(household.house_no || '-'))}</td>
+                                                    <td className="px-4 py-3 font-bold text-slate-600">{toBnDigits(String(stats.total_members || 0))}</td>
+                                                    <td className="px-4 py-3 font-bold text-slate-600">{toBnDigits(String(stats.voters || 0))}</td>
+                                                    <td className="px-4 py-3 font-bold text-slate-600">{toBnDigits(String(stats.blood_donors || 0))}</td>
+                                                    <td className="px-4 py-3 text-right">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setSelectedHousehold(household)}
+                                                            className="inline-flex h-9 items-center gap-2 rounded-xl bg-slate-950 px-3 text-xs font-black text-white hover:bg-teal-700"
+                                                        >
+                                                            <Eye size={14} />
+                                                            দেখুন
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+
+                                <div className="flex flex-col gap-3 rounded-3xl border border-slate-100 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
+                                    <button
+                                        type="button"
+                                        onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                                        disabled={safePage <= 1}
+                                        className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 px-4 text-sm font-black text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                                    >
+                                        <ArrowLeft size={16} />
+                                        আগের পৃষ্ঠা
+                                    </button>
+                                    <p className="text-center text-xs font-black text-slate-400">
+                                        {toBnDigits(String(startIndex + 1))}-{toBnDigits(String(Math.min(startIndex + pageSize, filteredHouseholds.length)))} দেখানো হচ্ছে
+                                    </p>
+                                    <button
+                                        type="button"
+                                        onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                                        disabled={safePage >= totalPages}
+                                        className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 text-sm font-black text-white transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-40"
+                                    >
+                                        পরের পৃষ্ঠা
+                                        <ArrowRight size={16} />
+                                    </button>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                )}
+            </div>
+            {selectedHousehold && (
+                <div className="fixed bottom-0 left-0 right-0 top-[96px] z-[80] flex items-end justify-center overflow-y-auto bg-slate-950/60 p-3 backdrop-blur-sm md:top-[118px] sm:items-start sm:p-5">
+                    <div className="my-auto max-h-[calc(100dvh-120px)] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-5 shadow-2xl md:max-h-[calc(100dvh-150px)] sm:p-6">
+                        <div className="mb-5 flex items-start justify-between gap-4">
+                            <div>
+                                <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-teal-600">Family summary</p>
+                                <h3 className="text-2xl font-black text-slate-950">{selectedHousehold.owner_name || 'নাম নেই'}</h3>
+                                <p className="mt-1 text-sm font-bold text-slate-500">হোল্ডিং: {toBnDigits(String(selectedHousehold.house_no || '-'))}</p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setSelectedHousehold(null)}
+                                className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-rose-50 hover:text-rose-600"
+                                aria-label="বন্ধ করুন"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div className="rounded-3xl border border-slate-100 bg-slate-50 p-4">
+                            <div className="mb-4 flex items-center justify-center">
+                                <div className="rounded-2xl bg-white px-5 py-4 text-center shadow-sm">
+                                    <Home className="mx-auto mb-2 text-teal-600" size={24} />
+                                    <p className="text-sm font-black text-slate-900">খানা প্রধান</p>
+                                    <p className="mt-1 text-xs font-bold text-slate-500">{selectedHousehold.owner_name || 'নাম নেই'}</p>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                {[
+                                    ['সদস্য', selectedHousehold.stats?.total_members || 0],
+                                    ['ভোটার', selectedHousehold.stats?.voters || 0],
+                                    ['পুরুষ', selectedHousehold.stats?.males || 0],
+                                    ['মহিলা', selectedHousehold.stats?.females || 0],
+                                    ['রক্তদাতা', selectedHousehold.stats?.blood_donors || 0],
+                                    ['জন্ম নিবন্ধন', selectedHousehold.stats?.birth_registered || 0]
+                                ].map(([label, value]) => (
+                                    <div key={label} className="rounded-2xl bg-white px-4 py-3">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{label}</p>
+                                        <p className="mt-1 text-xl font-black text-slate-950">{toBnDigits(String(value || 0))}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        <p className="mt-4 rounded-2xl bg-amber-50 px-4 py-3 text-xs font-bold leading-relaxed text-amber-800">
+                            বিস্তারিত সদস্য, NID, জন্ম নিবন্ধন বা ডকুমেন্ট দেখতে অনুমোদিত লগইন প্রয়োজন।
+                        </p>
+                    </div>
+                </div>
+            )}
+        </section>
     );
 }

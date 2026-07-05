@@ -9,11 +9,13 @@ import {
     Loader2,
     MessageSquare,
     PackagePlus,
+    Pencil,
     Plus,
     RefreshCw,
     Send,
     ShieldAlert,
     TrendingUp,
+    Trash2,
     WalletCards,
     XCircle
 } from 'lucide-react';
@@ -29,6 +31,9 @@ const gatewayPresets = {
         senderId: 'DigiGram',
         apiBaseUrl: '',
         apiKey: '',
+        timeoutMs: '15000',
+        priority: '999',
+        webhookEnabled: false,
         isActive: false,
         configText: JSON.stringify({
             note: 'Local/UAT only. Marks queued SMS as sent without external provider.'
@@ -40,6 +45,9 @@ const gatewayPresets = {
         senderId: 'DigiGram',
         apiBaseUrl: 'https://provider.example.com/api/sms/send',
         apiKey: '',
+        timeoutMs: '15000',
+        priority: '100',
+        webhookEnabled: true,
         isActive: false,
         configText: JSON.stringify({
             method: 'POST',
@@ -48,7 +56,10 @@ const gatewayPresets = {
             message_key: 'message',
             sender_key: 'sender_id',
             headers: {},
-            static_payload: {}
+            static_payload: {},
+            webhook_message_id_path: 'message_id',
+            webhook_status_path: 'status',
+            webhook_secret_env: 'SMS_WEBHOOK_SECRET'
         }, null, 2)
     },
     form: {
@@ -57,6 +68,9 @@ const gatewayPresets = {
         senderId: 'DigiGram',
         apiBaseUrl: 'https://provider.example.com/api/sms/send',
         apiKey: '',
+        timeoutMs: '15000',
+        priority: '200',
+        webhookEnabled: true,
         isActive: false,
         configText: JSON.stringify({
             method: 'POST',
@@ -73,6 +87,9 @@ const gatewayPresets = {
         senderId: 'DigiGram',
         apiBaseUrl: 'https://provider.example.com/api/sms/send',
         apiKey: '',
+        timeoutMs: '15000',
+        priority: '300',
+        webhookEnabled: true,
         isActive: false,
         configText: JSON.stringify({
             method: 'GET',
@@ -96,10 +113,30 @@ export default function AdminSmsPage() {
     const [processingQueue, setProcessingQueue] = useState(false);
     const [processStatus, setProcessStatus] = useState('');
     const [activeTab, setActiveTab] = useState('insights');
-    const [gatewayForm, setGatewayForm] = useState({ name: '', provider: '', senderId: '', apiBaseUrl: '', apiKey: '', isActive: false, configText: '{}' });
+    const [gatewayForm, setGatewayForm] = useState({ name: '', provider: '', senderId: '', apiBaseUrl: '', apiKey: '', timeoutMs: '15000', priority: '100', webhookEnabled: true, isActive: false, configText: '{}' });
+    const [editingGatewayId, setEditingGatewayId] = useState('');
     const [packageForm, setPackageForm] = useState({ name: '', credits: '', price: '', description: '', validityDays: '365', sortOrder: '0', isActive: true });
+    const [editingPackageId, setEditingPackageId] = useState('');
+    const [packageStatus, setPackageStatus] = useState('');
+    const [gatewayTestPhones, setGatewayTestPhones] = useState({});
+    const [testingGateway, setTestingGateway] = useState('');
+    const [gatewayTestResults, setGatewayTestResults] = useState({});
+    const [adjustmentWallet, setAdjustmentWallet] = useState(null);
+    const [adjustmentForm, setAdjustmentForm] = useState({ credits: '', note: '' });
+    const [adjustmentStatus, setAdjustmentStatus] = useState('');
+    const [quickTestForm, setQuickTestForm] = useState({
+        phone: '',
+        message: 'DigiGram SMS quick test successful.'
+    });
+    const [quickTestStatus, setQuickTestStatus] = useState(null);
+    const [quickTesting, setQuickTesting] = useState(false);
 
     const pendingRecharges = useMemo(() => (overview?.rechargeRequests || []).filter((item) => item.status === 'pending'), [overview]);
+    const activeGateway = useMemo(() => (
+        (overview?.gateways || [])
+            .filter((gateway) => gateway.is_active)
+            .sort((a, b) => Number(a.priority || 999) - Number(b.priority || 999))[0] || null
+    ), [overview]);
 
     async function load() {
         setLoading(true);
@@ -118,9 +155,51 @@ export default function AdminSmsPage() {
         event.preventDefault();
         setSaving(true);
         try {
-            await smsService.createGateway(gatewayForm);
-            setGatewayForm({ name: '', provider: '', senderId: '', apiBaseUrl: '', apiKey: '', isActive: false, configText: '{}' });
+            if (editingGatewayId) {
+                await smsService.updateGateway(editingGatewayId, gatewayForm);
+            } else {
+                await smsService.createGateway(gatewayForm);
+            }
+            resetGatewayForm();
             await load();
+        } finally {
+            setSaving(false);
+        }
+    }
+
+    function resetGatewayForm() {
+        setEditingGatewayId('');
+        setGatewayForm({ name: '', provider: '', senderId: '', apiBaseUrl: '', apiKey: '', timeoutMs: '15000', priority: '100', webhookEnabled: true, isActive: false, configText: '{}' });
+    }
+
+    function editGateway(gateway) {
+        setEditingGatewayId(gateway.id);
+        setGatewayForm({
+            name: gateway.name || '',
+            provider: gateway.provider || '',
+            senderId: gateway.sender_id || '',
+            apiBaseUrl: gateway.api_base_url || '',
+            apiKey: '',
+            timeoutMs: String(gateway.timeout_ms || 15000),
+            priority: String(gateway.priority || 100),
+            webhookEnabled: gateway.webhook_enabled !== false,
+            isActive: Boolean(gateway.is_active),
+            configText: JSON.stringify(gateway.config || {}, null, 2)
+        });
+    }
+
+    async function deleteGateway(gateway) {
+        if (!window.confirm(`${gateway.name} gateway মুছে ফেলবেন?`)) return;
+        setSaving(true);
+        try {
+            await smsService.deleteGateway(gateway.id);
+            if (editingGatewayId === gateway.id) resetGatewayForm();
+            await load();
+        } catch (error) {
+            setGatewayTestResults((current) => ({
+                ...current,
+                [gateway.id]: { ok: false, message: error.message || 'Gateway delete failed' }
+            }));
         } finally {
             setSaving(false);
         }
@@ -129,10 +208,64 @@ export default function AdminSmsPage() {
     async function handlePackageSubmit(event) {
         event.preventDefault();
         setSaving(true);
+        setPackageStatus('');
         try {
-            await smsService.createPackage(packageForm);
-            setPackageForm({ name: '', credits: '', price: '', description: '', validityDays: '365', sortOrder: '0', isActive: true });
+            if (editingPackageId) {
+                await smsService.updatePackage(editingPackageId, packageForm);
+            } else {
+                await smsService.createPackage(packageForm);
+            }
+            resetPackageForm();
             await load();
+        } catch (error) {
+            setPackageStatus(error.message || 'Package save failed');
+        } finally {
+            setSaving(false);
+        }
+    }
+
+    function resetPackageForm() {
+        setEditingPackageId('');
+        setPackageForm({ name: '', credits: '', price: '', description: '', validityDays: '365', sortOrder: '0', isActive: true });
+    }
+
+    function editPackage(item) {
+        setEditingPackageId(item.id);
+        setPackageStatus('');
+        setPackageForm({
+            name: item.name || '',
+            credits: String(item.credits || ''),
+            price: String(item.price || ''),
+            description: item.description || '',
+            validityDays: String(item.validity_days || 365),
+            sortOrder: String(item.sort_order || 0),
+            isActive: item.is_active !== false
+        });
+    }
+
+    async function togglePackage(item) {
+        setSaving(true);
+        setPackageStatus('');
+        try {
+            await smsService.togglePackage(item.id, !item.is_active);
+            await load();
+        } catch (error) {
+            setPackageStatus(error.message || 'Package update failed');
+        } finally {
+            setSaving(false);
+        }
+    }
+
+    async function deletePackage(item) {
+        if (!window.confirm(`${item.name} package মুছে ফেলবেন?`)) return;
+        setSaving(true);
+        setPackageStatus('');
+        try {
+            await smsService.deletePackage(item.id);
+            if (editingPackageId === item.id) resetPackageForm();
+            await load();
+        } catch (error) {
+            setPackageStatus(error.message || 'Package delete failed');
         } finally {
             setSaving(false);
         }
@@ -152,17 +285,123 @@ export default function AdminSmsPage() {
         }
     }
 
+    function openWalletAdjustment(wallet) {
+        setAdjustmentWallet(wallet);
+        setAdjustmentForm({ credits: '', note: '' });
+        setAdjustmentStatus('');
+    }
+
+    async function submitWalletAdjustment(event) {
+        event.preventDefault();
+        const credits = Number(adjustmentForm.credits || 0);
+        if (!adjustmentWallet || !credits || !adjustmentForm.note.trim()) {
+            setAdjustmentStatus('Credit এবং adjustment-এর কারণ লিখুন।');
+            return;
+        }
+        setSaving(true);
+        setAdjustmentStatus('');
+        try {
+            const result = await smsService.adjustWallet(
+                adjustmentWallet.owner_type,
+                adjustmentWallet.owner_id,
+                credits,
+                adjustmentForm.note.trim()
+            );
+            setAdjustmentStatus(`${toBnDigits(Math.abs(result.appliedCredits || 0))} SMS ${Number(result.appliedCredits) > 0 ? 'যোগ' : 'কাটা'} হয়েছে।`);
+            await load();
+            setTimeout(() => setAdjustmentWallet(null), 700);
+        } catch (error) {
+            setAdjustmentStatus(error.message || 'Wallet adjustment failed');
+        } finally {
+            setSaving(false);
+        }
+    }
+
     async function processSmsQueue() {
         setProcessingQueue(true);
         setProcessStatus('');
         try {
             const result = await smsService.processQueue(50);
-            setProcessStatus(`Processed ${toBnDigits(result.processed || 0)} SMS: ${toBnDigits(result.sent || 0)} sent, ${toBnDigits(result.failed || 0)} failed.`);
+            setProcessStatus(`Processed ${toBnDigits(result.processed || 0)} SMS: ${toBnDigits(result.sent || 0)} sent, ${toBnDigits(result.retrying || 0)} retrying, ${toBnDigits(result.failed || 0)} failed.`);
             await load();
         } catch (error) {
             setProcessStatus(error.message || 'SMS processing failed');
         } finally {
             setProcessingQueue(false);
+        }
+    }
+
+    async function retryFailedMessages(messageIds = []) {
+        setProcessingQueue(true);
+        setProcessStatus('');
+        try {
+            const result = await smsService.retryFailedMessages(messageIds);
+            setProcessStatus(`${toBnDigits(result.retried || 0)} failed SMS আবার queue-তে দেওয়া হয়েছে।`);
+            await load();
+        } catch (error) {
+            setProcessStatus(error.message || 'SMS retry failed');
+        } finally {
+            setProcessingQueue(false);
+        }
+    }
+
+    async function toggleGateway(gatewayId, isActive) {
+        setSaving(true);
+        try {
+            await smsService.toggleGateway(gatewayId, isActive);
+            await load();
+        } finally {
+            setSaving(false);
+        }
+    }
+
+    async function testGateway(gatewayId) {
+        const phone = gatewayTestPhones[gatewayId] || '';
+        setTestingGateway(gatewayId);
+        setGatewayTestResults((current) => ({ ...current, [gatewayId]: null }));
+        try {
+            const result = await smsService.testGateway(gatewayId, phone);
+            setGatewayTestResults((current) => ({
+                ...current,
+                [gatewayId]: {
+                    ok: true,
+                    message: result.mocked
+                        ? 'Mock test সফল হয়েছে। কোনো বাস্তব SMS পাঠানো হয়নি।'
+                        : `Provider SMS গ্রহণ করেছে${result.providerMessageId ? ` (${result.providerMessageId})` : ''}।`
+                }
+            }));
+            await load();
+        } catch (error) {
+            setGatewayTestResults((current) => ({
+                ...current,
+                [gatewayId]: { ok: false, message: error.message || 'Gateway test failed' }
+            }));
+        } finally {
+            setTestingGateway('');
+        }
+    }
+
+    async function submitQuickTest(event) {
+        event.preventDefault();
+        setQuickTesting(true);
+        setQuickTestStatus(null);
+        try {
+            const result = await smsService.quickTestSms(quickTestForm.phone, quickTestForm.message);
+            setQuickTestStatus({
+                ok: true,
+                message: result.mocked
+                    ? `Mock gateway accepted ${result.phone}. Real SMS pathano hoyni.`
+                    : `SMS provider accepted ${result.phone}${result.providerMessageId ? ` (${result.providerMessageId})` : ''}.`,
+                gatewayName: result.gateway?.name || 'Active gateway'
+            });
+            await load();
+        } catch (error) {
+            setQuickTestStatus({
+                ok: false,
+                message: error.message || 'Quick SMS test failed'
+            });
+        } finally {
+            setQuickTesting(false);
         }
     }
 
@@ -222,6 +461,8 @@ export default function AdminSmsPage() {
                     <StatCard label="Revenue" value={money(stats.approvedRechargeRevenue || 0)} raw />
                     <StatCard label="Used SMS" value={stats.usedCredits || 0} />
                     <StatCard label="Sent SMS" value={stats.sentMessages || 0} />
+                    <StatCard label="Delivered" value={stats.deliveredMessages || 0} />
+                    <StatCard label="Retrying" value={stats.retryingMessages || 0} />
                     <StatCard label="Low Balance" value={stats.lowBalanceCount || 0} />
                     <StatCard label="Active Gateway" value={stats.activeGatewayCount || 0} />
                 </div>
@@ -232,6 +473,75 @@ export default function AdminSmsPage() {
                     {processStatus}
                 </div>
             )}
+
+            <section className="grid gap-4 rounded-[32px] border border-slate-200 bg-white p-5 shadow-sm lg:grid-cols-[0.95fr_1.05fr] lg:p-6">
+                <div className="rounded-3xl bg-slate-50 p-4">
+                    <p className="text-xs font-black uppercase tracking-[0.22em] text-teal-700">Quick SMS test</p>
+                    <h2 className="mt-2 text-2xl font-black text-slate-950">Active gateway diye instant test</h2>
+                    <p className="mt-2 text-sm font-bold leading-6 text-slate-500">
+                        Demo ba launch-er age ek number-e test message pathiye provider/gateway health confirm korun.
+                    </p>
+                    <div className="mt-4 rounded-2xl bg-white p-4">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Selected gateway</p>
+                        <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <p className="font-black text-slate-900">{activeGateway?.name || 'No active gateway'}</p>
+                                <p className="text-xs font-bold text-slate-500">
+                                    {activeGateway ? `${activeGateway.provider} | priority ${toBnDigits(activeGateway.priority || 100)}` : 'Gateway tab theke ekta gateway active korun.'}
+                                </p>
+                            </div>
+                            <span className={`w-fit rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider ${
+                                activeGateway ? 'bg-teal-100 text-teal-700' : 'bg-amber-100 text-amber-700'
+                            }`}>
+                                {activeGateway ? (activeGateway.health_status || 'active') : 'missing'}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <form onSubmit={submitQuickTest} className="grid gap-3">
+                    <Input
+                        required
+                        type="tel"
+                        value={quickTestForm.phone}
+                        onChange={(value) => setQuickTestForm((current) => ({ ...current, phone: value }))}
+                        placeholder="01XXXXXXXXX"
+                    />
+                    <Textarea
+                        value={quickTestForm.message}
+                        onChange={(value) => setQuickTestForm((current) => ({ ...current, message: value.slice(0, 500) }))}
+                        placeholder="Test message"
+                    />
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <p className="text-xs font-bold text-slate-400">
+                            {toBnDigits((quickTestForm.message || '').length)}/500 characters
+                        </p>
+                        <div className="flex gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setActiveTab('gateway')}
+                                className="rounded-2xl bg-slate-100 px-4 py-3 text-sm font-black text-slate-700"
+                            >
+                                Gateway
+                            </button>
+                            <button
+                                disabled={quickTesting || !activeGateway}
+                                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-teal-600 px-5 py-3 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                {quickTesting ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                                Send test
+                            </button>
+                        </div>
+                    </div>
+                    {quickTestStatus && (
+                        <p className={`rounded-2xl px-4 py-3 text-sm font-bold ${
+                            quickTestStatus.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
+                        }`}>
+                            {quickTestStatus.gatewayName ? `${quickTestStatus.gatewayName}: ` : ''}{quickTestStatus.message}
+                        </p>
+                    )}
+                </form>
+            </section>
 
             <div className="flex gap-2 overflow-x-auto rounded-[24px] bg-slate-100 p-2">
                 {[
@@ -527,6 +837,13 @@ export default function AdminSmsPage() {
                                         ) : null}
                                     </div>
                                 )}
+                                <button
+                                    type="button"
+                                    onClick={() => openWalletAdjustment(wallet)}
+                                    className="mt-4 w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-black text-white transition hover:bg-teal-700"
+                                >
+                                    Balance adjust করুন
+                                </button>
                             </div>
                         ))}
                     </div>
@@ -537,14 +854,33 @@ export default function AdminSmsPage() {
                 <section className="grid gap-6 lg:grid-cols-[1fr_0.8fr]">
                     <div className="rounded-[32px] border border-slate-200 bg-white p-5 sm:p-6">
                         <h2 className="mb-5 text-2xl font-black text-slate-900">SMS Packages</h2>
+                        {packageStatus && <p className="mb-4 rounded-2xl bg-rose-50 p-3 text-sm font-bold text-rose-700">{packageStatus}</p>}
                         <div className="grid gap-4">
                             {(overview?.packages || []).map((item) => (
-                                <div key={item.id} className="flex items-center justify-between rounded-3xl bg-slate-50 p-5">
+                                <div key={item.id} className={`rounded-3xl border p-5 ${item.is_active ? 'border-slate-100 bg-slate-50' : 'border-slate-200 bg-slate-100 opacity-75'}`}>
+                                    <div className="flex items-start justify-between gap-4">
                                     <div>
                                         <p className="font-black text-slate-900">{item.name}</p>
                                         <p className="text-sm font-bold text-slate-500">{toBnDigits(item.credits)} SMS · {item.description || 'No description'}</p>
                                     </div>
-                                    <p className="text-xl font-black text-teal-700">{money(item.price)}</p>
+                                    <div className="text-right">
+                                        <p className="text-xl font-black text-teal-700">{money(item.price)}</p>
+                                        <span className={`mt-2 inline-flex rounded-full px-3 py-1 text-[10px] font-black uppercase ${item.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'}`}>
+                                            {item.is_active ? 'Active' : 'Inactive'}
+                                        </span>
+                                    </div>
+                                    </div>
+                                    <div className="mt-4 grid grid-cols-3 gap-2">
+                                        <button type="button" onClick={() => editPackage(item)} className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-3 py-2 text-xs font-black text-slate-600 hover:text-teal-700">
+                                            <Pencil size={14} /> Edit
+                                        </button>
+                                        <button type="button" disabled={saving} onClick={() => togglePackage(item)} className="rounded-xl bg-white px-3 py-2 text-xs font-black text-slate-600 disabled:opacity-50">
+                                            {item.is_active ? 'Deactivate' : 'Activate'}
+                                        </button>
+                                        <button type="button" disabled={saving} onClick={() => deletePackage(item)} className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-3 py-2 text-xs font-black text-rose-600 disabled:opacity-50">
+                                            <Trash2 size={14} /> Delete
+                                        </button>
+                                    </div>
                                 </div>
                             ))}
                         </div>
@@ -553,14 +889,31 @@ export default function AdminSmsPage() {
                     <form onSubmit={handlePackageSubmit} className="rounded-[32px] border border-slate-200 bg-white p-5 sm:p-6">
                         <div className="mb-5 flex items-center gap-3">
                             <Plus className="text-teal-600" />
-                            <h2 className="text-xl font-black text-slate-800">নতুন Package</h2>
+                            <h2 className="text-xl font-black text-slate-800">{editingPackageId ? 'Package সম্পাদনা' : 'নতুন Package'}</h2>
                         </div>
                         <div className="grid gap-3">
                             <Input required value={packageForm.name} onChange={(value) => setPackageForm({ ...packageForm, name: value })} placeholder="Package name" />
                             <Input required type="number" value={packageForm.credits} onChange={(value) => setPackageForm({ ...packageForm, credits: value })} placeholder="Credits" />
                             <Input required type="number" value={packageForm.price} onChange={(value) => setPackageForm({ ...packageForm, price: value })} placeholder="Price" />
                             <Input value={packageForm.description} onChange={(value) => setPackageForm({ ...packageForm, description: value })} placeholder="Short description" />
-                            <button disabled={saving} className="rounded-2xl bg-teal-600 px-4 py-3 font-black text-white disabled:opacity-50">Package save করুন</button>
+                            <div className="grid grid-cols-2 gap-3">
+                                <Input type="number" value={packageForm.validityDays} onChange={(value) => setPackageForm({ ...packageForm, validityDays: value })} placeholder="Validity days" />
+                                <Input type="number" value={packageForm.sortOrder} onChange={(value) => setPackageForm({ ...packageForm, sortOrder: value })} placeholder="Display order" />
+                            </div>
+                            <label className="flex items-center gap-2 text-sm font-bold text-slate-600">
+                                <input type="checkbox" checked={packageForm.isActive} onChange={(event) => setPackageForm({ ...packageForm, isActive: event.target.checked })} />
+                                Package active
+                            </label>
+                            <div className="flex gap-2">
+                                {editingPackageId && (
+                                    <button type="button" onClick={resetPackageForm} className="flex-1 rounded-2xl bg-slate-100 px-4 py-3 font-black text-slate-600">
+                                        বাতিল
+                                    </button>
+                                )}
+                                <button disabled={saving} className="flex-1 rounded-2xl bg-teal-600 px-4 py-3 font-black text-white disabled:opacity-50">
+                                    {editingPackageId ? 'Update Package' : 'Package save করুন'}
+                                </button>
+                            </div>
                         </div>
                     </form>
                 </section>
@@ -585,6 +938,15 @@ export default function AdminSmsPage() {
                             {processingQueue ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
                             Process now
                         </button>
+                        <button
+                            type="button"
+                            onClick={() => retryFailedMessages()}
+                            disabled={processingQueue || Number(stats.failedMessages || 0) === 0}
+                            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-rose-600 px-5 py-3 text-sm font-black text-white hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                            <RefreshCw size={16} />
+                            Retry failed
+                        </button>
                     </div>
                     <SmsDeliveryReport
                         messages={overview?.messages || []}
@@ -597,14 +959,78 @@ export default function AdminSmsPage() {
                         {(overview?.messages || []).length === 0 ? (
                             <EmptyState text="এখনও SMS queue হয়নি।" />
                         ) : overview.messages.map((item) => (
-                            <div key={item.id} className="grid gap-3 p-4 md:grid-cols-[150px_120px_1fr_100px] md:items-center">
+                            <div key={item.id} className="grid gap-3 p-4 md:grid-cols-[150px_110px_1fr_90px_110px] md:items-center">
                                 <Info label="Phone" value={item.recipient_phone} />
                                 <Info label="Category" value={item.category} />
                                 <p className="text-sm font-bold text-slate-600">{item.message}</p>
-                                <span className="w-fit rounded-full bg-slate-100 px-3 py-1 text-[10px] font-black uppercase text-slate-600">{item.status}</span>
+                                <Info label="Attempts" value={`${item.attempts || 0}/${item.max_attempts || 4}`} />
+                                <div className="flex flex-col items-start gap-2">
+                                    <span className="w-fit rounded-full bg-slate-100 px-3 py-1 text-[10px] font-black uppercase text-slate-600">{item.status}</span>
+                                    {item.status === 'failed' && (
+                                        <button
+                                            type="button"
+                                            onClick={() => retryFailedMessages([item.id])}
+                                            className="text-xs font-black text-rose-600 hover:text-rose-800"
+                                        >
+                                            Retry
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                         ))}
                     </div>
+                    {(overview?.deliveryAttempts || []).length > 0 && (
+                        <div className="mt-6">
+                            <h2 className="mb-4 text-xl font-black text-slate-900">Delivery attempt log</h2>
+                            <div className="grid gap-3 lg:grid-cols-2">
+                                {overview.deliveryAttempts.slice(0, 12).map((attempt) => (
+                                    <div key={attempt.id} className="rounded-3xl border border-slate-100 bg-slate-50 p-4">
+                                        <div className="flex items-center justify-between gap-3">
+                                            <p className="text-sm font-black text-slate-900">Attempt {toBnDigits(attempt.attempt_no)}</p>
+                                            <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase ${
+                                                attempt.status === 'sent'
+                                                    ? 'bg-emerald-100 text-emerald-700'
+                                                    : attempt.status === 'retry'
+                                                        ? 'bg-amber-100 text-amber-700'
+                                                        : 'bg-rose-100 text-rose-700'
+                                            }`}>
+                                                {attempt.status}
+                                            </span>
+                                        </div>
+                                        <p className="mt-2 text-xs font-bold text-slate-500">
+                                            {toBnDigits(attempt.duration_ms || 0)} ms
+                                            {attempt.provider_http_status ? ` · HTTP ${attempt.provider_http_status}` : ''}
+                                        </p>
+                                        {attempt.error_message && <p className="mt-2 line-clamp-2 text-xs font-bold text-rose-600">{attempt.error_message}</p>}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                    {(overview?.deliveryWebhooks || []).length > 0 && (
+                        <div className="mt-6">
+                            <h2 className="mb-4 text-xl font-black text-slate-900">Provider webhook log</h2>
+                            <div className="divide-y divide-slate-100 overflow-hidden rounded-3xl border border-slate-100">
+                                {overview.deliveryWebhooks.slice(0, 12).map((webhook) => (
+                                    <div key={webhook.id} className="grid gap-3 p-4 md:grid-cols-[1fr_130px_110px] md:items-center">
+                                        <div>
+                                            <p className="text-sm font-black text-slate-900">{webhook.provider_message_id || 'Unknown provider message'}</p>
+                                            <p className="mt-1 text-xs font-bold text-slate-500">{webhook.provider_status || 'No provider status'}</p>
+                                            {webhook.error_message && <p className="mt-1 text-xs font-bold text-rose-600">{webhook.error_message}</p>}
+                                        </div>
+                                        <span className="w-fit rounded-full bg-slate-100 px-3 py-1 text-[10px] font-black uppercase text-slate-600">
+                                            {webhook.normalized_status || 'unknown'}
+                                        </span>
+                                        <span className={`w-fit rounded-full px-3 py-1 text-[10px] font-black uppercase ${
+                                            webhook.processed ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                                        }`}>
+                                            {webhook.processed ? 'Processed' : 'Review'}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </section>
             )}
 
@@ -617,8 +1043,79 @@ export default function AdminSmsPage() {
                                 <EmptyState text="এখনও কোনো gateway configure করা হয়নি।" />
                             ) : overview.gateways.map((gateway) => (
                                 <div key={gateway.id} className="rounded-2xl bg-slate-50 p-4">
-                                    <p className="font-black text-slate-800">{gateway.name}</p>
+                                    <div className="flex items-start justify-between gap-3">
+                                        <p className="font-black text-slate-800">{gateway.name}</p>
+                                        <div className="flex items-center gap-2">
+                                            <button type="button" onClick={() => editGateway(gateway)} className="rounded-xl bg-white p-2 text-slate-500 transition hover:bg-teal-50 hover:text-teal-700" aria-label="Edit gateway">
+                                                <Pencil size={15} />
+                                            </button>
+                                            <button type="button" disabled={saving} onClick={() => deleteGateway(gateway)} className="rounded-xl bg-white p-2 text-slate-500 transition hover:bg-rose-50 hover:text-rose-700 disabled:opacity-50" aria-label="Delete gateway">
+                                                <Trash2 size={15} />
+                                            </button>
+                                            <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase ${
+                                                gateway.health_status === 'healthy'
+                                                    ? 'bg-emerald-100 text-emerald-700'
+                                                    : gateway.health_status === 'down'
+                                                        ? 'bg-rose-100 text-rose-700'
+                                                        : 'bg-amber-100 text-amber-700'
+                                            }`}>
+                                                {gateway.health_status || 'unknown'}
+                                            </span>
+                                        </div>
+                                    </div>
                                     <p className="text-xs font-bold text-slate-400">{gateway.provider} | {gateway.sender_id || 'sender নেই'}</p>
+                                    <p className="mt-1 text-xs font-black text-teal-700">Priority {toBnDigits(gateway.priority || 100)}</p>
+                                    <div className="mt-4 grid grid-cols-2 gap-2">
+                                        <MiniMetric label="Failures" value={gateway.consecutive_failures || 0} />
+                                        <MiniMetric label="API key" value={gateway.has_api_key ? 'Configured' : 'Missing'} raw />
+                                    </div>
+                                    {gateway.last_error && <p className="mt-3 rounded-2xl bg-rose-50 p-3 text-xs font-bold text-rose-700">{gateway.last_error}</p>}
+                                    <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-3">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Delivery webhook</p>
+                                        <code className="mt-1 block break-all text-xs font-bold text-slate-600">/api/sms/webhook/{gateway.id}</code>
+                                    </div>
+                                    <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-3">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Test gateway</p>
+                                        <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                                            <input
+                                                type="tel"
+                                                value={gatewayTestPhones[gateway.id] || ''}
+                                                onChange={(event) => setGatewayTestPhones((current) => ({
+                                                    ...current,
+                                                    [gateway.id]: event.target.value
+                                                }))}
+                                                placeholder="01XXXXXXXXX"
+                                                className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold text-slate-700 outline-none transition focus:border-teal-400"
+                                            />
+                                            <button
+                                                type="button"
+                                                disabled={testingGateway === gateway.id}
+                                                onClick={() => testGateway(gateway.id)}
+                                                className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-black text-white disabled:opacity-50"
+                                            >
+                                                {testingGateway === gateway.id ? 'Testing...' : 'Test SMS'}
+                                            </button>
+                                        </div>
+                                        {gatewayTestResults[gateway.id] && (
+                                            <p className={`mt-2 rounded-xl px-3 py-2 text-xs font-bold ${
+                                                gatewayTestResults[gateway.id].ok
+                                                    ? 'bg-emerald-50 text-emerald-700'
+                                                    : 'bg-rose-50 text-rose-700'
+                                            }`}>
+                                                {gatewayTestResults[gateway.id].message}
+                                            </p>
+                                        )}
+                                    </div>
+                                    <button
+                                        type="button"
+                                        disabled={saving}
+                                        onClick={() => toggleGateway(gateway.id, !gateway.is_active)}
+                                        className={`mt-4 w-full rounded-2xl px-4 py-3 text-sm font-black ${
+                                            gateway.is_active ? 'bg-rose-100 text-rose-700' : 'bg-emerald-600 text-white'
+                                        }`}
+                                    >
+                                        {gateway.is_active ? 'Deactivate' : 'Make active'}
+                                    </button>
                                 </div>
                             ))}
                         </div>
@@ -627,14 +1124,17 @@ export default function AdminSmsPage() {
                     <form onSubmit={handleGatewaySubmit} className="rounded-[32px] border border-slate-200 bg-white p-5 sm:p-6">
                         <div className="mb-5 flex items-center gap-3">
                             <Plus className="text-teal-600" />
-                            <h2 className="text-xl font-black text-slate-800">নতুন Gateway</h2>
+                            <h2 className="text-xl font-black text-slate-800">{editingGatewayId ? 'Gateway সম্পাদনা' : 'নতুন Gateway'}</h2>
                         </div>
                         <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
                             {Object.entries(gatewayPresets).map(([key, preset]) => (
                                 <button
                                     key={key}
                                     type="button"
-                                    onClick={() => setGatewayForm(preset)}
+                                    onClick={() => {
+                                        setEditingGatewayId('');
+                                        setGatewayForm(preset);
+                                    }}
                                     className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-black text-slate-600 transition hover:border-teal-200 hover:bg-teal-50 hover:text-teal-700"
                                 >
                                     {key.toUpperCase()}
@@ -647,6 +1147,9 @@ export default function AdminSmsPage() {
                             <Input value={gatewayForm.senderId} onChange={(value) => setGatewayForm({ ...gatewayForm, senderId: value })} placeholder="Sender ID" />
                             <Input value={gatewayForm.apiBaseUrl} onChange={(value) => setGatewayForm({ ...gatewayForm, apiBaseUrl: value })} placeholder="API base URL" />
                             <Input value={gatewayForm.apiKey} onChange={(value) => setGatewayForm({ ...gatewayForm, apiKey: value })} placeholder="API key" />
+                            {editingGatewayId && <p className="-mt-1 text-xs font-bold text-slate-400">API key পরিবর্তন না করলে field খালি রাখুন।</p>}
+                            <Input type="number" value={gatewayForm.timeoutMs} onChange={(value) => setGatewayForm({ ...gatewayForm, timeoutMs: value })} placeholder="Timeout (ms)" />
+                            <Input type="number" value={gatewayForm.priority} onChange={(value) => setGatewayForm({ ...gatewayForm, priority: value })} placeholder="Priority (1 runs first)" />
                             <Textarea
                                 value={gatewayForm.configText}
                                 onChange={(value) => setGatewayForm({ ...gatewayForm, configText: value })}
@@ -659,10 +1162,105 @@ export default function AdminSmsPage() {
                                 <input type="checkbox" checked={gatewayForm.isActive} onChange={(event) => setGatewayForm({ ...gatewayForm, isActive: event.target.checked })} />
                                 Active gateway
                             </label>
-                            <button disabled={saving} className="rounded-2xl bg-slate-900 px-4 py-3 font-black text-white disabled:opacity-50">Gateway save করুন</button>
+                            <label className="flex items-center gap-2 text-sm font-bold text-slate-600">
+                                <input type="checkbox" checked={gatewayForm.webhookEnabled} onChange={(event) => setGatewayForm({ ...gatewayForm, webhookEnabled: event.target.checked })} />
+                                Delivery webhook enabled
+                            </label>
+                            <div className="flex gap-2">
+                                {editingGatewayId && (
+                                    <button type="button" onClick={resetGatewayForm} className="flex-1 rounded-2xl bg-slate-100 px-4 py-3 font-black text-slate-600">
+                                        বাতিল
+                                    </button>
+                                )}
+                                <button disabled={saving} className="flex-1 rounded-2xl bg-slate-900 px-4 py-3 font-black text-white disabled:opacity-50">
+                                    {editingGatewayId ? 'Update Gateway' : 'Gateway save করুন'}
+                                </button>
+                            </div>
                         </div>
                     </form>
                 </section>
+            )}
+
+            {adjustmentWallet && (
+                <div className="fixed inset-0 z-[120] flex items-end justify-center bg-slate-950/60 p-0 backdrop-blur-sm sm:items-center sm:p-5">
+                    <form onSubmit={submitWalletAdjustment} className="max-h-[92vh] w-full overflow-y-auto rounded-t-[30px] bg-white p-5 shadow-2xl sm:max-w-lg sm:rounded-[30px] sm:p-7">
+                        <div className="flex items-start justify-between gap-4">
+                            <div>
+                                <p className="text-xs font-black uppercase tracking-[0.2em] text-teal-600">Wallet adjustment</p>
+                                <h2 className="mt-2 text-2xl font-black text-slate-900">
+                                    {adjustmentWallet.owner_name || adjustmentWallet.owner?.name_bn || adjustmentWallet.owner?.name || adjustmentWallet.owner_id}
+                                </h2>
+                                <p className="mt-1 text-sm font-bold text-slate-500">
+                                    বর্তমান balance: {toBnDigits(adjustmentWallet.balance || 0)} SMS
+                                </p>
+                            </div>
+                            <button type="button" onClick={() => setAdjustmentWallet(null)} className="rounded-2xl bg-slate-100 p-3 text-slate-500" aria-label="Close">
+                                <XCircle size={20} />
+                            </button>
+                        </div>
+
+                        <div className="mt-6 grid grid-cols-3 gap-2">
+                            {[50, 100, 500].map((credits) => (
+                                <button
+                                    key={credits}
+                                    type="button"
+                                    onClick={() => setAdjustmentForm((current) => ({ ...current, credits: String(credits) }))}
+                                    className="rounded-2xl bg-emerald-50 px-3 py-3 text-sm font-black text-emerald-700"
+                                >
+                                    +{toBnDigits(credits)}
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="mt-4 grid gap-3">
+                            <Input
+                                required
+                                type="number"
+                                value={adjustmentForm.credits}
+                                onChange={(value) => setAdjustmentForm({ ...adjustmentForm, credits: value })}
+                                placeholder="SMS credit: যোগ করতে positive, কাটতে negative"
+                            />
+                            <Textarea
+                                value={adjustmentForm.note}
+                                onChange={(value) => setAdjustmentForm({ ...adjustmentForm, note: value })}
+                                placeholder="কারণ লিখুন: bonus, refund, correction..."
+                            />
+                        </div>
+
+                        {adjustmentStatus && (
+                            <p className={`mt-4 rounded-2xl p-3 text-sm font-bold ${adjustmentStatus.includes('হয়েছে') ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
+                                {adjustmentStatus}
+                            </p>
+                        )}
+
+                        <div className="mt-5 grid grid-cols-2 gap-3">
+                            <button type="button" onClick={() => setAdjustmentWallet(null)} className="rounded-2xl bg-slate-100 px-4 py-3 font-black text-slate-600">
+                                বাতিল
+                            </button>
+                            <button disabled={saving} className="rounded-2xl bg-teal-600 px-4 py-3 font-black text-white disabled:opacity-50">
+                                {saving ? 'Saving...' : 'Balance update'}
+                            </button>
+                        </div>
+
+                        <div className="mt-6 border-t border-slate-100 pt-5">
+                            <p className="mb-3 text-xs font-black uppercase tracking-widest text-slate-400">Recent adjustments</p>
+                            {(overview?.transactions || [])
+                                .filter((item) => item.wallet_id === adjustmentWallet.id && item.transaction_type === 'adjustment')
+                                .slice(0, 5)
+                                .map((item) => (
+                                    <div key={item.id} className="flex items-start justify-between gap-3 border-b border-slate-100 py-3 last:border-0">
+                                        <div>
+                                            <p className="text-sm font-bold text-slate-700">{item.note || 'Manual adjustment'}</p>
+                                            <p className="text-xs font-bold text-slate-400">{new Date(item.created_at).toLocaleString('bn-BD')}</p>
+                                        </div>
+                                        <span className={`text-sm font-black ${Number(item.credits) >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                                            {Number(item.credits) >= 0 ? '+' : ''}{toBnDigits(item.credits)}
+                                        </span>
+                                    </div>
+                                ))}
+                        </div>
+                    </form>
+                </div>
             )}
         </div>
     );

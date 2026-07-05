@@ -19,8 +19,6 @@ export default function PWARegistration() {
         navigator.serviceWorker
           .register('/sw.js')
           .then((registration) => {
-            console.log('SW registered: ', registration);
-            
             // Listen for updates
             registration.onupdatefound = () => {
               const installingWorker = registration.installing;
@@ -29,7 +27,6 @@ export default function PWARegistration() {
                   if (installingWorker.state === 'installed') {
                     if (navigator.serviceWorker.controller) {
                       // New content is available, force reload
-                      console.log('New content available, reloading...');
                       window.location.reload();
                     }
                   }
@@ -38,7 +35,7 @@ export default function PWARegistration() {
             };
           })
           .catch((registrationError) => {
-            console.log('SW registration failed: ', registrationError);
+            console.warn('SW registration failed: ', registrationError);
           });
       });
     }

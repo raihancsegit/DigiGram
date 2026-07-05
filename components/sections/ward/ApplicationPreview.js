@@ -106,6 +106,37 @@ export default function ApplicationPreview({ serviceForm, applicant, household }
         );
     }
 
+    if (serviceForm.request_type === 'warish_certificate') {
+        const heirs = Array.isArray(serviceForm.meta_data?.heirs) ? serviceForm.meta_data.heirs : [];
+        return (
+            <CertificateShell
+                title="Inheritance Certificate"
+                subtitle="ওয়ারিশ সনদ - আবেদন প্রিভিউ"
+            >
+                <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                    <Field label="যার ওয়ারিশ সনদ" value={serviceForm.meta_data?.subject_name || applicantName} className="md:col-span-2" />
+                    <Field label="মৃত্যুর তারিখ" value={formatDate(serviceForm.death_date)} />
+                    <Field label="মৃত্যুর স্থান" value={serviceForm.place_of_death || 'উল্লেখ নেই'} />
+                    <Field label="পিতার নাম" value={serviceForm.father_name} />
+                    <Field label="মাতার নাম" value={serviceForm.mother_name} />
+                    <Field label="স্থায়ী ঠিকানা" value={address} className="md:col-span-2" />
+                    <div className="md:col-span-2">
+                        <p className="text-[10px] font-black uppercase tracking-widest opacity-60">ওয়ারিশগণ</p>
+                        <div className="mt-3 grid gap-2 md:grid-cols-2">
+                            {heirs.length > 0 ? heirs.map((heir, index) => (
+                                <p key={`${heir.id || heir.name || index}`} className="rounded-xl border border-current/10 bg-white/60 px-3 py-2 text-sm font-black">
+                                    {toBnDigits(index + 1)}. {heir.name || 'নাম নেই'}{heir.relation ? ` - ${heir.relation}` : ''}
+                                </p>
+                            )) : (
+                                <p className="rounded-xl border border-current/10 bg-white/60 px-3 py-2 text-sm font-black">ওয়ারিশের তথ্য অফিস যাচাই করবে</p>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </CertificateShell>
+        );
+    }
+
     if (['nid_application', 'nid_correction'].includes(serviceForm.request_type)) {
         return (
             <div className="relative overflow-hidden rounded-[28px] border border-emerald-100 bg-emerald-50 p-7">

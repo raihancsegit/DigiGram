@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/utils/supabase-admin';
 import { recordDataAccess } from '@/lib/utils/data-access-log';
+import {
+    createCitizenAccessToken,
+    verifyCitizenAccessToken,
+    verifyCitizenOtp
+} from '@/lib/utils/citizen-otp';
 
 function normalizePhone(phone) {
     const digits = String(phone || '').replace(/[^0-9]/g, '');
@@ -8,30 +13,20 @@ function normalizePhone(phone) {
     return digits;
 }
 
-async function verifyOtp(phone, otpCode) {
-    const { data, error } = await supabaseAdmin
-        .from('citizen_otps')
-        .select('*')
-        .eq('phone', phone)
-        .eq('otp_code', otpCode)
-        .is('used_at', null)
-        .gt('expires_at', new Date().toISOString())
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-    if (error) throw error;
-    return Boolean(data);
-}
-
 export async function POST(request) {
     try {
-        const { phone, otpCode } = await request.json();
+        const { phone, otpCode, accessToken } = await request.json();
         const normalizedPhone = normalizePhone(phone);
         if (!/^01[0-9]{9}$/.test(normalizedPhone) || !otpCode) {
             return NextResponse.json({ error: 'Phone and OTP are required' }, { status: 400 });
         }
 
-        const verified = await verifyOtp(normalizedPhone, String(otpCode).trim());
+        const hasSession = verifyCitizenAccessToken(normalizedPhone, accessToken);
+        const verified = hasSession || await verifyCitizenOtp(
+            normalizedPhone,
+            String(otpCode).trim(),
+            'citizen_inbox'
+        );
         if (!verified) {
             return NextResponse.json({ error: 'OTP ভুল অথবা মেয়াদ শেষ হয়েছে' }, { status: 401 });
         }
@@ -143,6 +138,21 @@ export async function POST(request) {
             }
         }
 
+        let consents = [];
+        try {
+            const { data: consentRows, error: consentError } = await supabaseAdmin
+                .from('citizen_consents')
+                .select('id,consent_type,granted,granted_at,revoked_at,updated_at')
+                .eq('phone', normalizedPhone)
+                .order('consent_type');
+            if (consentError) throw consentError;
+            consents = consentRows || [];
+        } catch (consentError) {
+            if (!['42P01', 'PGRST205'].includes(consentError.code)) {
+                console.warn('Citizen consents skipped:', consentError.message);
+            }
+        }
+
         const timeline = [
             ...(serviceRequests || []).map((item) => ({
                 id: `service-${item.id}`,
@@ -221,6 +231,7 @@ export async function POST(request) {
 
         return NextResponse.json({
             success: true,
+            accessToken: hasSession ? accessToken : createCitizenAccessToken(normalizedPhone),
             data: {
                 phone: normalizedPhone,
                 serviceRequests: serviceRequests || [],
@@ -232,6 +243,7 @@ export async function POST(request) {
                 households: households || [],
                 householdTaxes: householdTaxes || [],
                 privacyHistory,
+                consents,
                 timeline
             }
         });

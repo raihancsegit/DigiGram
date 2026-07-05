@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, ArrowRight, Zap, Clock, ArrowUpRight, Newspaper, TrendingUp, Star, Loader2, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
@@ -149,9 +149,8 @@ export default function LatestNewsSection() {
         { id: '30days', label: '৩০ দিন' },
     ];
 
-    const fetchNews = async (pageNum = 1, isLoadMore = false, currentTimeframe = timeframe) => {
+    const fetchNews = useCallback(async (pageNum = 1, isLoadMore = false, currentTimeframe = timeframe) => {
         if (!isLoadMore) setLoading(true);
-        console.log("Fetching global news with timeframe:", currentTimeframe, "from URL:", process.env.NEXT_PUBLIC_SUPABASE_URL);
         try {
             const data = await newsService.getGlobalNews(pageNum, 10, currentTimeframe);
             const mapped = data.map(n => ({
@@ -179,7 +178,7 @@ export default function LatestNewsSection() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [timeframe]);
 
     const isFirstRun = useRef(true);
 
@@ -190,7 +189,7 @@ export default function LatestNewsSection() {
         }
         setPage(1);
         fetchNews(1, false, timeframe);
-    }, [timeframe]);
+    }, [fetchNews, timeframe]);
 
     const handleLoadMore = () => {
         const nextPage = page + 1;

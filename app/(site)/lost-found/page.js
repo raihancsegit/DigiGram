@@ -21,7 +21,10 @@ export default function GlobalLostFoundPage() {
     const [loading, setLoading] = useState(true);
     const [timeframe, setTimeframe] = useState('all');
     const [page, setPage] = useState(1);
-    const [hasMore, setHasMore] = useState(true);
+    const [pageSize, setPageSize] = useState(12);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [typeFilter, setTypeFilter] = useState('all');
+    const [totalCount, setTotalCount] = useState(0);
 
     const toBnDate = (value) => {
         if (!value) return '-';
@@ -54,17 +57,16 @@ export default function GlobalLostFoundPage() {
                 }
             };
             fetchPost();
-        } else {
+            return;
+        }
+
+        const delay = setTimeout(() => {
             const fetchGlobalPosts = async () => {
                 setLoading(true);
                 try {
-                    const data = await lostFoundService.getGlobalPosts(page, 12, timeframe);
-                    if (page === 1) {
-                        setPosts(data || []);
-                    } else {
-                        setPosts(prev => [...prev, ...(data || [])]);
-                    }
-                    setHasMore(data.length === 12);
+                    const result = await lostFoundService.getGlobalPosts(page, pageSize, timeframe, searchQuery, typeFilter, true);
+                    setPosts(result.data || []);
+                    setTotalCount(result.count || 0);
                 } catch (err) {
                     console.error("Error fetching global lost & found:", err);
                 } finally {
@@ -72,8 +74,18 @@ export default function GlobalLostFoundPage() {
                 }
             };
             fetchGlobalPosts();
-        }
-    }, [postId, timeframe, page]);
+        }, 300);
+
+        return () => clearTimeout(delay);
+    }, [postId, timeframe, page, pageSize, searchQuery, typeFilter]);
+
+    useEffect(() => {
+        setPage(1);
+    }, [timeframe, pageSize, searchQuery, typeFilter]);
+
+    const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+    const resultStart = totalCount === 0 ? 0 : ((page - 1) * pageSize) + 1;
+    const resultEnd = Math.min(page * pageSize, totalCount);
 
     if (postId && post) {
         return <LostFoundDetailView post={post} />;
@@ -130,7 +142,7 @@ export default function GlobalLostFoundPage() {
             </div>
 
             {/* Filters Row */}
-            <div className="dg-section-x max-w-7xl mx-auto px-4 -mt-8 relative z-20 flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="dg-section-x max-w-7xl mx-auto px-4 -mt-8 relative z-20 flex flex-col xl:flex-row items-center justify-between gap-4">
                 <div className="flex flex-wrap gap-1.5 items-center bg-white p-1.5 rounded-full shadow-xl shadow-slate-200 border border-slate-100 overflow-x-auto max-w-full scrollbar-hide">
                     {TIMEFRAMES.map((tf) => (
                         <button
@@ -147,13 +159,34 @@ export default function GlobalLostFoundPage() {
                     ))}
                 </div>
 
-                <div className="relative group w-full md:w-72">
+                <div className="flex w-full flex-col gap-3 sm:flex-row xl:w-auto">
+                <div className="flex rounded-full bg-white p-1.5 shadow-xl shadow-slate-200 border border-slate-100">
+                    {[
+                        ['all', 'সব'],
+                        ['lost', 'হারানো'],
+                        ['found', 'প্রাপ্তি']
+                    ].map(([value, label]) => (
+                        <button
+                            key={value}
+                            type="button"
+                            onClick={() => setTypeFilter(value)}
+                            className={`rounded-full px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all ${typeFilter === value ? 'bg-slate-900 text-white' : 'text-slate-500 hover:bg-slate-50'}`}
+                        >
+                            {label}
+                        </button>
+                    ))}
+                </div>
+
+                <div className="relative group w-full sm:w-72">
                     <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-amber-500 transition-colors" />
                     <input 
                         type="text" 
+                        value={searchQuery}
+                        onChange={(event) => setSearchQuery(event.target.value)}
                         placeholder="বিজ্ঞপ্তি খুঁজুন..."
                         className="w-full pl-10 pr-5 py-2.5 rounded-full bg-white border border-slate-200 focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 focus:outline-none text-[10px] font-black shadow-xl shadow-slate-200 transition-all placeholder:text-slate-400"
                     />
+                </div>
                 </div>
             </div>
 
@@ -176,8 +209,23 @@ export default function GlobalLostFoundPage() {
                                 <p className="mt-2 text-slate-500 font-bold text-xs">সমগ্র বাংলাদেশ থেকে সর্বশেষ বিজ্ঞপ্তিসমূহ</p>
                             </div>
                             <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-900 text-white text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-slate-200">
-                                <Calendar size={12} className="text-amber-400" /> পেজ: {page}
+                                <Calendar size={12} className="text-amber-400" /> পেজ: {page} / {totalPages}
                             </span>
+                        </div>
+                        <div className="mt-5 flex flex-col gap-3 rounded-[24px] bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
+                            <p className="text-xs font-black text-slate-500">
+                                মোট {totalCount.toLocaleString('bn-BD')}টি বিজ্ঞপ্তি
+                                {totalCount > 0 && <span> · {resultStart.toLocaleString('bn-BD')}-{resultEnd.toLocaleString('bn-BD')} দেখানো হচ্ছে</span>}
+                            </p>
+                            <select
+                                value={pageSize}
+                                onChange={(event) => setPageSize(Number(event.target.value))}
+                                className="h-10 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-xs font-black text-slate-600 outline-none"
+                            >
+                                {[12, 24, 48].map((size) => (
+                                    <option key={size} value={size}>{size.toLocaleString('bn-BD')} করে</option>
+                                ))}
+                            </select>
                         </div>
                     </div>
 
@@ -254,16 +302,26 @@ export default function GlobalLostFoundPage() {
                         )}
                     </div>
 
-                    {/* Pagination - Pill Design */}
-                    {hasMore && (
-                        <div className="flex justify-center py-12 bg-slate-50/50 border-t border-slate-100">
+                    {totalCount > 0 && (
+                        <div className="flex flex-col items-center justify-center gap-4 py-12 bg-slate-50/50 border-t border-slate-100 sm:flex-row">
                             <button 
-                                onClick={() => setPage(prev => prev + 1)}
-                                disabled={loading}
-                                className="inline-flex items-center gap-3 px-10 py-4 rounded-full bg-slate-900 text-white font-black text-xs uppercase tracking-[0.2em] hover:bg-amber-600 transition-all active:scale-95 shadow-xl shadow-slate-200 disabled:opacity-50"
+                                onClick={() => setPage(prev => Math.max(1, prev - 1))}
+                                disabled={loading || page <= 1}
+                                className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white border border-slate-200 text-slate-600 font-black text-xs uppercase tracking-[0.15em] hover:bg-amber-600 hover:text-white transition-all active:scale-95 disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-slate-600"
                             >
-                                {loading ? <Loader2 size={18} className="animate-spin" /> : <TrendingUp size={18} />}
-                                আরও বিজ্ঞপ্তি লোড করুন
+                                <ChevronLeft size={18} />
+                                আগের পৃষ্ঠা
+                            </button>
+                            <span className="rounded-full bg-slate-900 px-5 py-3 text-xs font-black text-white">
+                                {page.toLocaleString('bn-BD')} / {totalPages.toLocaleString('bn-BD')}
+                            </span>
+                            <button 
+                                onClick={() => setPage(prev => Math.min(totalPages, prev + 1))}
+                                disabled={loading || page >= totalPages}
+                                className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-slate-900 text-white font-black text-xs uppercase tracking-[0.15em] hover:bg-amber-600 transition-all active:scale-95 shadow-xl shadow-slate-200 disabled:opacity-40"
+                            >
+                                পরের পৃষ্ঠা
+                                <ChevronRight size={18} />
                             </button>
                         </div>
                     )}

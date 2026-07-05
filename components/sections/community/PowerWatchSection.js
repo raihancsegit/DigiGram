@@ -13,6 +13,7 @@ export default function PowerWatchSection() {
 
     // Mock data based on location
     useEffect(() => {
+        const updateTimeout = setTimeout(() => {
         if (selected.unionSlug === 'horipur') {
             setStatus('offline');
             setLastUpdated('১০ মিনিট আগে');
@@ -20,6 +21,9 @@ export default function PowerWatchSection() {
             setStatus('online');
             setLastUpdated('৫ মিনিট আগে');
         }
+        }, 0);
+
+        return () => clearTimeout(updateTimeout);
     }, [selected.unionSlug]);
 
     const handleReport = () => {

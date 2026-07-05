@@ -188,18 +188,18 @@ export default function WardManagementSection({ user = {}, wardInfo, villages: i
     return (
         <div className="space-y-8">
             {/* Header with Tabs */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 pb-6 border-b border-slate-100">
-                <div className="flex items-center gap-3 p-1.5 bg-slate-100/80 backdrop-blur-sm rounded-2xl border border-slate-200">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 pb-6 border-b border-slate-100">
+                <div className="flex w-full items-center gap-2 overflow-x-auto p-1.5 bg-slate-100/80 backdrop-blur-sm rounded-2xl border border-slate-200 sm:w-auto">
                     <button
                         onClick={() => setActiveTab('stats')}
-                        className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-black transition-all ${menuStyles.tab(activeTab === 'stats', 'teal')}`}
+                        className={`flex shrink-0 items-center gap-2 px-4 sm:px-6 py-2.5 rounded-xl text-sm font-black transition-all ${menuStyles.tab(activeTab === 'stats', 'teal')}`}
                     >
                         <LayoutDashboard size={18} />
                         ওয়াড পরিসংখ্যান
                     </button>
                     <button
                         onClick={() => setActiveTab('blood')}
-                        className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-black transition-all ${menuStyles.tab(activeTab === 'blood', 'rose')}`}
+                        className={`flex shrink-0 items-center gap-2 px-4 sm:px-6 py-2.5 rounded-xl text-sm font-black transition-all ${menuStyles.tab(activeTab === 'blood', 'rose')}`}
                     >
                         <Droplets size={18} />
                         রক্তদাতা ডাটাবেস
@@ -210,7 +210,7 @@ export default function WardManagementSection({ user = {}, wardInfo, villages: i
                     <button 
                         onClick={() => handleSave()}
                         disabled={loading}
-                        className="w-full sm:w-auto px-8 py-3 rounded-2xl bg-slate-900 text-white font-black text-sm shadow-xl hover:bg-teal-600 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                        className="w-full sm:w-auto px-6 sm:px-8 py-3 rounded-2xl bg-slate-900 text-white font-black text-sm shadow-xl hover:bg-teal-600 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
                     >
                         {loading ? 'আপডেট হচ্ছে...' : 'সব তথ্য সেভ করুন'}
                         {!loading && <Save size={18} />}
@@ -221,11 +221,11 @@ export default function WardManagementSection({ user = {}, wardInfo, villages: i
             {/* Success Toast handled by react-hot-toast */}
 
             {activeTab === 'stats' ? (
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                <div className="grid grid-cols-1 gap-5 lg:grid-cols-12 lg:gap-8">
                     {/* Left: Member & Ward Summary */}
                     {!isVolunteerView && (
                         <div className="lg:col-span-4 space-y-6">
-                        <div className="p-8 rounded-[32px] bg-white border border-slate-200 shadow-sm space-y-8 relative overflow-hidden">
+                        <div className="p-5 sm:p-8 rounded-[24px] sm:rounded-[32px] bg-white border border-slate-200 shadow-sm space-y-6 sm:space-y-8 relative overflow-hidden">
                             <div className="absolute top-0 right-0 w-32 h-32 bg-teal-500/5 rounded-full -mr-16 -mt-16 blur-3xl" />
                             
                             <div>
@@ -438,7 +438,7 @@ export default function WardManagementSection({ user = {}, wardInfo, villages: i
             {/* Volunteer Management Modal */}
             {managingVolunteersFor && (
                 <ModalPortal>
-                    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
+                    <div className="fixed inset-0 z-[99999] flex items-stretch justify-center p-0 sm:items-center sm:p-4">
                         <motion.div 
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
@@ -473,7 +473,7 @@ export default function WardManagementSection({ user = {}, wardInfo, villages: i
             {/* Village Edit Modal */}
             {isAddingVillage && (
                 <ModalPortal>
-                    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
+                    <div className="fixed inset-0 z-[99999] flex items-stretch justify-center p-0 sm:items-center sm:p-4">
                         <motion.div 
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
@@ -485,7 +485,7 @@ export default function WardManagementSection({ user = {}, wardInfo, villages: i
                             initial={{ opacity: 0, scale: 0.95, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                            className="relative w-full max-w-2xl bg-white rounded-[32px] shadow-2xl overflow-hidden p-8"
+                            className="relative h-[100dvh] w-full max-w-2xl overflow-y-auto bg-white p-5 shadow-2xl sm:h-auto sm:max-h-[90vh] sm:rounded-[32px] sm:p-8"
                         >
                             <div className="flex items-center justify-between mb-8">
                                 <div>

@@ -1,26 +1,11 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/utils/supabase-admin';
+import { verifyCitizenOtp } from '@/lib/utils/citizen-otp';
 
 function normalizePhone(phone) {
     const digits = String(phone || '').replace(/[^0-9]/g, '');
     if (digits.startsWith('8801') && digits.length === 13) return `0${digits.slice(3)}`;
     return digits;
-}
-
-async function verifyOtp(phone, otpCode) {
-    const { data, error } = await supabaseAdmin
-        .from('citizen_otps')
-        .select('id, expires_at')
-        .eq('phone', phone)
-        .eq('otp_code', String(otpCode || '').trim())
-        .eq('purpose', 'lost_found_report')
-        .gt('expires_at', new Date().toISOString())
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-    if (error) throw error;
-    return Boolean(data);
 }
 
 async function getUnionHouseholdPhones(locationId) {
@@ -130,7 +115,7 @@ export async function POST(request) {
             return NextResponse.json({ error: 'Valid mobile number is required' }, { status: 400 });
         }
 
-        const isVerified = await verifyOtp(phone, otpCode);
+        const isVerified = await verifyCitizenOtp(phone, otpCode, 'lost_found_report');
         if (!isVerified) {
             return NextResponse.json({ error: 'OTP মিলছে না বা মেয়াদ শেষ হয়েছে' }, { status: 401 });
         }

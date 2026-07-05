@@ -23,6 +23,34 @@ import { parseBnInt, toBnDigits } from '@/lib/utils/format';
 import PortalLoginModal from '@/components/modals/PortalLoginModal';
 import toast from 'react-hot-toast';
 
+function ListPager({ page, totalPages, onPageChange }) {
+    return (
+        <div className="flex flex-wrap items-center justify-center gap-2">
+            <button
+                type="button"
+                onClick={() => onPageChange(Math.max(1, page - 1))}
+                disabled={page <= 1}
+                className="inline-flex h-10 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-xs font-black text-slate-600 disabled:opacity-40"
+            >
+                <ChevronLeft size={15} />
+                আগে
+            </button>
+            <span className="rounded-2xl bg-slate-950 px-4 py-2 text-xs font-black text-white">
+                {toBnDigits(String(page))}/{toBnDigits(String(totalPages))}
+            </span>
+            <button
+                type="button"
+                onClick={() => onPageChange(Math.min(totalPages, page + 1))}
+                disabled={page >= totalPages}
+                className="inline-flex h-10 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-xs font-black text-slate-600 disabled:opacity-40"
+            >
+                পরে
+                <ChevronRight size={15} />
+            </button>
+        </div>
+    );
+}
+
 export default function WardPortalClient({ ctx, ward: initialWard }) {
     const dispatch = useDispatch();
     const { district, upazila, union } = ctx;
@@ -31,6 +59,11 @@ export default function WardPortalClient({ ctx, ward: initialWard }) {
     const { dynamicWardData } = useSelector((state) => state.wardData);
 
     const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+    const [villageListQuery, setVillageListQuery] = useState('');
+    const [villageListPage, setVillageListPage] = useState(1);
+    const [wardBloodQuery, setWardBloodQuery] = useState('');
+    const [wardBloodGroupFilter, setWardBloodGroupFilter] = useState('all');
+    const [wardBloodPage, setWardBloodPage] = useState(1);
 
     // Search Logic for Portals
     const [searchQuery, setSearchQuery] = useState('');
@@ -201,6 +234,43 @@ export default function WardPortalClient({ ctx, ward: initialWard }) {
     const wardNews = dynamicNews.filter(
         (n) => n.wardId === ward.id && n.unionId === union.slug
     );
+    const villagePageSize = 6;
+    const wardBloodPageSize = 8;
+    const filteredVillages = useMemo(() => {
+        const term = villageListQuery.trim().toLowerCase();
+        if (!term) return ward.villages || [];
+        return (ward.villages || []).filter((v) => {
+            const name = typeof v === 'object' ? (v.name_bn || v.name || '') : v;
+            return String(name || '').toLowerCase().includes(term);
+        });
+    }, [villageListQuery, ward.villages]);
+    const villagePages = Math.max(1, Math.ceil(filteredVillages.length / villagePageSize));
+    const safeVillagePage = Math.min(villageListPage, villagePages);
+    const visibleVillages = filteredVillages.slice((safeVillagePage - 1) * villagePageSize, safeVillagePage * villagePageSize);
+    const wardBloodGroups = useMemo(() => (
+        Object.keys(wardStats.blood_groups || {}).length
+            ? Object.keys(wardStats.blood_groups || {})
+            : Array.from(new Set((ward.bloodDonors || []).map((donor) => donor.group).filter(Boolean)))
+    ), [ward.bloodDonors, wardStats.blood_groups]);
+    const filteredWardBloodDonors = useMemo(() => {
+        const term = wardBloodQuery.trim().toLowerCase();
+        return (ward.bloodDonors || []).filter((donor) => {
+            const matchesGroup = wardBloodGroupFilter === 'all' || donor.group === wardBloodGroupFilter;
+            const haystack = [donor.name, donor.group, donor.village, donor.phone].filter(Boolean).join(' ').toLowerCase();
+            return matchesGroup && (!term || haystack.includes(term));
+        });
+    }, [ward.bloodDonors, wardBloodGroupFilter, wardBloodQuery]);
+    const wardBloodPages = Math.max(1, Math.ceil(filteredWardBloodDonors.length / wardBloodPageSize));
+    const safeWardBloodPage = Math.min(wardBloodPage, wardBloodPages);
+    const visibleWardBloodDonors = filteredWardBloodDonors.slice((safeWardBloodPage - 1) * wardBloodPageSize, safeWardBloodPage * wardBloodPageSize);
+
+    useEffect(() => {
+        setVillageListPage(1);
+    }, [villageListQuery, ward.villages]);
+
+    useEffect(() => {
+        setWardBloodPage(1);
+    }, [wardBloodGroupFilter, wardBloodQuery, ward.bloodDonors]);
 
     useEffect(() => {
         dispatch(
@@ -467,8 +537,24 @@ export default function WardPortalClient({ ctx, ward: initialWard }) {
                             </div>
 
                             <div className="p-6 sm:p-8 space-y-6">
+                                <div className="rounded-3xl border border-slate-100 bg-slate-50 p-4">
+                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                        <label className="relative flex-1">
+                                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
+                                            <input
+                                                value={villageListQuery}
+                                                onChange={(event) => setVillageListQuery(event.target.value)}
+                                                placeholder="গ্রামের নাম দিয়ে খুঁজুন"
+                                                className="h-12 w-full rounded-2xl border border-slate-200 bg-white pl-11 pr-4 text-sm font-bold outline-none focus:border-teal-300 focus:ring-4 focus:ring-teal-50"
+                                            />
+                                        </label>
+                                        <p className="text-xs font-black text-slate-500">
+                                            {toBnDigits(String(filteredVillages.length))}টি · পৃষ্ঠা {toBnDigits(String(safeVillagePage))}/{toBnDigits(String(villagePages))}
+                                        </p>
+                                    </div>
+                                </div>
                                 <div className="grid grid-cols-1 gap-6">
-                                    {(ward.villages || []).map((v, idx) => {
+                                    {visibleVillages.map((v, idx) => {
                                         const isObj = typeof v === 'object';
                                         const vName = isObj ? v.name : v;
                                         const getCount = (val) => Array.isArray(val) ? val.length : parseBnInt(val || '0');
@@ -579,6 +665,11 @@ export default function WardPortalClient({ ctx, ward: initialWard }) {
                                         );
                                     })}
                                 </div>
+                                <ListPager
+                                    page={safeVillagePage}
+                                    totalPages={villagePages}
+                                    onPageChange={setVillageListPage}
+                                />
                             </div>
                         </div>
 
@@ -595,20 +686,53 @@ export default function WardPortalClient({ ctx, ward: initialWard }) {
                             </div>
                             
                             {/* Blood Group Breakdown */}
-                            {wardStats.blood_groups && Object.keys(wardStats.blood_groups).length > 0 && (
+                            {wardBloodGroups.length > 0 && (
                                 <div className="px-6 pt-5 pb-2">
                                     <div className="flex flex-wrap gap-2">
-                                        {Object.entries(wardStats.blood_groups).map(([group, count]) => (
-                                            <div key={group} className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-rose-50 border border-rose-100">
-                                                <span className="text-sm font-black text-rose-600">{group}</span>
-                                                <span className="text-xs font-bold text-rose-500 bg-white px-2 py-0.5 rounded-md shadow-sm">
-                                                    {toBnDigits(count.toString())} জন
-                                                </span>
-                                            </div>
-                                        ))}
+                                        <button
+                                            type="button"
+                                            onClick={() => setWardBloodGroupFilter('all')}
+                                            className={`flex items-center gap-2 rounded-xl border px-3 py-1.5 text-sm font-black transition ${wardBloodGroupFilter === 'all' ? 'border-rose-600 bg-rose-600 text-white' : 'border-rose-100 bg-white text-rose-600'}`}
+                                        >
+                                            সব গ্রুপ
+                                        </button>
+                                        {wardBloodGroups.map((group) => {
+                                            const count = wardStats.blood_groups?.[group] || (ward.bloodDonors || []).filter((donor) => donor.group === group).length;
+                                            return (
+                                                <button
+                                                    key={group}
+                                                    type="button"
+                                                    onClick={() => setWardBloodGroupFilter(group)}
+                                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition ${wardBloodGroupFilter === group ? 'border-rose-600 bg-rose-600 text-white' : 'bg-rose-50 border-rose-100 text-rose-600'}`}
+                                                >
+                                                    <span className="text-sm font-black">{group}</span>
+                                                    <span className="text-xs font-bold text-rose-500 bg-white px-2 py-0.5 rounded-md shadow-sm">
+                                                        {toBnDigits(String(count))} জন
+                                                    </span>
+                                                </button>
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             )}
+                            <div className="px-6 py-4">
+                                <div className="rounded-3xl border border-rose-100 bg-rose-50/40 p-4">
+                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                        <label className="relative flex-1">
+                                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-rose-400" size={17} />
+                                            <input
+                                                value={wardBloodQuery}
+                                                onChange={(event) => setWardBloodQuery(event.target.value)}
+                                                placeholder="রক্তদাতার নাম, গ্রুপ, গ্রাম বা ফোন খুঁজুন"
+                                                className="h-12 w-full rounded-2xl border border-rose-100 bg-white pl-11 pr-4 text-sm font-bold outline-none focus:border-rose-300 focus:ring-4 focus:ring-rose-100"
+                                            />
+                                        </label>
+                                        <p className="text-xs font-black text-slate-500">
+                                            {toBnDigits(String(filteredWardBloodDonors.length))} জন · পৃষ্ঠা {toBnDigits(String(safeWardBloodPage))}/{toBnDigits(String(wardBloodPages))}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
 
                             <div className="p-0 overflow-x-auto">
                                 <table className="w-full text-left border-collapse">
@@ -621,7 +745,7 @@ export default function WardPortalClient({ ctx, ward: initialWard }) {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-50">
-                                        {(ward.bloodDonors || []).map((donor, idx) => (
+                                        {visibleWardBloodDonors.map((donor, idx) => (
                                             <tr key={idx} className="hover:bg-slate-50 transition-colors">
                                                 <td className="p-5 pl-8 font-black text-slate-800 text-sm">{donor.name}</td>
                                                 <td className="p-5">
@@ -638,16 +762,23 @@ export default function WardPortalClient({ ctx, ward: initialWard }) {
                                                 </td>
                                             </tr>
                                         ))}
-                                        {(!ward.bloodDonors || ward.bloodDonors.length === 0) && (
+                                        {filteredWardBloodDonors.length === 0 && (
                                             <tr>
                                                 <td colSpan="4" className="p-12 text-center">
                                                     <Droplets className="mx-auto text-slate-200 mb-3" size={40} />
-                                                    <p className="font-bold text-slate-400">এই ওয়াডে এখনো কোনো রক্তদাতা তালিকাভুক্ত হয়নি</p>
+                                                    <p className="font-bold text-slate-400">এই সার্চ বা ফিল্টারে কোনো রক্তদাতা পাওয়া যায়নি</p>
                                                 </td>
                                             </tr>
                                         )}
                                     </tbody>
                                 </table>
+                            </div>
+                            <div className="border-t border-slate-100 px-6 py-5">
+                                <ListPager
+                                    page={safeWardBloodPage}
+                                    totalPages={wardBloodPages}
+                                    onPageChange={setWardBloodPage}
+                                />
                             </div>
                         </div>
                     </div>

@@ -815,13 +815,17 @@ function PriceRow({ commodity, priceRecord, onUpdate, onShowHistory }) {
     const [saveStatus, setSaveStatus] = useState(null); // 'success', 'error', null
 
     useEffect(() => {
-        if (priceRecord) {
-            setEditValue(priceRecord.price);
-            setSupply(priceRecord.supply);
-        } else {
-            setEditValue('');
-            setSupply('Normal');
-        }
+        const updateTimeout = setTimeout(() => {
+            if (priceRecord) {
+                setEditValue(priceRecord.price);
+                setSupply(priceRecord.supply);
+            } else {
+                setEditValue('');
+                setSupply('Normal');
+            }
+        }, 0);
+
+        return () => clearTimeout(updateTimeout);
     }, [priceRecord]);
 
     const handleSave = async () => {

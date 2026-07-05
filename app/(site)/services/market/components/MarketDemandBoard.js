@@ -1,12 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useState } from 'react';
-import { HandCoins, Loader2, Phone, Plus, ShoppingCart, Store } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ChevronLeft, ChevronRight, HandCoins, Loader2, Phone, Plus, Search, ShoppingCart, Store } from 'lucide-react';
+import { toBnDigits } from '@/lib/utils/format';
+
+const DEMAND_PAGE_SIZE = 5;
 
 export function MarketDemandBoard({ union, market, commodities = [] }) {
     const [demands, setDemands] = useState([]);
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+    const [query, setQuery] = useState('');
+    const [typeFilter, setTypeFilter] = useState('all');
+    const [page, setPage] = useState(1);
     const [form, setForm] = useState({
         demandType: 'sell',
         commodityId: '',
@@ -23,12 +29,31 @@ export function MarketDemandBoard({ union, market, commodities = [] }) {
     const commodityName = useMemo(() => {
         return commodities.find((item) => item.id === form.commodityId)?.name || '';
     }, [commodities, form.commodityId]);
+    const filteredDemands = useMemo(() => {
+        const needle = query.trim().toLowerCase();
+        return demands.filter((item) => {
+            const matchesType = typeFilter === 'all' || item.demand_type === typeFilter;
+            const haystack = [
+                item.title,
+                item.quantity,
+                item.expected_price,
+                item.village_name,
+                item.market?.name,
+                item.contact_name,
+                item.contact_phone
+            ].filter(Boolean).join(' ').toLowerCase();
+            return matchesType && (!needle || haystack.includes(needle));
+        });
+    }, [demands, query, typeFilter]);
+    const totalPages = Math.max(1, Math.ceil(filteredDemands.length / DEMAND_PAGE_SIZE));
+    const safePage = Math.min(page, totalPages);
+    const visibleDemands = filteredDemands.slice((safePage - 1) * DEMAND_PAGE_SIZE, safePage * DEMAND_PAGE_SIZE);
 
     useEffect(() => {
-        loadDemands();
-    }, [union?.id, market?.id]);
+        setPage(1);
+    }, [query, typeFilter, demands]);
 
-    async function loadDemands() {
+    const loadDemands = useCallback(async () => {
         if (!union?.id) return;
         setLoading(true);
         try {
@@ -43,7 +68,11 @@ export function MarketDemandBoard({ union, market, commodities = [] }) {
         } finally {
             setLoading(false);
         }
-    }
+    }, [market?.id, union?.id]);
+
+    useEffect(() => {
+        loadDemands();
+    }, [loadDemands]);
 
     async function handleSubmit(event) {
         event.preventDefault();
@@ -151,29 +180,86 @@ export function MarketDemandBoard({ union, market, commodities = [] }) {
             </form>
 
             <div className="mt-6 border-t border-slate-100 pt-5">
-                <h4 className="mb-3 text-xs font-black uppercase tracking-widest text-slate-400">সর্বশেষ পোস্ট</h4>
-                {loading ? (
-                    <div className="py-6 text-center text-slate-400"><Loader2 className="mx-auto animate-spin" /></div>
-                ) : demands.length === 0 ? (
-                    <p className="rounded-2xl bg-slate-50 p-4 text-center text-xs font-bold text-slate-400">এখনো কোনো demand নেই</p>
-                ) : (
-                    <div className="space-y-3">
-                        {demands.map((item) => (
-                            <div key={item.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
-                                <div className="mb-2 flex items-center justify-between gap-2">
-                                    <span className={`rounded-full px-2.5 py-1 text-[10px] font-black ${item.demand_type === 'sell' ? 'bg-emerald-100 text-emerald-700' : 'bg-sky-100 text-sky-700'}`}>
-                                        {item.demand_type === 'sell' ? 'বিক্রি' : 'কিনব'}
-                                    </span>
-                                    <a href={`tel:${item.contact_phone}`} className="flex items-center gap-1 text-[10px] font-black text-slate-500">
-                                        <Phone size={12} /> কল
-                                    </a>
-                                </div>
-                                <p className="font-black text-slate-900">{item.title}</p>
-                                <p className="mt-1 text-xs font-bold text-slate-500">{item.quantity || 'পরিমাণ নেই'} {item.expected_price ? `- ৳${item.expected_price}` : ''}</p>
-                                <p className="mt-1 text-[11px] font-bold text-slate-400">{item.village_name || item.market?.name || 'এলাকা উল্লেখ নেই'}</p>
-                            </div>
+                <div className="mb-4 flex flex-col gap-3">
+                    <div className="flex items-center justify-between gap-3">
+                        <h4 className="text-xs font-black uppercase tracking-widest text-slate-400">সর্বশেষ পোস্ট</h4>
+                        <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-black text-slate-500">
+                            {toBnDigits(String(filteredDemands.length))}টি
+                        </span>
+                    </div>
+                    <label className="relative block">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
+                        <input
+                            value={query}
+                            onChange={(event) => setQuery(event.target.value)}
+                            placeholder="পণ্য, গ্রাম বা ফোন দিয়ে খুঁজুন"
+                            className="h-11 w-full rounded-2xl border border-slate-200 bg-slate-50 pl-9 pr-3 text-xs font-bold outline-none focus:border-amber-400 focus:bg-white"
+                        />
+                    </label>
+                    <div className="grid grid-cols-3 gap-2">
+                        {[
+                            ['all', 'সব'],
+                            ['sell', 'বিক্রি'],
+                            ['buy', 'কিনব']
+                        ].map(([value, label]) => (
+                            <button
+                                key={value}
+                                type="button"
+                                onClick={() => setTypeFilter(value)}
+                                className={`rounded-2xl px-3 py-2 text-xs font-black transition ${typeFilter === value ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-600'}`}
+                            >
+                                {label}
+                            </button>
                         ))}
                     </div>
+                </div>
+                {loading ? (
+                    <div className="py-6 text-center text-slate-400"><Loader2 className="mx-auto animate-spin" /></div>
+                ) : filteredDemands.length === 0 ? (
+                    <p className="rounded-2xl bg-slate-50 p-4 text-center text-xs font-bold text-slate-400">এখনো কোনো demand নেই</p>
+                ) : (
+                    <>
+                        <div className="space-y-3">
+                            {visibleDemands.map((item) => (
+                                <div key={item.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                                    <div className="mb-2 flex items-center justify-between gap-2">
+                                        <span className={`rounded-full px-2.5 py-1 text-[10px] font-black ${item.demand_type === 'sell' ? 'bg-emerald-100 text-emerald-700' : 'bg-sky-100 text-sky-700'}`}>
+                                            {item.demand_type === 'sell' ? 'বিক্রি' : 'কিনব'}
+                                        </span>
+                                        <a href={`tel:${item.contact_phone}`} className="flex items-center gap-1 text-[10px] font-black text-slate-500">
+                                            <Phone size={12} /> কল
+                                        </a>
+                                    </div>
+                                    <p className="font-black text-slate-900">{item.title}</p>
+                                    <p className="mt-1 text-xs font-bold text-slate-500">{item.quantity || 'পরিমাণ নেই'} {item.expected_price ? `- ৳${item.expected_price}` : ''}</p>
+                                    <p className="mt-1 text-[11px] font-bold text-slate-400">{item.village_name || item.market?.name || 'এলাকা উল্লেখ নেই'}</p>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="mt-4 flex items-center justify-center gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setPage((value) => Math.max(1, value - 1))}
+                                disabled={safePage <= 1}
+                                className="inline-flex h-10 items-center gap-1 rounded-2xl border border-slate-200 bg-white px-3 text-xs font-black text-slate-600 disabled:opacity-40"
+                            >
+                                <ChevronLeft size={15} />
+                                আগে
+                            </button>
+                            <span className="rounded-2xl bg-slate-950 px-4 py-2 text-xs font-black text-white">
+                                {toBnDigits(String(safePage))}/{toBnDigits(String(totalPages))}
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() => setPage((value) => Math.min(totalPages, value + 1))}
+                                disabled={safePage >= totalPages}
+                                className="inline-flex h-10 items-center gap-1 rounded-2xl border border-slate-200 bg-white px-3 text-xs font-black text-slate-600 disabled:opacity-40"
+                            >
+                                পরে
+                                <ChevronRight size={15} />
+                            </button>
+                        </div>
+                    </>
                 )}
             </div>
         </div>

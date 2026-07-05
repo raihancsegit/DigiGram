@@ -11,6 +11,13 @@ import { householdService } from '@/lib/services/householdService';
 import { toBnDigits } from '@/lib/utils/format';
 import { getServiceSla } from '@/lib/utils/serviceSla';
 
+const SERVICE_LABELS = {
+    birth_registration: 'জন্ম নিবন্ধন',
+    death_certificate: 'মৃত্যু সনদ',
+    warish_certificate: 'ওয়ারিশ সনদ',
+    utility_request: 'ইউটিলিটি সেবা'
+};
+
 export default function UnionServiceManager({ unionId }) {
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -188,8 +195,7 @@ export default function UnionServiceManager({ unionId }) {
                         </div>
                         
                         <h4 className="text-xl font-black text-slate-800 mb-2">
-                            {req.request_type === 'birth_registration' ? 'জন্ম নিবন্ধন' : 
-                             req.request_type === 'death_certificate' ? 'মৃত্যু সনদ' : 'ইউটিলিটি সেবা'}
+                            {SERVICE_LABELS[req.request_type] || req.request_type}
                         </h4>
                         <div className="space-y-2 mb-6">
                             <p className="text-xs font-bold text-slate-500 flex items-center gap-2">
@@ -252,7 +258,7 @@ export default function UnionServiceManager({ unionId }) {
                                 <div className="space-y-4">
                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">আবেদনের বিষয়</p>
                                     <div className="p-5 rounded-2xl bg-slate-50 border border-slate-100">
-                                        <p className="font-black text-slate-800">{selectedRequest.request_type === 'birth_registration' ? 'জন্ম নিবন্ধন' : selectedRequest.request_type === 'death_certificate' ? 'মৃত্যু সনদ' : selectedRequest.request_type}</p>
+                                        <p className="font-black text-slate-800">{SERVICE_LABELS[selectedRequest.request_type] || selectedRequest.request_type}</p>
                                         <p className="text-xs font-bold text-slate-500 italic">পিতা: {selectedRequest.father_name || 'প্রযোজ্য নয়'}</p>
                                     </div>
                                 </div>

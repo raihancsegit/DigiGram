@@ -4,15 +4,16 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ShieldCheck } from 'lucide-react';
 
 export default function GlobalLoading({ isVisible }) {
+    if (!isVisible) return null;
+
     return (
         <AnimatePresence>
-            {isVisible && (
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-[9999] bg-white/80 backdrop-blur-md flex flex-col items-center justify-center"
-                >
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[9999] bg-white/80 backdrop-blur-md flex flex-col items-center justify-center"
+            >
                     <div className="relative">
                         {/* Rotating Outer Ring */}
                         <motion.div 
@@ -64,8 +65,7 @@ export default function GlobalLoading({ isVisible }) {
                         transition={{ duration: 15, ease: "easeOut" }}
                         className="fixed top-0 left-0 h-1 bg-gradient-to-r from-teal-400 to-indigo-500 shadow-[0_0_10px_rgba(20,184,166,0.5)]"
                     />
-                </motion.div>
-            )}
+            </motion.div>
         </AnimatePresence>
     );
 }

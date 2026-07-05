@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
     Droplet, Search, MapPin, Phone, Users, 
@@ -25,7 +25,7 @@ export default function BloodBankClient() {
     // Pagination state
     const [page, setPage] = useState(1);
     const [totalCount, setTotalCount] = useState(0);
-    const pageSize = 20;
+    const [pageSize, setPageSize] = useState(12);
 
     // Filters
     const [filters, setFilters] = useState({
@@ -44,15 +44,7 @@ export default function BloodBankClient() {
     const searchParams = useSearchParams();
     const unionSlug = searchParams.get('u');
 
-    // Initial Load
-    useEffect(() => {
-        loadInitialData();
-        if (unionSlug) {
-            handleAutoSelectUnion(unionSlug);
-        }
-    }, [unionSlug]);
-
-    const handleAutoSelectUnion = async (slug) => {
+    const handleAutoSelectUnion = useCallback(async (slug) => {
         try {
             const unionData = await getLocationBySlug(slug);
             if (unionData) {
@@ -63,23 +55,10 @@ export default function BloodBankClient() {
         } catch (err) {
             console.error("Auto-select union failed:", err);
         }
-    };
-
-    // Load Donors when filters or page change
-    useEffect(() => {
-        const delay = setTimeout(() => {
-            loadDonors();
-        }, 300);
-        return () => clearTimeout(delay);
-    }, [filters.bloodGroup, filters.unionId, filters.wardId, filters.villageId, filters.searchQuery, page]);
-
-    // Reset to page 1 when filters change
-    useEffect(() => {
-        setPage(1);
-    }, [filters.bloodGroup, filters.unionId, filters.wardId, filters.villageId, filters.searchQuery]);
+    }, []);
 
     // Load Unions
-    const loadInitialData = async () => {
+    const loadInitialData = useCallback(async () => {
         try {
             const { data: unionData } = await supabase
                 .from('locations')
@@ -93,25 +72,14 @@ export default function BloodBankClient() {
         } catch (err) {
             console.error("Failed to load hierarchy:", err);
         }
-    };
+    }, []);
 
-    const loadDonors = async () => {
+    const loadDonors = useCallback(async () => {
         setSearching(true);
         try {
             const { donors: data, totalCount: total } = await bloodBankService.getDonors(filters, page, pageSize);
             
-            // Client-side search for name/location if search query exists
-            let result = data || [];
-            if (filters.searchQuery) {
-                const q = filters.searchQuery.toLowerCase();
-                result = result.filter(d => 
-                    d.name.toLowerCase().includes(q) || 
-                    d.household?.village?.bn_name?.toLowerCase().includes(q) ||
-                    d.household?.ward?.name_bn?.toLowerCase().includes(q)
-                );
-            }
-            
-            setDonors(result);
+            setDonors(data || []);
             setTotalCount(total);
         } catch (err) {
             console.error("Failed to load donors:", err);
@@ -119,7 +87,28 @@ export default function BloodBankClient() {
             setSearching(false);
             setLoading(false);
         }
-    };
+    }, [filters, page, pageSize]);
+
+    // Initial Load
+    useEffect(() => {
+        loadInitialData();
+        if (unionSlug) {
+            handleAutoSelectUnion(unionSlug);
+        }
+    }, [unionSlug, loadInitialData, handleAutoSelectUnion]);
+
+    // Load Donors when filters or page change
+    useEffect(() => {
+        const delay = setTimeout(() => {
+            loadDonors();
+        }, 300);
+        return () => clearTimeout(delay);
+    }, [loadDonors]);
+
+    // Reset to page 1 when filters change
+    useEffect(() => {
+        setPage(1);
+    }, [filters.bloodGroup, filters.unionId, filters.wardId, filters.villageId, filters.searchQuery, pageSize]);
 
     // Handle Location Changes
     const handleUnionChange = async (id) => {
@@ -142,6 +131,10 @@ export default function BloodBankClient() {
             setVillages([]);
         }
     };
+
+    const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+    const resultStart = totalCount === 0 ? 0 : ((page - 1) * pageSize) + 1;
+    const resultEnd = Math.min(page * pageSize, totalCount);
 
     const DonorCard = ({ donor }) => (
         <motion.div 
@@ -289,7 +282,7 @@ export default function BloodBankClient() {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-24">
                 <div className="bg-white rounded-[40px] shadow-xl shadow-slate-200/50 border border-slate-100 p-6 md:p-10">
                     {/* Filter Bar */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4 mb-6">
                         <div className="relative">
                             <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                             <input 
@@ -330,6 +323,28 @@ export default function BloodBankClient() {
                             <option value="">সকল গ্রাম</option>
                             {villages.map(v => <option key={v.id} value={v.id}>{v.name_bn}</option>)}
                         </select>
+
+                        <select
+                            value={pageSize}
+                            onChange={(e) => setPageSize(Number(e.target.value))}
+                            className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-[20px] outline-none focus:bg-white focus:border-rose-400 transition-all font-bold text-slate-700 appearance-none cursor-pointer"
+                        >
+                            {[12, 24, 48].map((size) => (
+                                <option key={size} value={size}>{toBnDigits(String(size))} করে দেখুন</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="mb-10 flex flex-col gap-3 rounded-[28px] border border-slate-100 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                        <p className="text-xs font-black text-slate-500">
+                            মোট <span className="text-rose-600">{toBnDigits(String(totalCount))} জন</span> রক্তদাতা
+                            {totalCount > 0 && (
+                                <span> · {toBnDigits(String(resultStart))}-{toBnDigits(String(resultEnd))} দেখানো হচ্ছে</span>
+                            )}
+                        </p>
+                        <p className="text-xs font-black text-slate-400">
+                            পৃষ্ঠা {toBnDigits(String(page))} / {toBnDigits(String(totalPages))}
+                        </p>
                     </div>
 
                     {/* Results Grid */}
@@ -342,7 +357,7 @@ export default function BloodBankClient() {
                         <>
                             <div className="flex items-center justify-between mb-8 px-2">
                                 <p className="text-xs font-black text-slate-400 uppercase tracking-widest">
-                                    মোট <span className="text-rose-600">{toBnDigits(donors.length.toString())} জন</span> রক্তদাতা পাওয়া গেছে
+                                    এই পৃষ্ঠায় <span className="text-rose-600">{toBnDigits(donors.length.toString())} জন</span> রক্তদাতা
                                 </p>
                                 {filters.bloodGroup && (
                                     <button 
@@ -362,20 +377,20 @@ export default function BloodBankClient() {
                             </div>
 
                             {/* Pagination Controls */}
-                            {totalCount > pageSize && (
+                            {totalCount > 0 && (
                                 <div className="mt-16 flex flex-col items-center justify-center gap-6">
                                     <div className="flex items-center gap-4">
-                                        <button 
+                                        <button
                                             disabled={page === 1}
-                                            onClick={() => setPage(p => p - 1)}
-                                            className="w-12 h-12 rounded-2xl bg-white border border-slate-100 flex items-center justify-center text-slate-500 hover:bg-rose-600 hover:text-white disabled:opacity-30 disabled:hover:bg-white disabled:hover:text-slate-500 transition-all shadow-sm active:scale-95"
+                                            onClick={() => setPage(p => Math.max(1, p - 1))}
+                                            className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-white border border-slate-100 px-4 text-xs font-black text-slate-500 hover:bg-rose-600 hover:text-white disabled:opacity-30 disabled:hover:bg-white disabled:hover:text-slate-500 transition-all shadow-sm active:scale-95"
                                         >
-                                            <ArrowRight size={20} className="rotate-180" />
+                                            <ArrowRight size={18} className="rotate-180" />
+                                            আগের পৃষ্ঠা
                                         </button>
                                         
                                         <div className="flex items-center gap-2">
                                             {(() => {
-                                                const totalPages = Math.ceil(totalCount / pageSize);
                                                 return Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                                                     // Simple page numbering logic
                                                     let pageNum = i + 1;
@@ -403,16 +418,17 @@ export default function BloodBankClient() {
                                             })()}
                                         </div>
 
-                                        <button 
-                                            disabled={page * pageSize >= totalCount}
-                                            onClick={() => setPage(p => p + 1)}
-                                            className="w-12 h-12 rounded-2xl bg-white border border-slate-100 flex items-center justify-center text-slate-500 hover:bg-rose-600 hover:text-white disabled:opacity-30 disabled:hover:bg-white disabled:hover:text-slate-500 transition-all shadow-sm active:scale-95"
+                                        <button
+                                            disabled={page >= totalPages}
+                                            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                            className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-white border border-slate-100 px-4 text-xs font-black text-slate-500 hover:bg-rose-600 hover:text-white disabled:opacity-30 disabled:hover:bg-white disabled:hover:text-slate-500 transition-all shadow-sm active:scale-95"
                                         >
-                                            <ArrowRight size={20} />
+                                            পরের পৃষ্ঠা
+                                            <ArrowRight size={18} />
                                         </button>
                                     </div>
                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
-                                        পৃষ্ঠা {toBnDigits(page.toString())} (মোট {toBnDigits(Math.ceil(totalCount / pageSize).toString())})
+                                        পৃষ্ঠা {toBnDigits(page.toString())} (মোট {toBnDigits(totalPages.toString())})
                                     </p>
                                 </div>
                             )}
@@ -428,6 +444,25 @@ export default function BloodBankClient() {
                                 onClick={() => setFilters({ bloodGroup: '', unionId: '', wardId: '', villageId: '', searchQuery: '' })}
                                 className="mt-8 px-8 py-3.5 bg-slate-900 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-rose-600 transition-all"
                             >রিসেট ফিল্টার</button>
+                            <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
+                                <button
+                                    disabled
+                                    className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-white border border-slate-100 px-4 text-xs font-black text-slate-400 opacity-50"
+                                >
+                                    <ArrowRight size={18} className="rotate-180" />
+                                    আগের পৃষ্ঠা
+                                </button>
+                                <span className="rounded-2xl bg-slate-900 px-5 py-3 text-xs font-black text-white">
+                                    পৃষ্ঠা {toBnDigits(String(page))} / {toBnDigits(String(totalPages))}
+                                </span>
+                                <button
+                                    disabled
+                                    className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-white border border-slate-100 px-4 text-xs font-black text-slate-400 opacity-50"
+                                >
+                                    পরের পৃষ্ঠা
+                                    <ArrowRight size={18} />
+                                </button>
+                            </div>
                         </div>
                     )}
                 </div>

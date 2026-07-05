@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { 
     Plus, Search, Settings, HandHeart, 
     CheckCircle2, XCircle, Eye, EyeOff,
@@ -47,6 +47,18 @@ export default function DonationManager({ locationId, unionSlug }) {
         is_global: false
     });
     const [selectedImage, setSelectedImage] = useState(null);
+    const selectedImagePreviewUrl = useMemo(
+        () => selectedImage ? URL.createObjectURL(selectedImage) : '',
+        [selectedImage]
+    );
+
+    useEffect(() => {
+        return () => {
+            if (selectedImagePreviewUrl) {
+                URL.revokeObjectURL(selectedImagePreviewUrl);
+            }
+        };
+    }, [selectedImagePreviewUrl]);
 
     useEffect(() => {
         if (unionSlug) {
@@ -618,9 +630,9 @@ export default function DonationManager({ locationId, unionSlug }) {
                                         <div className="flex items-center gap-6">
                                             <div className="w-24 h-24 rounded-2xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden">
                                                 {selectedImage ? (
-                                                    <img src={URL.createObjectURL(selectedImage)} className="w-full h-full object-cover" />
+                                                    <img src={selectedImagePreviewUrl} alt="Selected project preview" className="w-full h-full object-cover" />
                                                 ) : projectForm.image_url ? (
-                                                    <img src={projectForm.image_url} className="w-full h-full object-cover" />
+                                                    <img src={projectForm.image_url} alt={projectForm.title || 'Project preview'} className="w-full h-full object-cover" />
                                                 ) : (
                                                     <Plus className="text-slate-300" />
                                                 )}

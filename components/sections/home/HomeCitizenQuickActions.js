@@ -3,146 +3,134 @@
 import Link from 'next/link';
 import {
     BellRing,
-    BriefcaseBusiness,
     CalendarCheck,
     ClipboardCheck,
     Droplets,
     FileSearch,
+    GraduationCap,
     HeartPulse,
-    HelpCircle,
+    Home,
     IdCard,
     MessageSquareWarning,
+    School,
     ShoppingBag,
-    Smartphone,
     WalletCards
 } from 'lucide-react';
 
-const ACTIONS = [
+const PRIMARY_ACTIONS = [
     {
-        title: 'আমার কাজ কোথায়?',
-        text: 'আবেদন, সনদ, complaint ও SMS update এক inbox-এ দেখুন।',
+        title: 'পরিবার / Home Profile',
+        text: 'বাড়ি ধরে পরিবারের সদস্য, NID, জন্ম নিবন্ধন, ভোটার, রক্ত, স্কুল status এক জায়গায় থাকবে।',
         href: '/citizen',
+        icon: Home,
+        tone: 'border-emerald-100 bg-emerald-50 text-emerald-700'
+    },
+    {
+        title: 'আবেদন করুন',
+        text: 'সনদ, অভিযোগ, appointment, blood help বা ইউনিয়ন সেবা সহজ ফর্মে পাঠান।',
+        href: '/citizen#apply',
+        icon: ClipboardCheck,
+        tone: 'border-sky-100 bg-sky-50 text-sky-700'
+    },
+    {
+        title: 'পড়াশোনা Track',
+        text: 'School, college, madrasha, kindergarten website-এর সাথে result, homework, attendance দেখুন।',
+        href: '/services/school',
+        icon: School,
+        tone: 'border-violet-100 bg-violet-50 text-violet-700'
+    },
+    {
+        title: 'Status দেখুন',
+        text: 'আবেদন, payment, complaint, admission বা family update কোথায় আছে দ্রুত দেখুন।',
+        href: '/track',
         icon: FileSearch,
-        color: 'bg-teal-50 text-teal-700 border-teal-100'
-    },
-    {
-        title: 'অভিযোগ জানান',
-        text: 'রাস্তা, পানি, লাইট বা ইউনিয়ন সেবার সমস্যা সরাসরি পাঠান।',
-        href: '/citizen#complaint',
-        icon: MessageSquareWarning,
-        color: 'bg-rose-50 text-rose-700 border-rose-100'
-    },
-    {
-        title: 'রক্ত জরুরি',
-        text: 'Blood group, রোগী ও হাসপাতাল দিয়ে দ্রুত help request দিন।',
-        href: '/citizen#blood',
-        icon: Droplets,
-        color: 'bg-red-50 text-red-700 border-red-100'
-    },
-    {
-        title: 'বাজার দর',
-        text: 'হাট-বাজারের দর, price alert ও কিনতে/বিক্রি করতে চাই পোস্ট।',
-        href: '/services/market',
-        icon: ShoppingBag,
-        color: 'bg-amber-50 text-amber-700 border-amber-100'
-    },
-    {
-        title: 'হারানো-প্রাপ্তি',
-        text: 'OTP verified report, claim ও office approval সহ নিরাপদ system।',
-        href: '/lost-found',
-        icon: HelpCircle,
-        color: 'bg-indigo-50 text-indigo-700 border-indigo-100'
-    },
-    {
-        title: 'Tax ও fee payment',
-        text: 'OTP দিয়ে বকেয়া দেখুন, payment reference দিন এবং receipt status অনুসরণ করুন।',
-        href: '/pay',
-        icon: WalletCards,
-        color: 'bg-cyan-50 text-cyan-700 border-cyan-100'
-    },
-    {
-        title: 'অফিস serial',
-        text: 'চেয়ারম্যান/সচিব/মেম্বারের কাছে যাওয়ার আগে appointment ticket পাঠান।',
-        href: '/citizen#appointment',
-        icon: CalendarCheck,
-        color: 'bg-violet-50 text-violet-700 border-violet-100'
-    },
-    {
-        title: 'Household status',
-        text: 'পরিবারের NID, জন্ম নিবন্ধন, voter, blood ও tax status এক জায়গায়।',
-        href: '/citizen',
-        icon: IdCard,
-        color: 'bg-emerald-50 text-emerald-700 border-emerald-100'
-    },
-    {
-        title: 'Health follow-up',
-        text: 'টিকা, checkup, blood group ও নারী/শিশু স্বাস্থ্য camp update।',
-        href: '/services/e-clinic',
-        icon: HeartPulse,
-        color: 'bg-pink-50 text-pink-700 border-pink-100'
-    },
-    {
-        title: 'Local business',
-        text: 'দোকান, service provider, market demand ও SMS alert business route।',
-        href: '/services/market',
-        icon: BriefcaseBusiness,
-        color: 'bg-lime-50 text-lime-700 border-lime-100'
+        tone: 'border-amber-100 bg-amber-50 text-amber-700'
     }
+];
+
+const SECONDARY_ACTIONS = [
+    { title: 'অভিযোগ', href: '/citizen#complaint', icon: MessageSquareWarning },
+    { title: 'রক্ত জরুরি', href: '/citizen#blood', icon: Droplets },
+    { title: 'বাজার দর', href: '/services/market', icon: ShoppingBag },
+    { title: 'Tax / Fee', href: '/pay', icon: WalletCards },
+    { title: 'Office serial', href: '/citizen#appointment', icon: CalendarCheck },
+    { title: 'Health follow-up', href: '/services/e-clinic', icon: HeartPulse }
 ];
 
 export default function HomeCitizenQuickActions() {
     return (
-        <section className="relative z-10 -mt-8 px-3 pb-10 md:-mt-14 md:px-6 md:pb-16">
-            <div className="mx-auto max-w-[1200px] overflow-hidden rounded-[30px] border border-slate-200 bg-white shadow-2xl shadow-slate-900/10 md:rounded-[40px]">
-                <div className="grid gap-5 border-b border-slate-100 bg-gradient-to-br from-slate-950 via-slate-900 to-teal-950 p-5 text-white md:grid-cols-[1fr_auto] md:p-7">
+        <section className="relative z-10 bg-slate-50 px-3 py-8 sm:px-6 md:py-12">
+            <div className="mx-auto max-w-7xl">
+                <div className="grid gap-6 lg:grid-cols-[0.9fr_1.4fr] lg:items-end">
                     <div>
-                        <p className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-teal-200 ring-1 ring-white/10">
-                            <Smartphone size={14} /> Citizen One Tap
+                        <p className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-teal-700 ring-1 ring-slate-200">
+                            <BellRing size={14} /> ইউনিয়ন থেকে ঘর পর্যন্ত
                         </p>
-                        <h2 className="mt-3 text-2xl font-black tracking-tight md:text-4xl">
-                            মানুষের দরকারি কাজ আগে, কম ক্লিকে
+                        <h2 className="mt-4 max-w-xl text-3xl font-black leading-tight text-slate-950 sm:text-4xl">
+                            আগে মানুষের দরকারি কাজ, তারপর বাকি সব
                         </h2>
-                        <p className="mt-2 max-w-2xl text-sm font-bold leading-relaxed text-slate-300 md:text-base">
-                            অফিসে বারবার না গিয়ে status দেখা, অভিযোগ পাঠানো, blood help, বাজার দর, হারানো-প্রাপ্তি ও SMS reminder এক জায়গা থেকে।
+                        <p className="mt-3 max-w-2xl text-sm font-bold leading-6 text-slate-500 sm:text-base">
+                            Union, ward, gram, home আর education portal একই data থেকে চলবে। মানুষ যেন কম click-এ আবেদন, status, family update ও পড়াশোনার progress পায়।
                         </p>
                     </div>
-                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:w-[380px]">
-                        <MiniStat icon={ClipboardCheck} value="Track" label="status" />
-                        <MiniStat icon={BellRing} value="SMS" label="update" />
-                        <MiniStat icon={WalletCards} value="OTP" label="secure" />
+
+                    <div className="grid grid-cols-3 gap-3">
+                        <MiniStat icon={Home} value="Home" label="wise data" />
+                        <MiniStat icon={ClipboardCheck} value="Apply" label="easy forms" />
+                        <MiniStat icon={GraduationCap} value="Edu" label="progress" />
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3 lg:p-6">
-                    {ACTIONS.map((action) => {
+                <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    {PRIMARY_ACTIONS.map((action) => {
                         const Icon = action.icon;
                         return (
                             <Link
                                 key={action.title}
                                 href={action.href}
-                                className="group flex min-h-[132px] gap-4 rounded-[24px] border border-slate-100 bg-slate-50 p-4 transition hover:-translate-y-1 hover:border-teal-200 hover:bg-white hover:shadow-xl hover:shadow-slate-200/70"
+                                className="group flex min-h-[190px] flex-col justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:border-teal-200 hover:shadow-xl hover:shadow-slate-200/70"
                             >
-                                <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border ${action.color}`}>
-                                    <Icon size={24} />
+                                <div className={`flex h-14 w-14 items-center justify-center rounded-2xl border ${action.tone}`}>
+                                    <Icon size={26} />
                                 </div>
                                 <div>
-                                    <h3 className="text-lg font-black leading-snug text-slate-900">{action.title}</h3>
-                                    <p className="mt-2 text-sm font-bold leading-relaxed text-slate-500">{action.text}</p>
+                                    <h3 className="text-xl font-black leading-snug text-slate-950">{action.title}</h3>
+                                    <p className="mt-2 text-sm font-bold leading-6 text-slate-500">{action.text}</p>
                                 </div>
                             </Link>
                         );
                     })}
                 </div>
 
-                <div className="flex flex-col gap-3 border-t border-slate-100 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between lg:p-6">
-                    <p className="text-sm font-bold text-slate-500">
-                        OTP দিয়ে citizen inbox খুললেই application, complaint, blood request, household ও reminder update দেখা যাবে।
-                    </p>
+                <div className="mt-5 flex flex-wrap gap-2">
+                    {SECONDARY_ACTIONS.map((action) => {
+                        const Icon = action.icon;
+                        return (
+                            <Link
+                                key={action.title}
+                                href={action.href}
+                                className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-700 transition hover:border-teal-200 hover:text-teal-700"
+                            >
+                                <Icon size={15} />
+                                {action.title}
+                            </Link>
+                        );
+                    })}
+                </div>
+
+                <div className="mt-6 rounded-2xl border border-teal-100 bg-white p-4 sm:flex sm:items-center sm:justify-between sm:gap-4">
+                    <div className="flex items-start gap-3">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-teal-50 text-teal-700">
+                            <IdCard size={22} />
+                        </div>
+                        <p className="text-sm font-bold leading-6 text-slate-600">
+                            Family member school-e ভর্তি হলে home profile-e mark থাকবে, আর school portal সেই তথ্য দিয়ে student progress চালাবে।
+                        </p>
+                    </div>
                     <Link
                         href="/citizen"
-                        className="inline-flex items-center justify-center gap-2 rounded-2xl bg-teal-500 px-5 py-3 text-sm font-black text-white shadow-lg shadow-teal-500/20 transition hover:bg-teal-600"
+                        className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white transition hover:bg-teal-600 sm:mt-0 sm:w-auto"
                     >
-                        <WalletCards size={18} />
                         Citizen Center
                     </Link>
                 </div>
@@ -153,9 +141,9 @@ export default function HomeCitizenQuickActions() {
 
 function MiniStat({ icon: Icon, value, label }) {
     return (
-        <div className="rounded-2xl bg-white/10 p-3 ring-1 ring-white/10">
-            <Icon size={18} className="text-teal-200" />
-            <p className="mt-3 text-lg font-black">{value}</p>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <Icon size={18} className="text-teal-600" />
+            <p className="mt-3 text-lg font-black text-slate-950">{value}</p>
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{label}</p>
         </div>
     );

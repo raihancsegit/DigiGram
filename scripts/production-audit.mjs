@@ -103,6 +103,7 @@ await checkPage('Home', '/');
 await checkPage('Login', '/login');
 await checkPage('Area selector', '/area');
 await checkPage('Citizen portal', '/citizen');
+await checkPage('Citizen tracking center', '/track');
 await checkPage('Citizen payment center', '/pay');
 await checkPage('News', '/news');
 await checkPage('Market', '/services/market');
@@ -148,6 +149,10 @@ const lockedPostRoutes = [
     '/api/admin/payments',
     '/api/admin/maintenance',
     '/api/admin/data-quality',
+    '/api/admin/governance',
+    '/api/admin/demo-data',
+    '/api/officer/device',
+    '/api/citizen/consent',
     '/api/payments/citizen'
 ];
 
@@ -158,7 +163,11 @@ await checkLocked('/api/admin/sms GET', '/api/admin/sms', 'GET');
 await checkLocked('/api/admin/payments GET', '/api/admin/payments', 'GET');
 await checkLocked('/api/admin/maintenance GET', '/api/admin/maintenance', 'GET');
 await checkLocked('/api/admin/operations GET', '/api/admin/operations', 'GET');
+await checkLocked('/api/admin/governance GET', '/api/admin/governance', 'GET');
+await checkLocked('/api/admin/demo-data GET', '/api/admin/demo-data', 'GET');
 await checkLocked('/api/admin/migrations GET', '/api/admin/migrations', 'GET');
+await checkLocked('/api/admin/launch/health GET', '/api/admin/launch/health', 'GET');
+await checkLocked('/api/admin/search GET', '/api/admin/search?q=test', 'GET');
 await checkLocked('/api/citizen/complaints/manage GET', '/api/citizen/complaints/manage?scopeType=union&scopeId=00000000-0000-0000-0000-000000000000', 'GET');
 await checkLocked('/api/citizen/complaints/manage PATCH', '/api/citizen/complaints/manage', 'PATCH');
 await checkLocked('/api/citizen/appointments/manage GET', '/api/citizen/appointments/manage?scopeType=union&scopeId=00000000-0000-0000-0000-000000000000', 'GET');

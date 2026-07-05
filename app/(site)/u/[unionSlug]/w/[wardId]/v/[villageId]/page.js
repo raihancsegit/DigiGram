@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import { findUnionBySlug } from '@/lib/constants/locations';
 import VillagePortalClient from '@/components/sections/village/VillagePortalClient';
 import { wardService } from '@/lib/services/wardService';
-import { getFullContextBySlug, getWardsWithDetailsByUnion, getLocationBySlug } from '@/lib/services/hierarchyService';
+import { getFullContextBySlug, getLiveStatsForVillageLocation, getWardsWithDetailsByUnion, getLocationBySlug, mergeLocationLiveStats } from '@/lib/services/hierarchyService';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,6 +58,18 @@ export default async function VillagePortalPage({ params }) {
     }
 
     if (!village) notFound();
+
+    const liveStats = await getLiveStatsForVillageLocation(village.id);
+    if (liveStats?.total_houses > 0) {
+        village = {
+            ...village,
+            real_stats: {
+                ...(village.real_stats || {}),
+                ...mergeLocationLiveStats(village.real_stats || village.stats || {}, liveStats)
+            },
+            survey_status: 'verified'
+        };
+    }
 
     return <VillagePortalClient ctx={ctx} ward={ward} village={village} />;
 }

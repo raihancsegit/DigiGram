@@ -1,5 +1,12 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/utils/supabase-admin';
+import { canAccessLocation, canManageInstitution, requireRequestProfile } from '@/lib/utils/server-auth';
+
+async function canManageOwner(profile, ownerType, ownerId) {
+    if (ownerType === 'institution') return canManageInstitution(profile, ownerId);
+    if (ownerType === 'location') return canAccessLocation(profile, ownerId);
+    return false;
+}
 
 function normalizePhone(phone) {
     if (!phone) return '';
@@ -221,6 +228,9 @@ async function getInstitutionRecipients(ownerId) {
 
 export async function POST(request) {
     try {
+        const auth = await requireRequestProfile(request);
+        if (auth.response) return auth.response;
+
         const body = await request.json();
         const {
             ownerType,
@@ -235,6 +245,12 @@ export async function POST(request) {
 
         if (!ownerType || !ownerId || !message) {
             return NextResponse.json({ error: 'ownerType, ownerId and message are required' }, { status: 400 });
+        }
+        if (!(await canManageOwner(auth.profile, ownerType, ownerId))) {
+            return NextResponse.json({ error: 'You cannot send this SMS campaign' }, { status: 403 });
+        }
+        if (targetOwnerId !== ownerId && !(await canAccessLocation(auth.profile, targetOwnerId))) {
+            return NextResponse.json({ error: 'Target area is outside your access scope' }, { status: 403 });
         }
 
         const recipients = ownerType === 'institution'
@@ -325,6 +341,9 @@ export async function POST(request) {
 
 export async function GET(request) {
     try {
+        const auth = await requireRequestProfile(request);
+        if (auth.response) return auth.response;
+
         const { searchParams } = new URL(request.url);
         const ownerType = searchParams.get('ownerType');
         const ownerId = searchParams.get('ownerId');
@@ -333,6 +352,12 @@ export async function GET(request) {
 
         if (!ownerType || !ownerId) {
             return NextResponse.json({ error: 'ownerType and ownerId are required' }, { status: 400 });
+        }
+        if (!(await canManageOwner(auth.profile, ownerType, ownerId))) {
+            return NextResponse.json({ error: 'You cannot preview this SMS campaign' }, { status: 403 });
+        }
+        if (targetOwnerId !== ownerId && !(await canAccessLocation(auth.profile, targetOwnerId))) {
+            return NextResponse.json({ error: 'Target area is outside your access scope' }, { status: 403 });
         }
 
         const recipients = ownerType === 'institution'

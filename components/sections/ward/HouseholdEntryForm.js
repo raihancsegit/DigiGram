@@ -14,8 +14,14 @@ import { householdOfflineOutbox } from '@/lib/services/householdOfflineOutbox';
 import { aiService } from '@/lib/services/aiService';
 import { toBnDigits } from '@/lib/utils/format';
 import { parseBanglaResidentVoice } from '@/lib/utils/voiceResidentParser';
+import { parseHouseholdNotebookText } from '@/lib/utils/householdNotebookParser';
 import { notificationService } from '@/lib/services/notificationService';
 import { supabase } from '@/lib/utils/supabase';
+import {
+    readSecureLocalJson,
+    removeSecureLocalJson,
+    writeSecureLocalJson
+} from '@/lib/utils/secureOfflineStorage';
 import toast from 'react-hot-toast';
 
 const inputStyles = "w-full min-w-0 px-4 py-3.5 sm:px-5 sm:py-4 rounded-2xl sm:rounded-[20px] bg-slate-50 border border-slate-100 focus:bg-white focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 outline-none transition-all font-bold text-slate-700 text-sm";
@@ -72,6 +78,8 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
         relation_with_head: 'Head', dob: '', nid: '', birth_reg_no: '',
         blood_group: '', education_level: '', occupation: '', 
         marital_status: 'Married', disability_status: 'None',
+        student_status: 'not_student', current_school_name: '',
+        current_class_name: '', current_roll_no: '',
         nid_verified: false, birth_reg_verified: false,
         expanded: true 
     };
@@ -96,6 +104,8 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
     const [isOnline, setIsOnline] = useState(true);
     const [outboxSummary, setOutboxSummary] = useState({ total: 0, pending: 0, failed: 0, syncing: 0 });
     const [syncingOutbox, setSyncingOutbox] = useState(false);
+    const [notebookText, setNotebookText] = useState('');
+    const [notebookDraft, setNotebookDraft] = useState(null);
     const bodyRef = useRef(null);
     const draftResolvedRef = useRef(false);
     const voiceRecognitionRef = useRef(null);
@@ -148,7 +158,7 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
         const syncPending = async () => {
             if (!navigator.onLine || householdOfflineOutbox.getSummary().total === 0) return;
             setSyncingOutbox(true);
-            const result = await householdOfflineOutbox.syncAll();
+            const result = await householdOfflineOutbox.syncAll(user?.id);
             if (!active) return;
             refreshSummary();
             setSyncingOutbox(false);
@@ -174,59 +184,66 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
             window.removeEventListener('online', handleOnline);
             window.removeEventListener('offline', handleOffline);
         };
-    }, []);
+    }, [user?.id]);
 
     useEffect(() => {
         if (typeof window === 'undefined') return;
-        try {
-            const saved = window.localStorage.getItem(draftKey);
-            if (!saved) {
-                draftResolvedRef.current = true;
-                return;
-            }
+        let active = true;
 
-            const parsed = JSON.parse(saved);
-            if (!parsed?.houseForm && !parsed?.residents) {
-                draftResolvedRef.current = true;
-                return;
-            }
+        async function inspectDraft() {
+            try {
+                const parsed = await readSecureLocalJson(draftKey, 'household-field-draft');
+                if (!active) return;
+                if (!parsed?.houseForm && !parsed?.residents) {
+                    draftResolvedRef.current = true;
+                    return;
+                }
 
-            setDraftAvailable({
-                savedAt: parsed.savedAt,
-                count: Array.isArray(parsed.residents) ? parsed.residents.length : 0
-            });
-        } catch (err) {
-            console.warn('Unable to read household draft:', err);
-            draftResolvedRef.current = true;
+                setDraftAvailable({
+                    savedAt: parsed.savedAt,
+                    count: Array.isArray(parsed.residents) ? parsed.residents.length : 0
+                });
+            } catch (err) {
+                console.warn('Unable to read household draft:', err);
+                draftResolvedRef.current = true;
+            }
         }
+
+        inspectDraft();
+        return () => {
+            active = false;
+        };
     }, [draftKey]);
 
     useEffect(() => {
         if (typeof window === 'undefined' || !draftResolvedRef.current) return;
         const saveTimer = window.setTimeout(() => {
-            try {
-                window.localStorage.setItem(draftKey, JSON.stringify({
+            writeSecureLocalJson(
+                draftKey,
+                {
                     houseForm,
                     residents,
                     voiceNote,
+                    notebookText,
                     step,
                     savedAt: new Date().toISOString()
-                }));
-                setDraftStatus('saved');
-            } catch (err) {
-                console.warn('Unable to save household draft:', err);
-                setDraftStatus('error');
-            }
+                },
+                'household-field-draft'
+            )
+                .then(() => setDraftStatus('saved'))
+                .catch((err) => {
+                    console.warn('Unable to save household draft:', err);
+                    setDraftStatus('error');
+                });
         }, 700);
 
         return () => window.clearTimeout(saveTimer);
-    }, [draftKey, houseForm, residents, voiceNote, step]);
+    }, [draftKey, houseForm, residents, voiceNote, notebookText, step]);
 
-    function restoreDraft() {
+    async function restoreDraft() {
         if (typeof window === 'undefined') return;
         try {
-            const saved = window.localStorage.getItem(draftKey);
-            const parsed = saved ? JSON.parse(saved) : null;
+            const parsed = await readSecureLocalJson(draftKey, 'household-field-draft');
             if (parsed?.houseForm) {
                 setHouseForm((current) => ({ ...current, ...parsed.houseForm }));
             }
@@ -238,6 +255,7 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
                 })));
             }
             if (parsed?.voiceNote) setVoiceNote(parsed.voiceNote);
+            if (parsed?.notebookText) setNotebookText(parsed.notebookText);
             if (parsed?.step) setStep(parsed.step);
             draftResolvedRef.current = true;
             setDraftAvailable(null);
@@ -250,18 +268,14 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
     }
 
     function discardDraft() {
-        if (typeof window !== 'undefined') {
-            window.localStorage.removeItem(draftKey);
-        }
+        removeSecureLocalJson(draftKey);
         draftResolvedRef.current = true;
         setDraftAvailable(null);
         setDraftStatus('idle');
     }
 
     function clearDraftAfterSuccess() {
-        if (typeof window !== 'undefined') {
-            window.localStorage.removeItem(draftKey);
-        }
+        removeSecureLocalJson(draftKey);
         setDraftStatus('idle');
     }
 
@@ -344,8 +358,11 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
             added_by_user_id: user?.id || initialData?.added_by_user_id || null
         };
         delete submitData.residents;
+        delete submitData.service_requests;
+        delete submitData.household_taxes;
         delete submitData.id;
         delete submitData.village;
+        delete submitData.ward;
         delete submitData.stats;
         delete submitData.created_at;
         delete submitData.updated_at;
@@ -361,11 +378,12 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
         return ['failed to fetch', 'networkerror', 'network request', 'load failed', 'fetch failed'].some((text) => message.includes(text));
     }
 
-    function queueCurrentSnapshot() {
+    async function queueCurrentSnapshot() {
         const localHouseholdId = householdId || householdOfflineOutbox.createTemporaryHouseholdId();
         if (!householdId) setHouseholdId(localHouseholdId);
-        const entry = householdOfflineOutbox.queue({
+        const entry = await householdOfflineOutbox.queue({
             mode: isEditMode ? 'edit' : 'create',
+            ownerId: user?.id || null,
             householdId: localHouseholdId,
             household: buildHouseholdSubmitData(),
             residents,
@@ -391,7 +409,7 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
             return;
         }
         setSyncingOutbox(true);
-        const result = await householdOfflineOutbox.syncAll();
+        const result = await householdOfflineOutbox.syncAll(user?.id);
         setOutboxSummary(householdOfflineOutbox.getSummary());
         setSyncingOutbox(false);
         if (result.synced) toast.success(`${toBnDigits(String(result.synced))}টি household sync হয়েছে।`);
@@ -401,6 +419,11 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
     async function handleSaveHouse() {
         setSaving(true);
         try {
+            if (isEditMode && user?.role === 'super_admin') {
+                setStep(2);
+                return;
+            }
+
             if (typeof navigator !== 'undefined' && !navigator.onLine) {
                 if (!householdId) setHouseholdId(householdOfflineOutbox.createTemporaryHouseholdId());
                 setStep(2);
@@ -411,7 +434,11 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
             const submitData = buildHouseholdSubmitData();
 
             if (isEditMode) {
-                await householdService.updateHousehold(householdId, submitData);
+                if (user?.role === 'super_admin') {
+                    await householdService.adminHouseholdAction('update_household', { id: householdId, data: submitData });
+                } else {
+                    await householdService.updateHousehold(householdId, submitData);
+                }
             } else {
                 const data = await householdService.createHousehold(submitData);
                 setHouseholdId(data.id);
@@ -454,7 +481,7 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
 
     async function handleFinalize() {
         if ((typeof navigator !== 'undefined' && !navigator.onLine) || householdId?.startsWith('offline:')) {
-            queueCurrentSnapshot();
+            await queueCurrentSnapshot();
             clearDraftAfterSuccess();
             toast.success('Offline outbox-এ রাখা হয়েছে। নেট এলে automatic sync হবে।');
             onSuccess();
@@ -464,6 +491,15 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
         const loadingToast = toast.loading("সেভ প্রক্রিয়া শুরু হয়েছে, দয়া করে অপেক্ষা করুন...");
         setSaving(true);
         try {
+            if (isEditMode) {
+                const submitData = buildHouseholdSubmitData();
+                if (user?.role === 'super_admin') {
+                    await householdService.adminHouseholdAction('update_household', { id: householdId, data: submitData });
+                } else {
+                    await householdService.updateHousehold(householdId, submitData);
+                }
+            }
+
             if (houseForm.locker_pin) {
                 const { supabase } = await import('@/lib/utils/supabase');
                 const { error: pinError } = await supabase.rpc('set_household_locker_pin', {
@@ -495,32 +531,44 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
                     education_level: r.education_level || null,
                     marital_status: r.marital_status || 'Married',
                     disability_status: r.disability_status || 'None',
+                    student_status: r.student_status || 'not_student',
+                    current_school_name: r.current_school_name || null,
+                    current_class_name: r.current_class_name || null,
+                    current_roll_no: r.current_roll_no || null,
+                    school_enrollment_updated_at: r.student_status && r.student_status !== 'not_student'
+                        ? new Date().toISOString()
+                        : null,
                     household_id: householdId
                 };
 
                 try {
                     if (r.id) {
                         try {
-                            await householdService.updateResident(r.id, residentData);
+                            if (user?.role === 'super_admin') {
+                                await householdService.adminHouseholdAction('update_resident', { id: r.id, data: residentData });
+                            } else {
+                                await householdService.updateResident(r.id, residentData);
+                            }
                         } catch (err) {
                             if (err.message?.includes("column") || err.code === "42703") {
-                                throw new Error('Resident extended fields are missing in the database. Run database/22_resident_extended_profile_fields.sql first.');
+                                throw new Error('Resident extended fields are missing in the database. Run database/22_resident_extended_profile_fields.sql and database/74_household_based_school_enrollment.sql first.');
                             } else throw err;
                         }
                     } else {
                         try {
-                            await householdService.createResident(residentData);
+                            if (user?.role === 'super_admin') {
+                                await householdService.adminHouseholdAction('create_resident', { data: residentData });
+                            } else {
+                                await householdService.createResident(residentData);
+                            }
                         } catch (err) {
                             if (err.message?.includes("column") || err.code === "42703") {
-                                throw new Error('Resident extended fields are missing in the database. Run database/22_resident_extended_profile_fields.sql first.');
+                                throw new Error('Resident extended fields are missing in the database. Run database/22_resident_extended_profile_fields.sql and database/74_household_based_school_enrollment.sql first.');
                             } else throw err;
                         }
                     }
                     updatedCount++;
                 } catch (resErr) {
-                    const errorString = JSON.stringify(resErr, Object.getOwnPropertyNames(resErr));
-                    console.log("CRITICAL ERROR DATA:", errorString);
-                    
                     let displayMsg = resErr.message || JSON.stringify(resErr);
                     if (displayMsg.includes("residents_nid_key")) {
                         displayMsg = "এই NID নম্বরটি দিয়ে ইতিমধ্যে একজন সদস্য নিবন্ধিত আছে। একই NID দুইবার ব্যবহার করা যাবে না।";
@@ -538,13 +586,21 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
 
             for (const delId of deletedResidentIds) {
                 try {
-                    await householdService.deleteResident(delId, householdId);
+                    if (user?.role === 'super_admin') {
+                        await householdService.adminHouseholdAction('delete_resident', { id: delId, householdId });
+                    } else {
+                        await householdService.deleteResident(delId, householdId);
+                    }
                 } catch (delErr) {
                     console.error("Error deleting resident:", delErr);
                 }
             }
 
-            await householdService.syncHouseholdStats(householdId);
+            if (user?.role === 'super_admin') {
+                await householdService.adminHouseholdAction('sync_household_stats', { householdId });
+            } else {
+                await householdService.syncHouseholdStats(householdId);
+            }
             
             if (!isEditMode) {
                 try {
@@ -570,7 +626,7 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
             console.error("Finalize Error:", err);
             toast.dismiss(loadingToast);
             if (isConnectionError(err)) {
-                queueCurrentSnapshot();
+                await queueCurrentSnapshot();
                 clearDraftAfterSuccess();
                 toast.success('Network বন্ধ হয়েছে। বাকি data outbox-এ রাখা হয়েছে।');
                 onSuccess();
@@ -619,14 +675,58 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
         toast.success('ঠিকানা সব সদস্যের জন্য বসানো হয়েছে।');
     }
 
+    function handleParseNotebookDraft() {
+        if (!notebookText.trim()) {
+            toast.error('Notebook text paste korun.');
+            return;
+        }
+
+        const draft = parseHouseholdNotebookText(notebookText);
+        setNotebookDraft(draft);
+
+        const parsedCount = draft.residents?.length || 0;
+        if (parsedCount === 0 && !draft.household?.owner_name) {
+            toast.error('Kono household data bujha jayni. Format-ta abar check korun.');
+            return;
+        }
+
+        toast.success(`${toBnDigits(String(parsedCount))} member draft ready.`);
+    }
+
+    function applyNotebookDraft() {
+        if (!notebookDraft) return;
+
+        const parsedHousehold = notebookDraft.household || {};
+        const parsedResidents = Array.isArray(notebookDraft.residents) ? notebookDraft.residents : [];
+
+        setHouseForm((current) => ({
+            ...current,
+            house_no: parsedHousehold.house_no || current.house_no,
+            owner_name: parsedHousehold.owner_name || current.owner_name,
+            phone: parsedHousehold.phone || current.phone,
+            religion: parsedHousehold.religion || current.religion
+        }));
+
+        if (parsedResidents.length > 0) {
+            setResidents(parsedResidents.map((resident, idx) => ({
+                ...defaultResident,
+                ...resident,
+                expanded: idx === 0
+            })));
+        }
+
+        setStep(parsedResidents.length > 0 ? 2 : 1);
+        toast.success('Notebook draft form-e bosano hoyeche. Save korar age check korun.');
+    }
+
     function normalizeAIData(data) {
         const clean = { ...data };
         
         // Normalize Gender
         if (clean.gender) {
             const g = clean.gender.toLowerCase();
-            if (g.includes('mal')) clean.gender = 'Male';
-            else if (g.includes('fem')) clean.gender = 'Female';
+            if (g.includes('fem')) clean.gender = 'Female';
+            else if (g.includes('mal')) clean.gender = 'Male';
             else clean.gender = 'Other';
         }
 
@@ -653,7 +753,6 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
 
     async function handleScanDocument(idx, e, type = 'any') {
         const files = Array.from(e.target.files);
-        console.log("Files selected:", files, "Type:", type);
         if (files.length === 0) return;
 
         setScanningState({ idx, type });
@@ -662,7 +761,6 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
         try {
             let rawData = await aiService.scanResidentDocument(files);
             const data = normalizeAIData(rawData); // Clean the data!
-            console.log("AI Data Normalized:", data);
             
             const newR = [...residents];
             const current = newR[idx];
@@ -936,6 +1034,75 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
                                     className="mt-3 min-h-[76px] w-full rounded-2xl border border-teal-100 bg-white p-3 text-sm font-bold text-slate-700 outline-none focus:border-teal-500"
                                     placeholder="Voice field note..."
                                 />
+                            )}
+                        </section>
+
+                        <section className="space-y-3 rounded-2xl border border-indigo-100 bg-indigo-50/60 p-4">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                <div className="min-w-0">
+                                    <p className="flex items-center gap-2 text-sm font-black text-slate-900">
+                                        <Sparkles size={16} className="text-indigo-600" />
+                                        Khata theke home create
+                                    </p>
+                                    <p className="mt-1 text-xs font-bold leading-5 text-slate-500">
+                                        Gram, bari no, poribar prodhan, mobile, tarpor member list paste korun. AI draft banabe, save korar age edit korte parben.
+                                    </p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={handleParseNotebookDraft}
+                                    className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-4 py-3 text-xs font-black uppercase tracking-widest text-white transition hover:bg-slate-950 sm:w-auto"
+                                >
+                                    <Scan size={15} />
+                                    Make draft
+                                </button>
+                            </div>
+                            <textarea
+                                value={notebookText}
+                                onChange={(event) => {
+                                    setNotebookText(event.target.value);
+                                    setNotebookDraft(null);
+                                }}
+                                className="min-h-[156px] w-full rounded-2xl border border-indigo-100 bg-white p-3 text-sm font-bold leading-6 text-slate-700 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10"
+                                placeholder={`গ্রাম: পূর্বপাড়া
+বাড়ি নং: ১২৩
+পরিবার প্রধান: মোঃ আব্দুল করিম
+মোবাইল: 017xxxxxxxx
+
+সদস্য:
+1. মোঃ আব্দুল করিম, বয়স: 55, পুরুষ, NID: 1234567890, ভোটার: হ্যাঁ
+2. রহিমা বেগম, বয়স: 48, নারী, ভোটার: হ্যাঁ`}
+                            />
+                            {notebookDraft && (
+                                <div className="rounded-2xl border border-indigo-100 bg-white p-3">
+                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                        <div>
+                                            <p className="text-sm font-black text-slate-900">
+                                                {notebookDraft.household?.owner_name || 'No head name'} · {toBnDigits(String(notebookDraft.residents?.length || 0))} member
+                                            </p>
+                                            <p className="mt-1 text-xs font-bold text-slate-500">
+                                                Holding: {notebookDraft.household?.house_no || 'missing'} · Phone: {notebookDraft.household?.phone || 'missing'}
+                                            </p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={applyNotebookDraft}
+                                            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-xs font-black uppercase tracking-widest text-white transition hover:bg-teal-700 sm:w-auto"
+                                        >
+                                            <CheckCircle2 size={15} />
+                                            Apply
+                                        </button>
+                                    </div>
+                                    {notebookDraft.meta?.warnings?.length > 0 && (
+                                        <div className="mt-3 flex flex-wrap gap-2">
+                                            {notebookDraft.meta.warnings.map((warning) => (
+                                                <span key={warning} className="rounded-full bg-amber-50 px-3 py-1 text-[10px] font-black text-amber-700">
+                                                    {warning}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
                             )}
                         </section>
 
@@ -1445,6 +1612,41 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
                                                             <option value="HSC">এইচএসসি/সমমান</option>
                                                             <option value="Graduate">স্নাতক বা তার বেশি</option>
                                                         </select>
+                                                    </div>
+                                                </div>
+                                                <div className="rounded-3xl border border-sky-100 bg-sky-50 p-4">
+                                                    <div className="mb-4 flex items-start gap-3">
+                                                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white text-sky-600 shadow-sm">
+                                                            <ShieldCheck size={18} />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-xs font-black text-slate-800">School / Madrasha status</p>
+                                                            <p className="mt-1 text-[11px] font-bold leading-5 text-slate-500">শিক্ষার্থী হলে এখানেই কোন প্রতিষ্ঠানে পড়ে, ক্লাস ও রোল লিখুন। ভর্তি নেওয়ার সময় school এই home profile থেকে তথ্য নিতে পারবে।</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                                                        <div>
+                                                            <label className={labelStyles}>বর্তমান অবস্থা</label>
+                                                            <select value={r.student_status || 'not_student'} onChange={(e) => updateResident(idx, 'student_status', e.target.value)} className={inputStyles + " bg-white shadow-sm appearance-none"}>
+                                                                <option value="not_student">শিক্ষার্থী নয়</option>
+                                                                <option value="studying">বর্তমানে পড়ছে</option>
+                                                                <option value="applied">ভর্তি আবেদন করেছে</option>
+                                                                <option value="completed">পড়া শেষ</option>
+                                                                <option value="dropped">পড়া বন্ধ</option>
+                                                            </select>
+                                                        </div>
+                                                        <div>
+                                                            <label className={labelStyles}>প্রতিষ্ঠানের নাম</label>
+                                                            <input value={r.current_school_name || ''} onChange={(e) => updateResident(idx, 'current_school_name', e.target.value)} className={inputStyles + " bg-white shadow-sm"} placeholder="উদা: নওহাটা হাই স্কুল" />
+                                                        </div>
+                                                        <div>
+                                                            <label className={labelStyles}>ক্লাস / জামাত</label>
+                                                            <input value={r.current_class_name || ''} onChange={(e) => updateResident(idx, 'current_class_name', e.target.value)} className={inputStyles + " bg-white shadow-sm"} placeholder="উদা: Class 6 / Dakhil 8" />
+                                                        </div>
+                                                        <div>
+                                                            <label className={labelStyles}>রোল</label>
+                                                            <input value={r.current_roll_no || ''} onChange={(e) => updateResident(idx, 'current_roll_no', e.target.value)} className={inputStyles + " bg-white shadow-sm"} placeholder="রোল নম্বর" />
+                                                        </div>
                                                     </div>
                                                 </div>
                                                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">

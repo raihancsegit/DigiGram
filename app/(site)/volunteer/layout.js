@@ -2,25 +2,22 @@
 
 import { useSelector } from 'react-redux';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 
 export default function VolunteerLayout({ children }) {
     const { user, isAuthenticated } = useSelector((state) => state.auth);
     const router = useRouter();
-    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         if (!isAuthenticated) {
             router.push('/login');
         } else if (user?.role !== 'volunteer') {
             router.push('/'); // Redirect non-volunteers
-        } else {
-            setLoading(false);
         }
     }, [isAuthenticated, user, router]);
 
-    if (loading) {
+    if (!isAuthenticated || user?.role !== 'volunteer') {
         return (
             <div className="h-screen flex flex-col items-center justify-center bg-slate-50 text-slate-400">
                 <Loader2 className="animate-spin mb-4" size={40} />

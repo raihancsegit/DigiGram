@@ -7,7 +7,7 @@ import { householdOfflineOutbox } from '@/lib/services/householdOfflineOutbox';
 import { toBnDigits } from '@/lib/utils/format';
 
 export default function HouseholdOutboxSync() {
-    const { isAuthenticated } = useSelector((state) => state.auth);
+    const { isAuthenticated, user } = useSelector((state) => state.auth);
 
     useEffect(() => {
         if (!isAuthenticated || typeof window === 'undefined') return;
@@ -15,7 +15,7 @@ export default function HouseholdOutboxSync() {
 
         const sync = async () => {
             if (!navigator.onLine || householdOfflineOutbox.getSummary().total === 0) return;
-            const result = await householdOfflineOutbox.syncAll();
+            const result = await householdOfflineOutbox.syncAll(user?.id);
             if (!active) return;
             if (result.synced > 0) {
                 toast.success(`${toBnDigits(String(result.synced))}টি offline household background-এ sync হয়েছে।`);
@@ -28,7 +28,7 @@ export default function HouseholdOutboxSync() {
             active = false;
             window.removeEventListener('online', sync);
         };
-    }, [isAuthenticated]);
+    }, [isAuthenticated, user?.id]);
 
     return null;
 }

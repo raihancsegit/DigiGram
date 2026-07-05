@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { marketService } from '@/lib/services/marketService';
 import { 
     X, TrendingUp, TrendingDown, Minus, 
@@ -14,13 +14,7 @@ export function PriceHistoryModal({ isOpen, onClose, marketId, marketName, commo
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    useEffect(() => {
-        if (isOpen && marketId && commodity?.id) {
-            loadHistory();
-        }
-    }, [isOpen, marketId, commodity]);
-
-    async function loadHistory() {
+    const loadHistory = useCallback(async () => {
         try {
             setLoading(true);
             setError(null);
@@ -32,7 +26,13 @@ export function PriceHistoryModal({ isOpen, onClose, marketId, marketName, commo
         } finally {
             setLoading(false);
         }
-    }
+    }, [marketId, commodity?.id]);
+
+    useEffect(() => {
+        if (isOpen && marketId && commodity?.id) {
+            loadHistory();
+        }
+    }, [isOpen, marketId, commodity?.id, loadHistory]);
 
     if (!isOpen) return null;
 

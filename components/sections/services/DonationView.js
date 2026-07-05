@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense, useMemo } from 'react';
+import { useState, useEffect, Suspense, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -54,13 +54,7 @@ function DonationContent() {
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 4;
 
-    useEffect(() => {
-        if (unionSlug) {
-            loadData();
-        }
-    }, [unionSlug]);
-
-    const loadData = async () => {
+    const loadData = useCallback(async () => {
         setLoading(true);
         try {
             const [projData, ledgerData, settingsData] = await Promise.all([
@@ -76,7 +70,13 @@ function DonationContent() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [unionSlug]);
+
+    useEffect(() => {
+        if (unionSlug) {
+            loadData();
+        }
+    }, [unionSlug, loadData]);
 
     const totalRaised = projects.reduce((acc, p) => acc + (p.raised_amount || 0), 0);
     const totalDonors = ledger.length;

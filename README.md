@@ -1,36 +1,75 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# DigiGram
 
-## Getting Started
+DigiGram is a Bangla-first rural digital governance platform for Bangladesh. It is designed as a multi-tenant "Union Parishad OS" where a union can run local services, citizen workflows, SMS operations, institutions, markets, household records, and public trust modules from one Next.js app.
 
-First, run the development server:
+## Stack
+
+- Next.js 16 App Router
+- React 19
+- Tailwind CSS 4
+- Supabase PostgreSQL, Auth, and RLS
+- Google Gemini API for AI-assisted document and image analysis
+- Vercel deployment target
+
+## Local Setup
+
+Create `.env.local` from `.env.example` and provide the required Supabase, Gemini, SMS, and service secrets for the modules you want to test.
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+## Useful Commands
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run lint
+npm run build
+npm run security:audit
+npm run audit
+```
 
-## Learn More
+`npm run audit` expects the app to be running at `http://localhost:3000`.
 
-To learn more about Next.js, take a look at the following resources:
+## Database
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+The platform depends on Supabase migrations in `database/`. For a launch or demo environment, run migrations in order and finish with the security/audit migrations noted in `docs/launch_readiness_checklist.md`.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Important launch migrations include:
 
-## Deploy on Vercel
+- `database/63_role_rls_security_audit.sql`
+- `database/66_migration_registry.sql`
+- `database/73_demo_data_registry.sql`
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Main Product Areas
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Citizen portal: OTP, complaints, appointments, blood requests, inbox, payments
+- Admin portal: locations, members, services, SMS, maintenance, governance, data quality
+- Ward and chairman portals: household workflows, service operations, local management
+- Institution portal: school website, admin, teacher, student, guardian update flows
+- Market and business modules: directory, price alerts, demands, complaints
+- SMS platform: wallet, campaign, delivery monitoring, failover webhook
+- Public service modules: fuel, land guard, vehicle guard, blood, e-clinic, donation, lost and found
+
+## Current Verification
+
+Last local verification performed on 2026-06-09:
+
+- `npm run lint`: passed with warnings only
+- `npm run build`: passed
+- `npm run security:audit`: 53/53 passed
+- `npm run audit`: 44/44 passed, 1 skipped because external Supabase route discovery is unavailable in this environment
+
+## Launch Checklist
+
+Before a pilot or production update:
+
+1. Run the latest database migrations in Supabase.
+2. Verify all production environment variables in Vercel.
+3. Run `npm run build`, `npm run security:audit`, and `npm run audit`.
+4. Test the citizen flow on mobile.
+5. Test role boundaries for super admin, chairman, ward member, volunteer, institution admin, teacher, and student.
+6. Use demo data only through the registry-backed demo data manager.
+7. Run the final checklist in `docs/launch_readiness_checklist.md`.

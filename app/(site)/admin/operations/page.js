@@ -5,6 +5,7 @@ import Link from 'next/link';
 import {
     AlertTriangle,
     Clock3,
+    Download,
     ExternalLink,
     FileClock,
     Loader2,
@@ -19,6 +20,29 @@ function formatDate(value) {
         dateStyle: 'medium',
         timeStyle: 'short'
     });
+}
+
+function csvEscape(value) {
+    const text = String(value ?? '').replace(/"/g, '""');
+    return `"${text}"`;
+}
+
+function downloadCsv(filename, rows) {
+    const csv = rows.map((row) => row.map(csvEscape).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.click();
+    URL.revokeObjectURL(url);
+}
+
+function itemHref(item) {
+    if (item.kind === 'service') return `/track/${item.id}`;
+    const type = item.kind === 'life-support' ? 'life_support' : item.kind;
+    const phone = item.contact_phone || item.phone || '';
+    return `/track?id=${encodeURIComponent(item.id)}&phone=${encodeURIComponent(phone)}&type=${encodeURIComponent(type)}`;
 }
 
 export default function OperationsPage() {
@@ -65,6 +89,38 @@ export default function OperationsPage() {
             })
             .slice(0, 40);
     }, [data]);
+
+    const exportUrgentQueue = useCallback(() => {
+        downloadCsv('digigram-operations-urgent-queue.csv', [
+            ['type', 'id', 'title', 'citizen', 'status', 'priority', 'sla_due_at', 'overdue', 'escalation_level'],
+            ...urgentQueue.map((item) => [
+                item.kind,
+                item.id,
+                item.label || '',
+                item.applicant_name || item.citizen_name || item.contact_phone || item.phone || '',
+                item.status || '',
+                item.priority || '',
+                item.sla_due_at || '',
+                item.overdue ? 'yes' : 'no',
+                item.escalation_level || 0
+            ])
+        ]);
+    }, [urgentQueue]);
+
+    const exportAccessLogs = useCallback(() => {
+        downloadCsv('digigram-private-access-log.csv', [
+            ['time', 'actor_role', 'resource_type', 'resource_id', 'action', 'citizen_phone', 'channel'],
+            ...(data?.accessLogs || []).map((item) => [
+                item.created_at,
+                item.actor_role || '',
+                item.resource_type || '',
+                item.resource_id || '',
+                item.action || '',
+                item.citizen_phone || '',
+                item.access_channel || ''
+            ])
+        ]);
+    }, [data?.accessLogs]);
 
     if (loading) {
         return (
@@ -120,6 +176,13 @@ export default function OperationsPage() {
                                 <h2 className="text-xl font-black text-slate-900">আগে যেগুলো ধরতে হবে</h2>
                                 <p className="text-sm font-bold text-slate-500">Overdue ও escalated queue</p>
                             </div>
+                            <button
+                                type="button"
+                                onClick={exportUrgentQueue}
+                                className="ml-auto inline-flex items-center gap-2 rounded-2xl bg-slate-100 px-3 py-2 text-xs font-black text-slate-700 transition hover:bg-teal-50 hover:text-teal-700"
+                            >
+                                <Download size={15} /> CSV
+                            </button>
                         </div>
 
                         {urgentQueue.length === 0 ? (
@@ -160,11 +223,9 @@ export default function OperationsPage() {
                                             <span className="flex items-center gap-1 text-xs font-black text-rose-600">
                                                 <Clock3 size={14} /> {formatDate(item.sla_due_at)}
                                             </span>
-                                            {item.kind === 'service' && (
-                                                <Link href={`/track/${item.id}`} className="text-teal-700">
-                                                    <ExternalLink size={16} />
-                                                </Link>
-                                            )}
+                                            <Link href={itemHref(item)} className="inline-flex items-center gap-1 rounded-xl bg-teal-50 px-3 py-2 text-xs font-black text-teal-700">
+                                                Open <ExternalLink size={14} />
+                                            </Link>
                                         </div>
                                     </article>
                                 ))}
@@ -179,6 +240,13 @@ export default function OperationsPage() {
                                 <h2 className="text-xl font-black text-slate-900">Recent private-data access</h2>
                                 <p className="text-sm font-bold text-slate-500">Citizen inbox ও household locker audit trail</p>
                             </div>
+                            <button
+                                type="button"
+                                onClick={exportAccessLogs}
+                                className="ml-auto inline-flex items-center gap-2 rounded-2xl bg-slate-100 px-3 py-2 text-xs font-black text-slate-700 transition hover:bg-teal-50 hover:text-teal-700"
+                            >
+                                <Download size={15} /> CSV
+                            </button>
                         </div>
                         <div className="overflow-x-auto">
                             <table className="min-w-[720px] w-full text-left">

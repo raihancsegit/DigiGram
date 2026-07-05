@@ -4,9 +4,9 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-    Home, Users, MapPin, Droplets, Zap, ShieldCheck, 
+    Home, Users, MapPin, Droplets, ShieldCheck, 
     ArrowLeft, FileText, Heart, AlertCircle, Loader2, QrCode,
-    Plus, Trash2, Download, File, Lock, Unlock, Eye
+    Plus, Trash2, Download, File, Lock, Unlock, Eye, CreditCard, Bell, CheckCircle2
 } from 'lucide-react';
 import { householdService } from '@/lib/services/householdService';
 import { toBnDigits } from '@/lib/utils/format';
@@ -22,6 +22,7 @@ export default function HouseholdPublicProfile() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [activeService, setActiveService] = useState(null); // 'birth_registration', etc.
+    const [quickResidentId, setQuickResidentId] = useState('');
     
     // Locker States
     const [showLockerModal, setShowLockerModal] = useState(false);
@@ -35,6 +36,8 @@ export default function HouseholdPublicProfile() {
     const [fullData, setFullData] = useState(null);
     const [documents, setDocuments] = useState([]);
     const [uploading, setUploading] = useState(false);
+    const [ownerRequests, setOwnerRequests] = useState([]);
+    const [requestsLoading, setRequestsLoading] = useState(false);
 
     useEffect(() => {
         async function loadProfile() {
@@ -63,6 +66,14 @@ export default function HouseholdPublicProfile() {
             // Load documents
             const docs = await householdService.getHouseholdDocuments(id, lockerPin);
             setDocuments(docs);
+
+            setRequestsLoading(true);
+            try {
+                const requests = await householdService.getHouseholdLockerServiceRequests(id, lockerPin);
+                setOwnerRequests(requests || []);
+            } finally {
+                setRequestsLoading(false);
+            }
             
             setIsLockerUnlocked(true);
             setShowLockerModal(false);
@@ -126,6 +137,24 @@ export default function HouseholdPublicProfile() {
         }
     };
 
+    const refreshOwnerRequests = async () => {
+        if (!lockerPin) return;
+        try {
+            setRequestsLoading(true);
+            const requests = await householdService.getHouseholdLockerServiceRequests(id, lockerPin);
+            setOwnerRequests(requests || []);
+        } catch (err) {
+            console.warn('Failed to refresh owner service requests:', err);
+        } finally {
+            setRequestsLoading(false);
+        }
+    };
+
+    const startQuickApply = (serviceKey, residentId = '') => {
+        setQuickResidentId(residentId || '');
+        setActiveService(serviceKey);
+    };
+
     if (loading) {
         return (
             <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
@@ -149,6 +178,54 @@ export default function HouseholdPublicProfile() {
     }
 
     const bloodGroups = [...new Set(data.residents_summary?.map(r => r.blood_group).filter(Boolean))];
+    const profileForService = isLockerUnlocked && fullData ? fullData : data;
+    const residentsForService = isLockerUnlocked && fullData?.residents ? fullData.residents : [];
+    const certificateServices = [
+        {
+            key: 'birth_registration',
+            title: 'জন্ম নিবন্ধন আবেদন',
+            hint: 'Family tree থেকে শিশু/সদস্য বাছাই করে auto-fill করুন',
+            icon: FileText,
+            iconClass: 'bg-teal-50 text-teal-600 group-hover:bg-teal-600 group-hover:text-white'
+        },
+        {
+            key: 'death_certificate',
+            title: 'মৃত্যু সনদ আবেদন',
+            hint: 'মৃত ব্যক্তির তথ্য বাছাই করে মৃত্যু তারিখ/স্থান যোগ করুন',
+            icon: AlertCircle,
+            iconClass: 'bg-rose-50 text-rose-600 group-hover:bg-rose-600 group-hover:text-white'
+        },
+        {
+            key: 'warish_certificate',
+            title: 'ওয়ারিশ সনদ আবেদন',
+            hint: 'যার জন্য সনদ, তাকে বাছাই করে ওয়ারিশদের select করুন',
+            icon: Users,
+            iconClass: 'bg-amber-50 text-amber-600 group-hover:bg-amber-500 group-hover:text-white'
+        }
+    ];
+    const requestLabels = {
+        birth_registration: 'জন্ম নিবন্ধন',
+        death_certificate: 'মৃত্যু সনদ',
+        warish_certificate: 'ওয়ারিশ সনদ',
+        utility_request: 'ইউটিলিটি সেবা'
+    };
+    const statusLabels = {
+        pending: 'পেন্ডিং',
+        processing: 'কাজ চলছে',
+        ready: 'প্রস্তুত',
+        completed: 'সম্পন্ন',
+        rejected: 'বাতিল'
+    };
+    const statusStyles = {
+        pending: 'bg-amber-50 text-amber-700',
+        processing: 'bg-sky-50 text-sky-700',
+        ready: 'bg-teal-50 text-teal-700',
+        completed: 'bg-emerald-50 text-emerald-700',
+        rejected: 'bg-rose-50 text-rose-700'
+    };
+    const activeOwnerRequests = ownerRequests.filter((request) => ['pending', 'processing', 'ready'].includes(request.status));
+    const dueOwnerRequests = ownerRequests.filter((request) => Number(request.fee_amount || 0) > Number(request.amount_paid || 0) && request.payment_status !== 'paid');
+    const readyOwnerRequests = ownerRequests.filter((request) => request.status === 'ready');
 
     return (
         <div className="min-h-screen bg-slate-50 pb-20">
@@ -301,6 +378,106 @@ export default function HouseholdPublicProfile() {
                     </motion.div>
                 )}
 
+                {isLockerUnlocked && (
+                    <motion.section
+                        initial={{ opacity: 0, y: 18 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="space-y-4 rounded-3xl border border-teal-100 bg-white p-5 shadow-sm sm:rounded-[32px] sm:p-6"
+                    >
+                        <div className="flex items-start justify-between gap-4">
+                            <div className="min-w-0">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-teal-600">মালিক পোর্টাল</p>
+                                <h3 className="mt-2 text-xl font-black text-slate-900">আমার আবেদন</h3>
+                                <p className="mt-1 text-xs font-bold leading-5 text-slate-500">
+                                    Family member বাছাই করে দ্রুত আবেদন করুন, payment ও status এখানেই দেখুন।
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={refreshOwnerRequests}
+                                disabled={requestsLoading}
+                                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-slate-600 transition hover:bg-teal-50 hover:text-teal-700 disabled:opacity-50"
+                                title="Refresh"
+                            >
+                                {requestsLoading ? <Loader2 className="animate-spin" size={18} /> : <Bell size={18} />}
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-2">
+                            <OwnerMetric icon={FileText} label="চলমান" value={activeOwnerRequests.length} tone="teal" />
+                            <OwnerMetric icon={CreditCard} label="পেমেন্ট" value={dueOwnerRequests.length} tone="rose" />
+                            <OwnerMetric icon={CheckCircle2} label="প্রস্তুত" value={readyOwnerRequests.length} tone="emerald" />
+                        </div>
+
+                        {ownerRequests.length > 0 ? (
+                            <div className="space-y-2">
+                                {ownerRequests.slice(0, 3).map((request) => (
+                                    <div key={request.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="min-w-0">
+                                                <p className="text-sm font-black text-slate-900">{requestLabels[request.request_type] || request.request_type}</p>
+                                                <p className="mt-1 break-all text-[10px] font-bold text-slate-400">ID: {request.id}</p>
+                                            </div>
+                                            <span className={`shrink-0 rounded-full px-3 py-1 text-[10px] font-black ${statusStyles[request.status] || 'bg-slate-100 text-slate-600'}`}>
+                                                {statusLabels[request.status] || request.status}
+                                            </span>
+                                        </div>
+                                        <div className="mt-3 flex flex-wrap gap-2">
+                                            <Link href={`/track/${request.id}`} className="rounded-xl bg-white px-3 py-2 text-[10px] font-black text-slate-700 ring-1 ring-slate-200">
+                                                Track
+                                            </Link>
+                                            {Number(request.fee_amount || 0) > Number(request.amount_paid || 0) && request.payment_status !== 'paid' && (
+                                                <Link href={`/pay?phone=${encodeURIComponent(request.contact_phone || '')}`} className="rounded-xl bg-rose-600 px-3 py-2 text-[10px] font-black text-white">
+                                                    Pay due
+                                                </Link>
+                                            )}
+                                            {request.certificate_no && ['ready', 'completed'].includes(request.status) && (
+                                                <Link href={`/certificate/${request.id}`} className="rounded-xl bg-teal-600 px-3 py-2 text-[10px] font-black text-white">
+                                                    Certificate
+                                                </Link>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center">
+                                <p className="text-sm font-black text-slate-700">এখনো কোনো আবেদন নেই</p>
+                                <p className="mt-1 text-xs font-bold text-slate-500">নিচের family member quick apply থেকে শুরু করুন।</p>
+                            </div>
+                        )}
+
+                        {residentsForService.length > 0 && (
+                            <div className="space-y-3 border-t border-slate-100 pt-4">
+                                <h4 className="text-sm font-black text-slate-900">Family quick apply</h4>
+                                <div className="space-y-2">
+                                    {residentsForService.slice(0, 6).map((resident) => (
+                                        <div key={resident.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-3">
+                                            <div className="flex items-center justify-between gap-3">
+                                                <div className="min-w-0">
+                                                    <p className="truncate text-sm font-black text-slate-800">{resident.name || resident.name_bn || 'নাম নেই'}</p>
+                                                    <p className="text-[10px] font-bold text-slate-400">{resident.dob ? `জন্ম: ${toBnDigits(resident.dob)}` : 'তারিখ নেই'}</p>
+                                                </div>
+                                                <div className="flex shrink-0 gap-1">
+                                                    <button type="button" onClick={() => startQuickApply('birth_registration', resident.id)} className="rounded-lg bg-white px-2 py-2 text-[9px] font-black text-teal-700 ring-1 ring-teal-100">
+                                                        জন্ম
+                                                    </button>
+                                                    <button type="button" onClick={() => startQuickApply('death_certificate', resident.id)} className="rounded-lg bg-white px-2 py-2 text-[9px] font-black text-rose-700 ring-1 ring-rose-100">
+                                                        মৃত্যু
+                                                    </button>
+                                                    <button type="button" onClick={() => startQuickApply('warish_certificate', resident.id)} className="rounded-lg bg-white px-2 py-2 text-[9px] font-black text-amber-700 ring-1 ring-amber-100">
+                                                        ওয়ারিশ
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </motion.section>
+                )}
+
                 {/* Blood Group Info */}
                 {bloodGroups.length > 0 && (
                     <motion.div 
@@ -324,55 +501,34 @@ export default function HouseholdPublicProfile() {
 
                 {/* Services Section */}
                 <div className="space-y-4 pt-4">
-                    <h3 className="px-4 text-xs font-black text-slate-400 uppercase tracking-widest">নাগরিক সেবা আবেদন</h3>
-                    
-                    <button 
-                        onClick={() => setActiveService('birth_registration')}
-                        className="group flex w-full min-w-0 items-center justify-between gap-3 rounded-3xl border border-slate-200 bg-white p-4 text-left transition-all hover:border-teal-500 sm:rounded-[32px] sm:p-6"
-                    >
-                        <div className="flex min-w-0 items-center gap-3 sm:gap-4">
-                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-teal-50 text-teal-600 transition-colors group-hover:bg-teal-600 group-hover:text-white">
-                                <FileText size={24} />
-                            </div>
-                            <div className="min-w-0 text-left">
-                                <p className="break-words font-black text-slate-800">জন্ম নিবন্ধন আবেদন</p>
-                                <p className="break-words text-[10px] font-bold text-slate-400">নতুন সদস্যের জন্য আবেদন করুন</p>
-                            </div>
-                        </div>
-                        <ArrowLeft className="shrink-0 rotate-180 text-slate-300" size={20} />
-                    </button>
+                    <div className="px-4">
+                        <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">সনদ / নিবন্ধন আবেদন</h3>
+                        <p className="mt-2 text-xs font-bold leading-5 text-slate-500">
+                            Locker unlock করলে family tree থেকে সদস্য বাছাই করে তথ্য auto-fill হবে। না হলে manual entry দিয়েও আবেদন করা যাবে।
+                        </p>
+                    </div>
 
-                    <button 
-                        onClick={() => setActiveService('death_certificate')}
-                        className="group flex w-full min-w-0 items-center justify-between gap-3 rounded-3xl border border-slate-200 bg-white p-4 text-left transition-all hover:border-teal-500 sm:rounded-[32px] sm:p-6"
-                    >
-                        <div className="flex min-w-0 items-center gap-3 sm:gap-4">
-                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-50 text-slate-500 transition-colors group-hover:bg-rose-600 group-hover:text-white">
-                                <AlertCircle size={24} />
-                            </div>
-                            <div className="min-w-0 text-left">
-                                <p className="break-words font-black text-slate-800">মৃত্যু সনদ আবেদন</p>
-                                <p className="break-words text-[10px] font-bold text-slate-400">মৃত্যু সংবাদ রিপোর্ট করুন</p>
-                            </div>
-                        </div>
-                        <ArrowLeft className="shrink-0 rotate-180 text-slate-300" size={20} />
-                    </button>
-
-                    <button 
-                        onClick={() => setActiveService('utility_request')}
-                        className="group flex w-full min-w-0 items-center justify-between gap-3 rounded-3xl border border-slate-200 bg-white p-4 text-left transition-all hover:border-teal-500 sm:rounded-[32px] sm:p-6"
-                    >
-                        <div className="flex min-w-0 items-center gap-3 sm:gap-4">
-                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-50 text-slate-500 transition-colors group-hover:bg-blue-600 group-hover:text-white">
-                                <Zap size={24} />
-                            </div>
-                            <div className="min-w-0 text-left">
-                                <p className="break-words font-black text-slate-800">বিদ্যুৎ মিটার আবেদন</p>
-                                <p className="break-words text-[10px] font-bold text-slate-400">নতুন সংযোগের জন্য অনুরোধ</p>
-                            </div>
-                        </div>
-                        <ArrowLeft className="shrink-0 rotate-180 text-slate-300" size={20} />
-                    </button>
+                    {certificateServices.map((service) => {
+                        const Icon = service.icon;
+                        return (
+                            <button
+                                key={service.key}
+                                onClick={() => setActiveService(service.key)}
+                                className="group flex w-full min-w-0 items-center justify-between gap-3 rounded-3xl border border-slate-200 bg-white p-4 text-left transition-all hover:border-teal-500 sm:rounded-[32px] sm:p-6"
+                            >
+                                <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+                                    <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl transition-colors ${service.iconClass}`}>
+                                        <Icon size={24} />
+                                    </div>
+                                    <div className="min-w-0 text-left">
+                                        <p className="break-words font-black text-slate-800">{service.title}</p>
+                                        <p className="break-words text-[10px] font-bold text-slate-400">{service.hint}</p>
+                                    </div>
+                                </div>
+                                <ArrowLeft className="shrink-0 rotate-180 text-slate-300" size={20} />
+                            </button>
+                        );
+                    })}
                 </div>
 
                 {/* Footer Info */}
@@ -394,7 +550,14 @@ export default function HouseholdPublicProfile() {
                             <ServiceRequestModal 
                                 householdId={id}
                                 serviceType={activeService}
-                                onClose={() => setActiveService(null)}
+                                householdProfile={profileForService}
+                                residents={residentsForService}
+                                initialResidentId={quickResidentId}
+                                onCreated={(request) => setOwnerRequests((current) => [request, ...current])}
+                                onClose={() => {
+                                    setActiveService(null);
+                                    setQuickResidentId('');
+                                }}
                             />
                         </motion.div>
                     </div>
@@ -473,6 +636,24 @@ export default function HouseholdPublicProfile() {
                     </div>
                 )}
             </AnimatePresence>
+        </div>
+    );
+}
+
+function OwnerMetric({ icon: Icon, label, value, tone }) {
+    const tones = {
+        teal: 'bg-teal-50 text-teal-700',
+        rose: 'bg-rose-50 text-rose-700',
+        emerald: 'bg-emerald-50 text-emerald-700'
+    };
+
+    return (
+        <div className={`rounded-2xl p-3 ${tones[tone] || 'bg-slate-50 text-slate-700'}`}>
+            <div className="flex items-center justify-between gap-2">
+                <Icon size={16} />
+                <p className="text-lg font-black">{toBnDigits(value || 0)}</p>
+            </div>
+            <p className="mt-2 text-[10px] font-black uppercase tracking-widest">{label}</p>
         </div>
     );
 }

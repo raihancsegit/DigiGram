@@ -6,6 +6,7 @@ import { toBnDigits } from '@/lib/utils/format';
 const STATUS_META = {
     queued: { label: 'Queue', icon: Clock3, pill: 'bg-amber-50 text-amber-700', bar: 'bg-amber-400' },
     sent: { label: 'Sent', icon: CheckCircle2, pill: 'bg-emerald-50 text-emerald-700', bar: 'bg-emerald-500' },
+    delivered: { label: 'Delivered', icon: CheckCircle2, pill: 'bg-teal-50 text-teal-700', bar: 'bg-teal-500' },
     failed: { label: 'Failed', icon: XCircle, pill: 'bg-rose-50 text-rose-700', bar: 'bg-rose-500' },
     skipped: { label: 'Skipped', icon: AlertTriangle, pill: 'bg-slate-100 text-slate-600', bar: 'bg-slate-400' }
 };
@@ -39,8 +40,8 @@ export default function SmsDeliveryReport({
         acc[status] = (acc[status] || 0) + 1;
         acc.total += 1;
         return acc;
-    }, { total: 0, queued: 0, sent: 0, failed: 0, skipped: 0 });
-    const deliveryRate = counts.total > 0 ? Math.round((counts.sent / counts.total) * 100) : 0;
+    }, { total: 0, queued: 0, sent: 0, delivered: 0, failed: 0, skipped: 0 });
+    const deliveryRate = counts.total > 0 ? Math.round((counts.delivered / counts.total) * 100) : 0;
     const failedRate = counts.total > 0 ? Math.round((counts.failed / counts.total) * 100) : 0;
     const recentRows = rows.slice(0, 12);
 
@@ -68,24 +69,27 @@ export default function SmsDeliveryReport({
                 )}
             </div>
 
-            <div className="grid gap-3 p-5 md:grid-cols-5">
+            <div className="grid gap-3 p-5 md:grid-cols-6">
                 <Metric label="Total" value={counts.total} />
                 <Metric label="Queued" value={counts.queued} tone="queued" />
                 <Metric label="Sent" value={counts.sent} tone="sent" />
+                <Metric label="Delivered" value={counts.delivered} tone="delivered" />
                 <Metric label="Failed" value={counts.failed} tone="failed" />
                 <Metric label="Delivery" value={`${toBnDigits(deliveryRate)}%`} raw tone={failedRate > 10 ? 'failed' : 'sent'} />
             </div>
 
             <div className="px-5 pb-5">
                 <div className="overflow-hidden rounded-3xl border border-slate-100 bg-slate-50">
-                    <div className="grid grid-cols-3 text-center text-[10px] font-black uppercase tracking-widest text-slate-500">
+                    <div className="grid grid-cols-4 text-center text-[10px] font-black uppercase tracking-widest text-slate-500">
                         <div className="border-r border-white p-3">Queued</div>
                         <div className="border-r border-white p-3">Sent</div>
+                        <div className="border-r border-white p-3">Delivered</div>
                         <div className="p-3">Failed</div>
                     </div>
-                    <div className="grid h-3 grid-cols-3 bg-white">
+                    <div className="grid h-3 grid-cols-4 bg-white">
                         <div className="bg-amber-400" style={{ opacity: counts.total ? 1 : 0.25, width: `${counts.total ? 100 : 0}%` }} />
                         <div className="bg-emerald-500" style={{ opacity: counts.total ? 1 : 0.25, width: `${counts.total ? 100 : 0}%` }} />
+                        <div className="bg-teal-500" style={{ opacity: counts.total ? 1 : 0.25, width: `${counts.total ? 100 : 0}%` }} />
                         <div className="bg-rose-500" style={{ opacity: counts.total ? 1 : 0.25, width: `${counts.total ? 100 : 0}%` }} />
                     </div>
                 </div>

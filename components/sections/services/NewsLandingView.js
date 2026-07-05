@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Newspaper, Bell, Search, Filter, Calendar, User, Clock, ChevronRight, TrendingUp, Megaphone, MapPin, Share2, Bookmark, ArrowRight, Loader2 } from 'lucide-react';
 import { ALL_NEWS } from '@/lib/content/newsData';
@@ -31,13 +31,7 @@ export default function NewsLandingView() {
         { id: 'year', label: '১ বছর' },
     ];
 
-    useEffect(() => {
-        if (unionSlug) {
-            loadNews();
-        }
-    }, [unionSlug, timeframe, newsTab]);
-
-    const loadNews = async () => {
+    const loadNews = useCallback(async () => {
         setLoading(true);
         try {
             const unionData = await getLocationBySlug(unionSlug);
@@ -65,7 +59,13 @@ export default function NewsLandingView() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [unionSlug, timeframe, newsTab]);
+
+    useEffect(() => {
+        if (unionSlug) {
+            loadNews();
+        }
+    }, [unionSlug, loadNews]);
 
     useEffect(() => {
         setCurrentPage(1);
@@ -142,7 +142,7 @@ export default function NewsLandingView() {
                                     <div key={i} className="flex gap-4 group cursor-pointer">
                                         <div className={`w-16 h-16 rounded-xl overflow-hidden ${item.image_url ? 'bg-slate-800' : 'bg-black'} shrink-0 flex items-center justify-center`}>
                                             {item.image_url ? (
-                                                <img src={item.image_url} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" />
+                                                <img src={item.image_url} alt={item.title} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" />
                                             ) : (
                                                 <Newspaper size={16} className="text-white opacity-20" />
                                             )}
@@ -246,7 +246,7 @@ export default function NewsLandingView() {
                                 >
                                     <div className={`relative h-56 ${item.image_url ? 'bg-slate-100' : 'bg-black'} overflow-hidden shrink-0`}>
                                         {item.image_url ? (
-                                            <img src={item.image_url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                                            <img src={item.image_url} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                                         ) : (
                                             <div className="w-full h-full flex items-center justify-center opacity-20">
                                                 <Newspaper size={48} className="text-white" />

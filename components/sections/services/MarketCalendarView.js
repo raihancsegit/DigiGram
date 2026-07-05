@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Store, TrendingUp, TrendingDown, Minus, MapPin, Search, CalendarDays, Clock, Users, Star, Bell, BadgePercent, ArrowRight } from 'lucide-react';
 import { MARKETS_LIST, DAILY_PRICES, COMMODITIES } from '@/lib/constants/marketData';
@@ -43,15 +43,22 @@ export default function MarketCalendarView({ selectedUnionSlug = '', selectedUni
     };
 
     const normalizedUnionSlug = normalizeUnionSlug(selectedUnionSlug);
-    const filteredMarkets = normalizedUnionSlug
-        ? MARKETS_LIST.filter((m) => normalizeUnionSlug(m.unionSlug) === normalizedUnionSlug)
-        : MARKETS_LIST;
+    const filteredMarkets = useMemo(
+        () => normalizedUnionSlug
+            ? MARKETS_LIST.filter((m) => normalizeUnionSlug(m.unionSlug) === normalizedUnionSlug)
+            : MARKETS_LIST,
+        [normalizedUnionSlug]
+    );
     const [selectedHat, setSelectedHat] = useState(filteredMarkets[0] || null);
     const [filterCategory, setFilterCategory] = useState('All');
 
     useEffect(() => {
-        setSelectedHat(filteredMarkets[0] || null);
-    }, [normalizedUnionSlug]);
+        const updateTimeout = setTimeout(() => {
+            setSelectedHat(filteredMarkets[0] || null);
+        }, 0);
+
+        return () => clearTimeout(updateTimeout);
+    }, [filteredMarkets]);
 
     const categories = ['All', ...Array.from(new Set(COMMODITIES.map(c => c.category)))];
     

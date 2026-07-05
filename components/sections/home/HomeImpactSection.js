@@ -28,8 +28,8 @@ const CountUp = ({ value }) => {
 
     useEffect(() => {
         if (typeof value !== 'number' || value === 0) {
-            setCurrent(value);
-            return;
+            const updateTimeout = setTimeout(() => setCurrent(value), 0);
+            return () => clearTimeout(updateTimeout);
         }
 
         const duration = 800;

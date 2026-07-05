@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition } from 'react';
+import { useState, useEffect, useTransition, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FUEL_PUMPS, FUEL_RETAILERS } from '@/lib/constants/fuelData';
 import { findUnionBySlug } from '@/lib/constants/locations';
@@ -79,7 +79,7 @@ export function FuelPortalView({ unionSlug }) {
         });
     };
 
-    const handleFetchPass = async (bike = bikeNumber) => {
+    const handleFetchPass = useCallback(async (bike = bikeNumber) => {
         if (!bike) return;
         setIsSearchingPass(true);
         const result = await getFuelPassAction(bike, unionSlug);
@@ -90,23 +90,27 @@ export function FuelPortalView({ unionSlug }) {
         } else {
             alert(result.error);
         }
-    };
+    }, [bikeNumber, unionSlug]);
 
-    const fetchQueue = async () => {
+    const fetchQueue = useCallback(async () => {
         setIsLoadingQueue(true);
         const res = await getLiveQueueAction(unionSlug);
         if (res.success) setQueue(res.data);
         setIsLoadingQueue(false);
-    };
+    }, [unionSlug]);
 
     useEffect(() => {
-        if (activeTab === 'pass' && bikeNumber && !passData) {
-            handleFetchPass(bikeNumber);
-        }
-        if (activeTab === 'queue') {
-            fetchQueue();
-        }
-    }, [activeTab]);
+        const loadTimeout = setTimeout(() => {
+            if (activeTab === 'pass' && bikeNumber && !passData) {
+                handleFetchPass(bikeNumber);
+            }
+            if (activeTab === 'queue') {
+                fetchQueue();
+            }
+        }, 0);
+
+        return () => clearTimeout(loadTimeout);
+    }, [activeTab, bikeNumber, fetchQueue, handleFetchPass, passData]);
 
     if (!unionInfo) return null;
 

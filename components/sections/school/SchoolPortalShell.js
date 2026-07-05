@@ -163,6 +163,11 @@ export default function SchoolPortalShell({ schoolId, role }) {
     const [studentHelpQuestions, setStudentHelpQuestions] = useState({});
     const [studentHelpMap, setStudentHelpMap] = useState({});
     const [studentHelpLoading, setStudentHelpLoading] = useState({});
+    const [lessonSubmissions, setLessonSubmissions] = useState([]);
+    const [studentSubmissionMap, setStudentSubmissionMap] = useState({});
+    const [homeworkDrafts, setHomeworkDrafts] = useState({});
+    const [homeworkSaving, setHomeworkSaving] = useState({});
+    const [homeworkReviewDrafts, setHomeworkReviewDrafts] = useState({});
     const [lessonScanLoading, setLessonScanLoading] = useState(false);
     const [aiQuizDrafts, setAiQuizDrafts] = useState([]);
     const [aiResourceHint, setAiResourceHint] = useState('');
@@ -234,16 +239,22 @@ export default function SchoolPortalShell({ schoolId, role }) {
                             setSelectedExam(examRows[0]);
                             setExamEntries(await schoolService.getExamEntries(examRows[0].id));
                         }
-                        const [lessonRows, progressRows] = await Promise.all([
+                        const [lessonRows, progressRows, submissionRows] = await Promise.all([
                             schoolService.getLessons(schoolId, {
                                 classId: currentStudent.class_id,
                                 status: 'published',
                                 limit: 12
                             }),
-                            schoolService.getStudentLessonProgress(currentStudent.id)
+                            schoolService.getStudentLessonProgress(currentStudent.id),
+                            schoolService.getStudentHomeworkSubmissions(currentStudent.id)
                         ]);
                         setStudentLessons(lessonRows);
                         setStudentLessonProgress(progressRows);
+                        setStudentSubmissionMap(Object.fromEntries((submissionRows || []).map((item) => [item.lesson_id, item])));
+                        setHomeworkDrafts(Object.fromEntries((submissionRows || []).map((item) => [item.lesson_id, {
+                            answer_text: item.answer_text || '',
+                            file_url: item.file_url || ''
+                        }])));
                         const quizRows = await Promise.all(lessonRows.map(async (lesson) => {
                             const quiz = await schoolService.getLessonQuiz(lesson.id);
                             return [lesson.id, quiz];
@@ -288,7 +299,12 @@ export default function SchoolPortalShell({ schoolId, role }) {
                         setTeacherLessons(lessonRows);
                         if (lessonRows[0]) {
                             setSelectedLesson(lessonRows[0]);
-                            setLessonProgress(await schoolService.getLessonProgress(lessonRows[0].id));
+                            const [progressRows, submissionRows] = await Promise.all([
+                                schoolService.getLessonProgress(lessonRows[0].id),
+                                schoolService.getHomeworkSubmissionsByLesson(lessonRows[0].id)
+                            ]);
+                            setLessonProgress(progressRows);
+                            setLessonSubmissions(submissionRows);
                             const quiz = await schoolService.getLessonQuiz(lessonRows[0].id);
                             setLessonQuiz(quiz);
                             setQuizQuestions(quiz ? await schoolService.getLessonQuizQuestions(quiz.id) : []);
@@ -327,6 +343,9 @@ export default function SchoolPortalShell({ schoolId, role }) {
         ? teacherSubjects.filter((subject) => subject.class_id === selectedTeacherClassId)
         : teacherSubjects;
     const completedCount = lessonProgress.filter((item) => item.status === 'completed').length;
+    const submittedHomeworkCount = lessonSubmissions.filter((item) => ['submitted', 'reviewing'].includes(item.status)).length;
+    const needsRevisionHomeworkCount = lessonSubmissions.filter((item) => item.status === 'needs_revision').length;
+    const completedHomeworkCount = lessonSubmissions.filter((item) => item.status === 'completed').length;
     const portalTabs = role === 'teacher'
         ? [
             { id: 'dashboard', label: 'ড্যাশবোর্ড', icon: Home },
@@ -344,6 +363,12 @@ export default function SchoolPortalShell({ schoolId, role }) {
             : [
                 { id: 'dashboard', label: 'ড্যাশবোর্ড', icon: Home }
             ];
+    const teacherDailySteps = [
+        { title: '১. Class/Subject', text: 'প্রথমে কোন class ও subject পড়াবেন সেটি select করুন।', tab: 'lessons' },
+        { title: '২. Topic publish', text: 'আজকের lesson, homework, resource বা AI scan draft publish করুন।', tab: 'lessons' },
+        { title: '৩. Homework review', text: 'Student জমা দিলে Checked বা Revision mark করে note দিন।', tab: 'progress' },
+        { title: '৪. Quiz / SMS', text: 'ছোট quiz দিন, বাকি থাকলে guardian follow-up SMS পাঠান।', tab: 'quiz' }
+    ];
     const isTeacherPortal = role === 'teacher';
     const isStudentPortal = role === 'student';
     const teacherCompletionRate = teacherStudents.length ? Math.round((completedCount / teacherStudents.length) * 100) : 0;
@@ -432,7 +457,17 @@ export default function SchoolPortalShell({ schoolId, role }) {
         setTeacherLessonPage(1);
         setTeacherStudentPage(1);
         setSelectedLesson(lessonRows[0] || null);
-        setLessonProgress(lessonRows[0] ? await schoolService.getLessonProgress(lessonRows[0].id) : []);
+        if (lessonRows[0]) {
+            const [progressRows, submissionRows] = await Promise.all([
+                schoolService.getLessonProgress(lessonRows[0].id),
+                schoolService.getHomeworkSubmissionsByLesson(lessonRows[0].id)
+            ]);
+            setLessonProgress(progressRows);
+            setLessonSubmissions(submissionRows);
+        } else {
+            setLessonProgress([]);
+            setLessonSubmissions([]);
+        }
         if (lessonRows[0]) {
             const quiz = await schoolService.getLessonQuiz(lessonRows[0].id);
             setLessonQuiz(quiz);
@@ -457,6 +492,7 @@ export default function SchoolPortalShell({ schoolId, role }) {
         setTeacherStudentPage(1);
         setSelectedLesson(null);
         setLessonProgress([]);
+        setLessonSubmissions([]);
         setLessonQuiz(null);
         setQuizQuestions([]);
     }
@@ -484,6 +520,7 @@ export default function SchoolPortalShell({ schoolId, role }) {
             setTeacherLessons((current) => [created, ...current]);
             setSelectedLesson(created);
             setLessonProgress([]);
+            setLessonSubmissions([]);
             setTeacherLessonPage(1);
         }
         setLessonForm({
@@ -539,13 +576,28 @@ export default function SchoolPortalShell({ schoolId, role }) {
         if (selectedLesson?.id === lesson.id) {
             const nextLesson = teacherLessons.find((item) => item.id !== lesson.id) || null;
             setSelectedLesson(nextLesson);
-            setLessonProgress(nextLesson ? await schoolService.getLessonProgress(nextLesson.id) : []);
+            if (nextLesson) {
+                const [progressRows, submissionRows] = await Promise.all([
+                    schoolService.getLessonProgress(nextLesson.id),
+                    schoolService.getHomeworkSubmissionsByLesson(nextLesson.id)
+                ]);
+                setLessonProgress(progressRows);
+                setLessonSubmissions(submissionRows);
+            } else {
+                setLessonProgress([]);
+                setLessonSubmissions([]);
+            }
         }
     }
 
     async function selectLesson(lesson) {
         setSelectedLesson(lesson);
-        setLessonProgress(await schoolService.getLessonProgress(lesson.id));
+        const [progressRows, submissionRows] = await Promise.all([
+            schoolService.getLessonProgress(lesson.id),
+            schoolService.getHomeworkSubmissionsByLesson(lesson.id)
+        ]);
+        setLessonProgress(progressRows);
+        setLessonSubmissions(submissionRows);
         const quiz = await schoolService.getLessonQuiz(lesson.id);
         setLessonQuiz(quiz);
         setQuizQuestions(quiz ? await schoolService.getLessonQuizQuestions(quiz.id) : []);
@@ -672,6 +724,46 @@ export default function SchoolPortalShell({ schoolId, role }) {
                 ? current.map((item) => item.lesson_id === lessonId ? updated : item)
                 : [...current, updated];
         });
+    }
+
+    async function submitStudentHomework(lesson) {
+        if (!student) return;
+        const draft = homeworkDrafts[lesson.id] || {};
+        if (!String(draft.answer_text || '').trim() && !String(draft.file_url || '').trim()) return;
+        setHomeworkSaving((current) => ({ ...current, [lesson.id]: true }));
+        try {
+            const submission = await schoolService.submitHomework({
+                institution_id: schoolId,
+                class_id: lesson.class_id,
+                subject_id: lesson.subject_id,
+                lesson_id: lesson.id,
+                student_id: student.id,
+                answer_text: draft.answer_text || '',
+                file_url: draft.file_url || ''
+            });
+            setStudentSubmissionMap((current) => ({ ...current, [lesson.id]: submission }));
+            await markStudentLessonProgress(lesson.id, 'not_completed');
+        } finally {
+            setHomeworkSaving((current) => ({ ...current, [lesson.id]: false }));
+        }
+    }
+
+    async function reviewHomeworkSubmission(studentRow, nextStatus) {
+        if (!selectedLesson) return;
+        const currentSubmission = lessonSubmissions.find((item) => item.student_id === studentRow.id);
+        if (!currentSubmission) return;
+        const reviewDraft = homeworkReviewDrafts[studentRow.id] || {};
+        const updated = await schoolService.reviewHomework(currentSubmission.id, {
+            status: nextStatus,
+            teacher_note: reviewDraft.teacher_note ?? currentSubmission.teacher_note ?? '',
+            score: reviewDraft.score === '' || reviewDraft.score === undefined ? currentSubmission.score : Number(reviewDraft.score)
+        });
+        setLessonSubmissions((current) => current.map((item) => item.id === updated.id ? updated : item));
+        if (nextStatus === 'completed') {
+            await markTeacherLessonProgress(studentRow.id, 'completed');
+        } else if (nextStatus === 'needs_revision') {
+            await markTeacherLessonProgress(studentRow.id, 'not_completed');
+        }
     }
 
     async function requestStudentHelp(lesson, mode = 'explain') {
@@ -815,6 +907,26 @@ export default function SchoolPortalShell({ schoolId, role }) {
                     </div>
                 </section>
             )}
+            {isTeacherPortal && (
+                <section className="rounded-[28px] border border-blue-100 bg-white p-6 shadow-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-700">Teacher guide</p>
+                            <h2 className="mt-1 text-xl font-black text-slate-900">প্রতিদিন এই ৪ ধাপে ক্লাস চালান</h2>
+                            <p className="mt-1 text-sm font-bold text-slate-500">কার্ডে চাপ দিলে সরাসরি সেই কাজের জায়গায় চলে যাবে।</p>
+                        </div>
+                        <button type="button" onClick={() => setPortalTab('lessons')} className="rounded-2xl bg-blue-700 px-4 py-3 text-sm font-black text-white">আজকের topic দিন</button>
+                    </div>
+                    <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                        {teacherDailySteps.map((step) => (
+                            <button key={step.title} type="button" onClick={() => setPortalTab(step.tab)} className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left transition hover:border-blue-300 hover:bg-blue-50">
+                                <p className="font-black text-slate-900">{step.title}</p>
+                                <p className="mt-2 text-sm font-bold leading-6 text-slate-500">{step.text}</p>
+                            </button>
+                        ))}
+                    </div>
+                </section>
+            )}
             {isStudentPortal && (
                 <section className="rounded-[30px] border border-orange-100 bg-white p-6 shadow-xl shadow-orange-100/60">
                     <div className="flex flex-wrap items-center justify-between gap-5">
@@ -892,8 +1004,9 @@ export default function SchoolPortalShell({ schoolId, role }) {
                         {role === 'admin' && <Link href={`/school/${schoolId}/admin`} className="rounded-2xl bg-slate-900 px-4 py-4 font-black text-white">Admin dashboard</Link>}
                         {role === 'teacher' && (
                             <>
-                                <span className={`rounded-2xl px-4 py-4 font-black ${design.badge}`}>আজকের lesson update</span>
-                                <span className="rounded-2xl bg-slate-100 px-4 py-4 font-black text-slate-700">Attendance mark</span>
+                                <button type="button" onClick={() => setPortalTab('lessons')} className={`rounded-2xl px-4 py-4 text-left font-black ${design.badge}`}>আজকের lesson update</button>
+                                <button type="button" onClick={() => setPortalTab('progress')} className="rounded-2xl bg-slate-100 px-4 py-4 text-left font-black text-slate-700">Homework review</button>
+                                <button type="button" onClick={() => setPortalTab('quiz')} className="rounded-2xl bg-slate-100 px-4 py-4 text-left font-black text-slate-700">Quiz তৈরি</button>
                             </>
                         )}
                         {role === 'student' && (
@@ -955,6 +1068,25 @@ export default function SchoolPortalShell({ schoolId, role }) {
             )}
 
             {role === 'teacher' && portalTab !== 'dashboard' && (
+                <div className="space-y-5">
+                <section className="rounded-[28px] border border-blue-100 bg-white p-5 shadow-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-700">আপনি এখন এখানে আছেন</p>
+                            <h2 className="mt-1 text-xl font-black text-slate-900">
+                                {portalTab === 'lessons' ? 'Topic ও homework publish' : portalTab === 'progress' ? 'Student progress ও homework review' : 'Quiz ও AI প্রশ্ন'}
+                            </h2>
+                            <p className="mt-1 text-sm font-bold text-slate-500">
+                                Class: {selectedTeacherClass?.name || 'select হয়নি'} · Subject: {selectedTeacherSubject?.name || 'select হয়নি'} · Topic: {selectedLesson?.title || 'select হয়নি'}
+                            </p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            <button type="button" onClick={() => setPortalTab('lessons')} className={`rounded-xl px-3 py-2 text-xs font-black ${portalTab === 'lessons' ? 'bg-blue-700 text-white' : 'bg-blue-50 text-blue-700'}`}>Topic</button>
+                            <button type="button" onClick={() => setPortalTab('progress')} className={`rounded-xl px-3 py-2 text-xs font-black ${portalTab === 'progress' ? 'bg-blue-700 text-white' : 'bg-blue-50 text-blue-700'}`}>Review</button>
+                            <button type="button" onClick={() => setPortalTab('quiz')} className={`rounded-xl px-3 py-2 text-xs font-black ${portalTab === 'quiz' ? 'bg-blue-700 text-white' : 'bg-blue-50 text-blue-700'}`}>Quiz</button>
+                        </div>
+                    </div>
+                </section>
                 <div className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
                     <div className="space-y-5">
                         <section className="rounded-[28px] border border-slate-200 bg-white p-6">
@@ -1163,6 +1295,20 @@ export default function SchoolPortalShell({ schoolId, role }) {
                                     {lessonSmsSending ? 'SMS queue হচ্ছে...' : 'বাকি guardian SMS'}
                                 </button>
                             </div>
+                            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                                <div className="rounded-2xl bg-blue-50 p-4">
+                                    <p className="text-2xl font-black text-blue-700">{submittedHomeworkCount}</p>
+                                    <p className="text-xs font-bold text-blue-700/70">জমা / review বাকি</p>
+                                </div>
+                                <div className="rounded-2xl bg-amber-50 p-4">
+                                    <p className="text-2xl font-black text-amber-700">{needsRevisionHomeworkCount}</p>
+                                    <p className="text-xs font-bold text-amber-700/70">সংশোধন দরকার</p>
+                                </div>
+                                <div className="rounded-2xl bg-emerald-50 p-4">
+                                    <p className="text-2xl font-black text-emerald-700">{completedHomeworkCount}</p>
+                                    <p className="text-xs font-bold text-emerald-700/70">খাতা checked</p>
+                                </div>
+                            </div>
                             {lessonSmsStatus && <p className="mt-3 rounded-2xl bg-amber-50 p-3 text-sm font-bold text-amber-800">{lessonSmsStatus}</p>}
                             <input value={portalSearch.teacherStudents} onChange={(e) => setPortalSearchValue('teacherStudents', e.target.value)} placeholder="Student name/roll দিয়ে খুঁজুন" className="mt-4 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold" />
                             <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -1170,10 +1316,57 @@ export default function SchoolPortalShell({ schoolId, role }) {
                                     <p className="text-sm font-bold text-slate-500">এই class-এ student নেই।</p>
                                 ) : pagedTeacherStudents.map((item) => {
                                     const progress = lessonProgress.find((row) => row.student_id === item.id);
+                                    const submission = lessonSubmissions.find((row) => row.student_id === item.id);
+                                    const reviewDraft = homeworkReviewDrafts[item.id] || {};
                                     return (
                                         <div key={item.id} className="rounded-2xl bg-slate-50 p-4">
                                             <p className="font-black text-slate-900">{item.student_name}</p>
                                             <p className="text-xs font-bold text-slate-500">Roll {item.roll_no || '-'}</p>
+                                            <div className="mt-3 rounded-2xl bg-white p-3">
+                                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                                    <p className="text-sm font-black text-slate-900">Homework</p>
+                                                    <span className={`rounded-full px-3 py-1 text-xs font-black ${
+                                                        submission?.status === 'completed'
+                                                            ? 'bg-emerald-50 text-emerald-700'
+                                                            : submission?.status === 'needs_revision'
+                                                                ? 'bg-amber-50 text-amber-700'
+                                                                : submission
+                                                                    ? 'bg-blue-50 text-blue-700'
+                                                                    : 'bg-slate-100 text-slate-500'
+                                                    }`}>
+                                                        {submission?.status?.replace('_', ' ') || 'not submitted'}
+                                                    </span>
+                                                </div>
+                                                {submission?.answer_text && <p className="mt-2 whitespace-pre-wrap text-sm font-bold text-slate-600">{submission.answer_text}</p>}
+                                                {submission?.file_url && <a href={submission.file_url} target="_blank" rel="noreferrer" className="mt-2 inline-flex text-xs font-black text-blue-700">Attachment দেখুন</a>}
+                                                {submission && (
+                                                    <div className="mt-3 space-y-2">
+                                                        <input
+                                                            value={reviewDraft.score ?? submission.score ?? ''}
+                                                            onChange={(event) => setHomeworkReviewDrafts((current) => ({
+                                                                ...current,
+                                                                [item.id]: { ...(current[item.id] || {}), score: event.target.value }
+                                                            }))}
+                                                            placeholder="Score"
+                                                            type="number"
+                                                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold"
+                                                        />
+                                                        <textarea
+                                                            value={reviewDraft.teacher_note ?? submission.teacher_note ?? ''}
+                                                            onChange={(event) => setHomeworkReviewDrafts((current) => ({
+                                                                ...current,
+                                                                [item.id]: { ...(current[item.id] || {}), teacher_note: event.target.value }
+                                                            }))}
+                                                            placeholder="Teacher note"
+                                                            className="min-h-16 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold"
+                                                        />
+                                                        <div className="flex gap-2">
+                                                            <button type="button" onClick={() => reviewHomeworkSubmission(item, 'needs_revision')} className="flex-1 rounded-xl bg-amber-50 px-3 py-2 text-sm font-black text-amber-700">Revision</button>
+                                                            <button type="button" onClick={() => reviewHomeworkSubmission(item, 'completed')} className="flex-1 rounded-xl bg-emerald-700 px-3 py-2 text-sm font-black text-white">Checked</button>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
                                             <div className="mt-3 flex gap-2">
                                                 <button type="button" onClick={() => markTeacherLessonProgress(item.id, 'completed')} className={`flex-1 rounded-xl px-3 py-2 text-sm font-black ${progress?.status === 'completed' ? 'bg-emerald-700 text-white' : 'bg-emerald-50 text-emerald-700'}`}>Complete</button>
                                                 <button type="button" onClick={() => markTeacherLessonProgress(item.id, 'not_completed')} className={`flex-1 rounded-xl px-3 py-2 text-sm font-black ${progress?.status === 'not_completed' ? 'bg-rose-700 text-white' : 'bg-rose-50 text-rose-700'}`}>Not</button>
@@ -1215,11 +1408,15 @@ export default function SchoolPortalShell({ schoolId, role }) {
                                     <p className="text-sm font-bold text-slate-500">প্রথমে topic নির্বাচন করুন।</p>
                                 ) : pagedTeacherStudents.map((item) => {
                                     const progress = lessonProgress.find((row) => row.student_id === item.id);
+                                    const submission = lessonSubmissions.find((row) => row.student_id === item.id);
                                     return (
                                         <div key={item.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-slate-50 p-4">
                                             <div>
                                                 <p className="font-black text-slate-900">{item.student_name}</p>
                                                 <p className="text-xs font-bold text-slate-500">রোল {item.roll_no || '-'}</p>
+                                                <p className="mt-2 text-xs font-black text-slate-500">
+                                                    Homework: <span className={submission?.status === 'completed' ? 'text-emerald-700' : submission ? 'text-blue-700' : 'text-slate-400'}>{submission?.status?.replace('_', ' ') || 'not submitted'}</span>
+                                                </p>
                                             </div>
                                             <div className="flex gap-2">
                                                 <button type="button" onClick={() => markTeacherLessonProgress(item.id, 'completed')} className={`rounded-xl px-3 py-2 text-sm font-black ${progress?.status === 'completed' ? 'bg-emerald-700 text-white' : 'bg-emerald-50 text-emerald-700'}`}>Complete</button>
@@ -1295,6 +1492,7 @@ export default function SchoolPortalShell({ schoolId, role }) {
                         )}
                     </div>
                 </div>
+                </div>
             )}
 
             {role === 'student' && portalTab !== 'dashboard' && (
@@ -1343,6 +1541,11 @@ export default function SchoolPortalShell({ schoolId, role }) {
                                 <p className="text-sm font-bold text-slate-500">এই class/subject-এ এখনো কোনো topic publish হয়নি।</p>
                             ) : pagedStudentLessons.map((lesson) => {
                                 const progress = studentLessonProgress.find((item) => item.lesson_id === lesson.id);
+                                const submission = studentSubmissionMap[lesson.id];
+                                const draft = homeworkDrafts[lesson.id] || {
+                                    answer_text: submission?.answer_text || '',
+                                    file_url: submission?.file_url || ''
+                                };
                                 const subjectName = subjects.find((item) => item.id === lesson.subject_id)?.name || 'Subject';
                                 return (
                                     <article key={lesson.id} className="rounded-2xl bg-slate-50 p-5">
@@ -1373,6 +1576,58 @@ export default function SchoolPortalShell({ schoolId, role }) {
                                                 <span dangerouslySetInnerHTML={{ __html: richTextToHtml(lesson.homework) }} />
                                             </div>
                                         )}
+                                        <div className="mt-4 rounded-2xl border border-orange-100 bg-white p-4">
+                                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                                <p className="font-black text-slate-900">Homework জমা</p>
+                                                <span className={`rounded-full px-3 py-1 text-xs font-black ${
+                                                    submission?.status === 'completed'
+                                                        ? 'bg-emerald-50 text-emerald-700'
+                                                        : submission?.status === 'needs_revision'
+                                                            ? 'bg-amber-50 text-amber-700'
+                                                            : submission
+                                                                ? 'bg-blue-50 text-blue-700'
+                                                                : 'bg-slate-100 text-slate-500'
+                                                }`}>
+                                                    {submission?.status?.replace('_', ' ') || 'not submitted'}
+                                                </span>
+                                            </div>
+                                            {submission?.teacher_note && (
+                                                <p className="mt-2 rounded-xl bg-amber-50 p-3 text-sm font-bold text-amber-800">Teacher note: {submission.teacher_note}</p>
+                                            )}
+                                            {submission?.score !== null && submission?.score !== undefined && (
+                                                <p className="mt-2 text-sm font-black text-emerald-700">Score: {submission.score}</p>
+                                            )}
+                                            {submission?.status !== 'completed' && (
+                                                <div className="mt-3 space-y-3">
+                                                    <textarea
+                                                        value={draft.answer_text || ''}
+                                                        onChange={(event) => setHomeworkDrafts((current) => ({
+                                                            ...current,
+                                                            [lesson.id]: { ...(current[lesson.id] || {}), answer_text: event.target.value }
+                                                        }))}
+                                                        placeholder="খাতার কাজ / উত্তর এখানে লিখুন"
+                                                        className="min-h-24 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold"
+                                                    />
+                                                    <input
+                                                        value={draft.file_url || ''}
+                                                        onChange={(event) => setHomeworkDrafts((current) => ({
+                                                            ...current,
+                                                            [lesson.id]: { ...(current[lesson.id] || {}), file_url: event.target.value }
+                                                        }))}
+                                                        placeholder="ছবি/ফাইল লিংক থাকলে দিন"
+                                                        className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => submitStudentHomework(lesson)}
+                                                        disabled={homeworkSaving[lesson.id]}
+                                                        className="rounded-2xl bg-orange-600 px-4 py-3 text-sm font-black text-white disabled:opacity-60"
+                                                    >
+                                                        {homeworkSaving[lesson.id] ? 'জমা হচ্ছে...' : submission ? 'আবার জমা দিন' : 'Homework জমা দিন'}
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
                                         <div className="mt-4 flex flex-wrap gap-2">
                                             <button
                                                 type="button"

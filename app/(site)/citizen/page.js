@@ -2,12 +2,15 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useSelector } from 'react-redux';
 import {
+    ArrowRight,
     Bell,
     Banknote,
     BriefcaseBusiness,
     CalendarCheck,
+    CreditCard,
     Droplet,
     FileText,
     HeartPulse,
@@ -19,6 +22,8 @@ import {
     MapPin,
     MessageSquareWarning,
     Phone,
+    QrCode,
+    Search,
     ShoppingBag,
     ShieldCheck,
     TicketCheck,
@@ -68,9 +73,13 @@ async function postJson(url, payload) {
 }
 
 export default function CitizenCenterPage() {
+    const router = useRouter();
     const { selected } = useSelector((state) => state.location);
     const [phone, setPhone] = useState('');
     const [otpCode, setOtpCode] = useState('');
+    const [trackLookup, setTrackLookup] = useState({ id: '', phone: '', type: '' });
+    const [householdLookup, setHouseholdLookup] = useState('');
+    const [accessToken, setAccessToken] = useState('');
     const [debugCode, setDebugCode] = useState('');
     const [loading, setLoading] = useState(false);
     const [inbox, setInbox] = useState(null);
@@ -129,7 +138,7 @@ export default function CitizenCenterPage() {
         setLoading(true);
         setNotice('');
         try {
-            const result = await postJson('/api/citizen/otp', { phone });
+            const result = await postJson('/api/citizen/otp', { phone, purpose: 'citizen_inbox' });
             setDebugCode(result.debugCode || '');
             setNotice('OTP পাঠানো হয়েছে। Development mode হলে নিচে code দেখাবে।');
         } catch (error) {
@@ -144,9 +153,36 @@ export default function CitizenCenterPage() {
         setLoading(true);
         setNotice('');
         try {
-            const result = await postJson('/api/citizen/inbox', { phone, otpCode });
+            const result = await postJson('/api/citizen/inbox', { phone, otpCode, accessToken });
+            if (result.accessToken) setAccessToken(result.accessToken);
             setInbox(result.data);
             setNotice('আপনার citizen inbox load হয়েছে।');
+        } catch (error) {
+            setNotice(error.message);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    async function updateConsent(consentType, granted) {
+        setLoading(true);
+        setNotice('');
+        try {
+            const result = await postJson('/api/citizen/consent', {
+                phone,
+                otpCode,
+                accessToken,
+                consentType,
+                granted
+            });
+            setInbox((current) => ({
+                ...current,
+                consents: [
+                    ...(current?.consents || []).filter((item) => item.consent_type !== consentType),
+                    result.data
+                ]
+            }));
+            setNotice(granted ? 'অনুমতি সংরক্ষণ হয়েছে।' : 'অনুমতি প্রত্যাহার হয়েছে।');
         } catch (error) {
             setNotice(error.message);
         } finally {
@@ -165,6 +201,7 @@ export default function CitizenCenterPage() {
                 type: 'complaint',
                 title: 'Complaint জমা হয়েছে',
                 referenceId: result.data?.id,
+                phone,
                 status: result.data?.status || 'submitted',
                 message: 'দায়িত্বপ্রাপ্ত অফিসার review করলে citizen inbox এবং SMS update পাবেন।',
                 smsQueued: result.sms?.queued,
@@ -204,6 +241,7 @@ export default function CitizenCenterPage() {
                 type: 'appointment',
                 title: 'Office serial request জমা হয়েছে',
                 referenceId: result.data?.id,
+                phone,
                 status: result.data?.status || 'submitted',
                 message: result.data?.serial_no
                     ? `আপনার serial ${toBnDigits(result.data.serial_no)}। Officer schedule করলে SMS/Inbox update পাবেন।`
@@ -244,6 +282,7 @@ export default function CitizenCenterPage() {
                 type: 'life_support',
                 title: 'Life support request জমা হয়েছে',
                 referenceId: result.data?.id,
+                phone,
                 status: result.data?.status || 'submitted',
                 message: 'Officer review করলে SMS/Inbox update পাবেন।',
                 smsQueued: result.sms?.queued,
@@ -287,6 +326,7 @@ export default function CitizenCenterPage() {
                 type: 'blood',
                 title: 'Blood request জমা হয়েছে',
                 referenceId: result.data?.id,
+                phone,
                 status: result.data?.status || 'active',
                 message: `সম্ভাব্য donor ${toBnDigits(result.possibleDonors?.length || 0)} জন পাওয়া গেছে। দায়িত্বপ্রাপ্ত team follow-up করবে।`,
                 smsQueued: null,
@@ -301,8 +341,36 @@ export default function CitizenCenterPage() {
         }
     }
 
+    function openTrackLookup(event) {
+        event.preventDefault();
+        const id = trackLookup.id.trim();
+        const lookupPhone = (trackLookup.phone || phone).trim();
+        if (!id || !lookupPhone) {
+            setNotice('Tracking ID এবং phone number দিন।');
+            return;
+        }
+        const params = new URLSearchParams({ id, phone: lookupPhone });
+        if (trackLookup.type) params.set('type', trackLookup.type);
+        router.push(`/track?${params.toString()}`);
+    }
+
+    function openPaymentCenter() {
+        const lookupPhone = (phone || trackLookup.phone).trim();
+        router.push(lookupPhone ? `/pay?phone=${encodeURIComponent(lookupPhone)}` : '/pay');
+    }
+
+    function openHouseholdProfile(event) {
+        event.preventDefault();
+        const lookup = householdLookup.trim();
+        if (!lookup) {
+            setNotice('Household QR/ID দিন।');
+            return;
+        }
+        router.push(`/h/${encodeURIComponent(lookup)}`);
+    }
+
     return (
-        <main className="min-h-screen bg-[#f5f8fb] px-4 py-5 text-slate-900 sm:px-6 lg:px-10">
+        <main className="min-h-screen bg-[#f5f8fb] px-4 pb-24 pt-5 text-slate-900 sm:px-6 sm:pb-10 lg:px-10">
             <div className="mx-auto max-w-6xl">
                 <section className="overflow-hidden rounded-[34px] bg-slate-950 text-white shadow-2xl shadow-slate-300/50">
                     <div className="grid gap-6 p-6 md:grid-cols-[1fr_0.8fr] md:p-9">
@@ -323,6 +391,143 @@ export default function CitizenCenterPage() {
                             </p>
                         </div>
                     </div>
+                </section>
+
+                <section className="mt-5 rounded-[30px] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+                    <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                        <div>
+                            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-teal-700">Fast gateway</p>
+                            <h2 className="text-2xl font-black text-slate-950">দ্রুত কাজ শুরু করুন</h2>
+                            <p className="mt-1 text-sm font-bold leading-6 text-slate-500">
+                                Status, payment, household profile আর নতুন request একই জায়গা থেকে খুলুন।
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={openPaymentCenter}
+                            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white transition hover:bg-teal-700 sm:w-auto"
+                        >
+                            <CreditCard size={17} />
+                            Payment center
+                        </button>
+                    </div>
+
+                    <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
+                        <form onSubmit={openTrackLookup} className="rounded-[26px] border border-sky-100 bg-sky-50 p-4">
+                            <div className="mb-3 flex items-start gap-3">
+                                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white text-sky-700 ring-1 ring-sky-100">
+                                    <Search size={22} />
+                                </span>
+                                <div>
+                                    <h3 className="text-lg font-black text-slate-950">Tracking status</h3>
+                                    <p className="mt-1 text-xs font-bold leading-5 text-sky-900/70">Request/certificate ID ও phone দিয়ে status দেখুন।</p>
+                                </div>
+                            </div>
+                            <div className="grid gap-2 sm:grid-cols-[1fr_0.75fr]">
+                                <input
+                                    value={trackLookup.id}
+                                    onChange={(event) => setTrackLookup((current) => ({ ...current, id: event.target.value }))}
+                                    placeholder="Tracking / certificate ID"
+                                    className="min-h-12 rounded-2xl border border-sky-100 bg-white px-4 text-sm font-bold outline-none focus:border-sky-400"
+                                />
+                                <input
+                                    value={trackLookup.phone}
+                                    onChange={(event) => setTrackLookup((current) => ({ ...current, phone: event.target.value }))}
+                                    placeholder={phone || '01XXXXXXXXX'}
+                                    className="min-h-12 rounded-2xl border border-sky-100 bg-white px-4 text-sm font-bold outline-none focus:border-sky-400"
+                                    type="tel"
+                                />
+                                <select
+                                    value={trackLookup.type}
+                                    onChange={(event) => setTrackLookup((current) => ({ ...current, type: event.target.value }))}
+                                    className="min-h-12 rounded-2xl border border-sky-100 bg-white px-4 text-sm font-bold outline-none focus:border-sky-400 sm:col-span-2"
+                                >
+                                    <option value="">Auto detect</option>
+                                    <option value="service">Service request</option>
+                                    <option value="complaint">Complaint</option>
+                                    <option value="appointment">Office serial</option>
+                                    <option value="life_support">Life support</option>
+                                </select>
+                            </div>
+                            <button className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-sky-700 px-4 py-3 text-xs font-black uppercase tracking-widest text-white transition hover:bg-slate-950">
+                                Status দেখুন
+                                <ArrowRight size={15} />
+                            </button>
+                        </form>
+
+                        <div className="grid gap-3 sm:grid-cols-2">
+                            <form onSubmit={openHouseholdProfile} className="rounded-[26px] border border-emerald-100 bg-emerald-50 p-4">
+                                <div className="mb-3 flex items-start gap-3">
+                                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white text-emerald-700 ring-1 ring-emerald-100">
+                                        <QrCode size={22} />
+                                    </span>
+                                    <div>
+                                        <h3 className="text-base font-black text-slate-950">Home QR</h3>
+                                        <p className="mt-1 text-xs font-bold leading-5 text-emerald-900/70">Household ID দিয়ে profile খুলুন।</p>
+                                    </div>
+                                </div>
+                                <input
+                                    value={householdLookup}
+                                    onChange={(event) => setHouseholdLookup(event.target.value)}
+                                    placeholder="Household QR / ID"
+                                    className="min-h-12 w-full rounded-2xl border border-emerald-100 bg-white px-4 text-sm font-bold outline-none focus:border-emerald-400"
+                                />
+                                <button className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3 text-xs font-black uppercase tracking-widest text-white transition hover:bg-slate-950">
+                                    Open profile
+                                </button>
+                            </form>
+
+                            <div className="grid gap-2">
+                                {[
+                                    ['#appointment', CalendarCheck, 'Office serial'],
+                                    ['#complaint', MessageSquareWarning, 'Complaint'],
+                                    ['#blood', Droplet, 'Blood help'],
+                                    ['#life-support', ShieldCheck, 'Life support']
+                                ].map(([href, Icon, label]) => (
+                                    <Link
+                                        key={href}
+                                        href={href}
+                                        className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-black text-slate-700 transition hover:border-teal-200 hover:bg-teal-50 hover:text-teal-700"
+                                    >
+                                        <span className="inline-flex items-center gap-2">
+                                            <Icon size={17} />
+                                            {label}
+                                        </span>
+                                        <ArrowRight size={15} />
+                                    </Link>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <nav className="sticky top-3 z-20 mt-4 grid grid-cols-4 gap-2 rounded-3xl border border-slate-200 bg-white/95 p-2 shadow-lg shadow-slate-200/60 backdrop-blur md:hidden">
+                    {[
+                        ['#inbox', Phone, 'OTP'],
+                        ['#appointment', CalendarCheck, 'Serial'],
+                        ['#complaint', MessageSquareWarning, 'Complain'],
+                        ['#blood', Droplet, 'Blood']
+                    ].map(([href, Icon, label]) => (
+                        <Link key={href} href={href} className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl text-[11px] font-black text-slate-600 transition hover:bg-teal-50 hover:text-teal-700">
+                            <Icon size={17} />
+                            {label}
+                        </Link>
+                    ))}
+                </nav>
+
+                <section className="mt-4 grid gap-3 rounded-[28px] border border-teal-100 bg-white p-4 shadow-sm sm:grid-cols-2 lg:grid-cols-4">
+                    {[
+                        ['1', 'OTP inbox', 'Mobile number diye personal status, reminders, tax due and service updates dekhen.'],
+                        ['2', 'Office serial', 'Chairman/ward office-er kajer jonno appointment request pathan.'],
+                        ['3', 'Complaint', 'Road, light, water, certificate delay or local problem report korun.'],
+                        ['4', 'Emergency help', 'Blood, health, document, benefit or farmer support request korun.']
+                    ].map(([stepNo, title, text]) => (
+                        <div key={title} className="rounded-2xl bg-slate-50 p-4">
+                            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-teal-600 text-xs font-black text-white">{stepNo}</span>
+                            <h2 className="mt-3 text-sm font-black text-slate-950">{title}</h2>
+                            <p className="mt-1 text-xs font-bold leading-5 text-slate-500">{text}</p>
+                        </div>
+                    ))}
                 </section>
 
                 <section className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -377,7 +582,16 @@ export default function CitizenCenterPage() {
                             <h2 className="text-xl font-black">মোবাইল যাচাই</h2>
                         </div>
                         <form onSubmit={requestOtp} className="grid gap-3">
-                            <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="01XXXXXXXXX" className="rounded-2xl border border-slate-200 px-4 py-3 font-bold outline-none focus:border-teal-400" />
+                            <input
+                                value={phone}
+                                onChange={(e) => {
+                                    const nextPhone = e.target.value;
+                                    setPhone(e.target.value);
+                                    setTrackLookup((current) => current.phone && current.phone !== phone ? current : { ...current, phone: nextPhone });
+                                }}
+                                placeholder="01XXXXXXXXX"
+                                className="rounded-2xl border border-slate-200 px-4 py-3 font-bold outline-none focus:border-teal-400"
+                            />
                             <button disabled={loading} className="rounded-2xl bg-teal-600 px-4 py-3 font-black text-white disabled:opacity-50">
                                 OTP নিন
                             </button>
@@ -603,6 +817,31 @@ export default function CitizenCenterPage() {
 
                             {activeInboxTab === 'privacy' && (
                                 <Panel title="Privacy access history" icon={ShieldCheck}>
+                                    <div className="mb-5 rounded-3xl border border-teal-100 bg-teal-50/60 p-4">
+                                        <p className="font-black text-slate-900">আমার অনুমতি</p>
+                                        <p className="mt-1 text-xs font-bold leading-5 text-slate-500">Service update SMS চালু রাখুন; promotional SMS চাইলে বন্ধ করতে পারবেন।</p>
+                                        <div className="mt-4 space-y-2">
+                                            {[
+                                                ['sms_service', 'সেবা ও আবেদনের SMS'],
+                                                ['sms_marketing', 'অফার ও promotional SMS'],
+                                                ['document_access', 'Verification-এর জন্য document access']
+                                            ].map(([type, label]) => {
+                                                const consent = (inbox.consents || []).find((item) => item.consent_type === type);
+                                                return (
+                                                    <label key={type} className="flex cursor-pointer items-center justify-between gap-3 rounded-2xl bg-white px-4 py-3">
+                                                        <span className="text-sm font-black text-slate-700">{label}</span>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={consent?.granted === true}
+                                                            disabled={loading}
+                                                            onChange={(event) => updateConsent(type, event.target.checked)}
+                                                            className="h-5 w-5 accent-teal-600"
+                                                        />
+                                                    </label>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
                                     {(inbox.privacyHistory || []).length === 0 ? <Empty text="এখনো কোনো private data access history নেই।" /> : (
                                         <div className="space-y-3">
                                             {inbox.privacyHistory.map((item) => (
@@ -1525,6 +1764,11 @@ function CitizenReadinessCard({ inbox, totals, setActiveTab }) {
 
 function ActionSuccessCard({ action, hasInbox, onOpenInbox }) {
     const statusLabel = STATUS_LABELS[action.status] || action.status;
+    const trackableTypes = new Set(['complaint', 'appointment', 'life_support']);
+    const canTrack = action.referenceId && trackableTypes.has(action.type);
+    const trackHref = canTrack
+        ? `/track?id=${encodeURIComponent(action.referenceId)}&phone=${encodeURIComponent(action.phone || '')}&type=${encodeURIComponent(action.type)}`
+        : '';
 
     return (
         <div className="mt-3 rounded-3xl border border-emerald-100 bg-emerald-50 p-4 text-left">
@@ -1555,6 +1799,14 @@ function ActionSuccessCard({ action, hasInbox, onOpenInbox }) {
                             {hasInbox ? 'Inbox tab দেখুন' : 'OTP দিয়ে Inbox দেখুন'}
                         </Link>
                     </div>
+                    {canTrack && (
+                        <Link
+                            href={trackHref}
+                            className="mt-2 inline-flex w-full items-center justify-center rounded-2xl bg-emerald-700 px-4 py-3 text-xs font-black text-white transition hover:bg-emerald-800 sm:w-auto"
+                        >
+                            Track status
+                        </Link>
+                    )}
                 </div>
             </div>
         </div>

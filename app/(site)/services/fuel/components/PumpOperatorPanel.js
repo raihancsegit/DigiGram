@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition } from 'react';
+import { useState, useEffect, useTransition, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Search, QrCode, CheckCircle2, AlertCircle,
@@ -28,43 +28,44 @@ export default function PumpOperatorPanel({ unionSlug, onLogout }) {
     const [isRefilling, startRefillTransition] = useTransition();
     const [isUpdatingSettings, startSettingsTransition] = useTransition();
 
-    useEffect(() => {
-        setSearchQuery('');
-    }, [activeTab]);
-
     // Fetch queue and logs
-    const fetchQueue = async () => {
+    const fetchQueue = useCallback(async () => {
         const res = await getLiveQueueAction(unionSlug);
         if (res.success) setQueue(res.data);
-    };
+    }, [unionSlug]);
 
-    const fetchLogs = async () => {
+    const fetchLogs = useCallback(async () => {
         const res = await getFuelLogsAction(unionSlug);
         if (res.success) setLogs(res.data);
-    };
+    }, [unionSlug]);
 
-    const fetchSettings = async () => {
+    const fetchSettings = useCallback(async () => {
         const res = await getUnionFuelSettingsAction(unionSlug);
         if (res.success) {
             setRationingLimit(res.data.limit);
             setRationingDays(res.data.days);
         }
-    };
+    }, [unionSlug]);
 
     useEffect(() => {
-        fetchQueue();
-        fetchSettings();
-        if (activeTab === 'logs') fetchLogs();
+        const loadTimeout = setTimeout(() => {
+            fetchQueue();
+            fetchSettings();
+            if (activeTab === 'logs') fetchLogs();
+        }, 0);
         const interval = setInterval(fetchQueue, 30000);
-        return () => clearInterval(interval);
-    }, [unionSlug, activeTab]);
+        return () => {
+            clearTimeout(loadTimeout);
+            clearInterval(interval);
+        };
+    }, [activeTab, fetchLogs, fetchQueue, fetchSettings]);
 
     const handleVerify = async (e) => {
         e?.preventDefault();
         if (!searchQuery) return;
 
         startTransition(async () => {
-            const res = await verifyBikeAction(searchQuery);
+            const res = await verifyBikeAction(searchQuery, unionSlug);
             if (res.success) {
                 setVerificationResult(res.data);
             } else {
@@ -191,7 +192,10 @@ export default function PumpOperatorPanel({ unionSlug, onLogout }) {
                         ].map(tab => (
                             <button
                                 key={tab.id}
-                                onClick={() => setActiveTab(tab.id)}
+                                onClick={() => {
+                                    setActiveTab(tab.id);
+                                    setSearchQuery('');
+                                }}
                                 className={`flex items-center gap-2.5 px-6 py-3.5 rounded-full font-black text-xs transition-all shrink-0 ${activeTab === tab.id ? 'bg-amber-500 text-slate-900 shadow-xl shadow-amber-500/10' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
                             >
                                 <tab.icon size={16} />

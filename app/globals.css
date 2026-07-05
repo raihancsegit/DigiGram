@@ -85,6 +85,25 @@ body {
   animation-play-state: paused;
 }
 
+.dg-modal-portal :where(.fixed.inset-0) {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.dg-modal-portal :where(.fixed.inset-0) > :where(div, form, section, article)[class*="bg-white"],
+.dg-modal-portal > div > div > :where(div, form, section, article)[class*="bg-white"] {
+  max-height: calc(100dvh - 1rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+@media (min-width: 640px) {
+  .dg-modal-portal :where(.fixed.inset-0) > :where(div, form, section, article)[class*="bg-white"],
+  .dg-modal-portal > div > div > :where(div, form, section, article)[class*="bg-white"] {
+    max-height: calc(100dvh - 3rem);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .school-notice-marquee {
     animation: none;

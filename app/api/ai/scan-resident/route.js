@@ -34,7 +34,6 @@ export async function POST(request) {
 
     for (const modelName of models) {
         try {
-            console.log(`Attempting scan with model: ${modelName}`);
             const model = genAI.getGenerativeModel({ model: modelName }, { apiVersion: "v1beta" });
 
             const prompt = `তুমি একজন বাংলাদেশি ডিজিটাল ভলান্টিয়ার এবং ডাটা এন্ট্রি বিশেষজ্ঞ।

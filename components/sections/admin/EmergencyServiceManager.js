@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
     Search, Plus, Trash2, ShieldAlert, 
     Ambulance, Shield, Flame, UserPlus, 
@@ -28,20 +28,7 @@ export default function EmergencyServiceManager({ locationId, isAdmin = false })
         address: ''
     });
 
-    useEffect(() => {
-        if (!locationId) return;
-        loadContacts();
-    }, [locationId, currentPage]);
-
-    if (!locationId) {
-        return (
-            <div className="py-10 text-center text-slate-400 font-bold">
-                কোনো ইউনিয়ন সিলেক্ট করা হয়নি।
-            </div>
-        );
-    }
-
-    const loadContacts = async () => {
+    const loadContacts = useCallback(async () => {
         setLoading(true);
         try {
             const result = await emergencyService.getContacts(locationId, currentPage, 10);
@@ -52,23 +39,33 @@ export default function EmergencyServiceManager({ locationId, isAdmin = false })
         } finally {
             setLoading(false);
         }
-    };
+    }, [locationId, currentPage]);
+
+    useEffect(() => {
+        if (!locationId) return;
+        loadContacts();
+    }, [locationId, loadContacts]);
+
+    if (!locationId) {
+        return (
+            <div className="py-10 text-center text-slate-400 font-bold">
+                কোনো ইউনিয়ন সিলেক্ট করা হয়নি।
+            </div>
+        );
+    }
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
-        console.log("Submitting form:", formData, "editing:", editingContact?.id);
         try {
             if (editingContact) {
                 // Ensure location_id is included for RLS checks
-                const result = await emergencyService.updateContact(editingContact.id, { 
+                await emergencyService.updateContact(editingContact.id, { 
                     ...formData, 
                     location_id: locationId 
                 });
-                console.log("Update result:", result);
             } else {
-                const result = await emergencyService.addContact({ ...formData, location_id: locationId });
-                console.log("Add result:", result);
+                await emergencyService.addContact({ ...formData, location_id: locationId });
             }
             setShowAddModal(false);
             setEditingContact(null);

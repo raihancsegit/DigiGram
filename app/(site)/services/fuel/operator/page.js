@@ -4,7 +4,11 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import PumpOperatorPanel from '../components/PumpOperatorPanel';
 import { ShieldCheck, Lock, ArrowRight } from 'lucide-react';
-import { verifyOperatorLoginAction } from '../actions';
+import {
+    checkOperatorSessionAction,
+    logoutOperatorAction,
+    verifyOperatorLoginAction
+} from '../actions';
 
 import { Suspense } from 'react';
 
@@ -18,11 +22,17 @@ function FuelOperatorContent() {
     const unionSlug = searchParams?.get('u') || 'south-union';
 
     useEffect(() => {
-        const storedAuth = localStorage.getItem(`digifuel_auth_${unionSlug}`);
-        if (storedAuth === 'authorized') {
-            setIsAuthorized(true);
-        }
-        setIsChecking(false);
+        let active = true;
+        checkOperatorSessionAction(unionSlug)
+            .then((result) => {
+                if (active) setIsAuthorized(Boolean(result.success));
+            })
+            .finally(() => {
+                if (active) setIsChecking(false);
+            });
+        return () => {
+            active = false;
+        };
     }, [unionSlug]);
 
     const handleLogin = async (e) => {
@@ -32,15 +42,14 @@ function FuelOperatorContent() {
         const result = await verifyOperatorLoginAction(unionSlug, accessPin);
         
         if (result.success) {
-            localStorage.setItem(`digifuel_auth_${unionSlug}`, 'authorized');
             setIsAuthorized(true);
         } else {
             setError(result.error || 'ভুল পিন কোড। আবার চেষ্টা করুন।');
         }
     };
 
-    const handleLogout = () => {
-        localStorage.removeItem(`digifuel_auth_${unionSlug}`);
+    const handleLogout = async () => {
+        await logoutOperatorAction();
         setIsAuthorized(false);
     };
 

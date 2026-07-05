@@ -17,7 +17,8 @@ export default function MarketManagerLayout({ children }) {
     const [hasMounted, setHasMounted] = useState(false);
 
     useEffect(() => {
-        setHasMounted(true);
+        const frame = requestAnimationFrame(() => setHasMounted(true));
+        return () => cancelAnimationFrame(frame);
     }, []);
 
     useEffect(() => {
@@ -63,7 +64,7 @@ export default function MarketManagerLayout({ children }) {
         };
 
         checkAuth();
-    }, [isAuthenticated, router, dispatch]);
+    }, [isAuthenticated, router, dispatch, user?.role]);
 
     if (!hasMounted || loading) {
         return (

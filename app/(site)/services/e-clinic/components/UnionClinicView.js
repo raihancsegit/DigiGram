@@ -8,6 +8,8 @@ import {
     Ambulance,
     Baby,
     Calendar,
+    ChevronLeft,
+    ChevronRight,
     CheckCircle2,
     Clock,
     HeartPulse,
@@ -21,6 +23,9 @@ import {
     Users
 } from 'lucide-react';
 import { toBnDigits } from '@/lib/utils/format';
+
+const DOCTOR_PAGE_SIZE = 6;
+const DIRECTORY_PAGE_SIZE = 5;
 
 const HEALTH_CARDS = [
     { title: 'শিশু টিকা follow-up', text: '০-৫ বছরের শিশুদের টিকা, ওজন ও জন্ম নিবন্ধন reminder।', icon: Baby, tone: 'bg-cyan-50 text-cyan-700' },
@@ -42,6 +47,7 @@ export function UnionClinicView({ unionSlug }) {
     const [loading, setLoading] = useState(true);
     const [unionName, setUnionName] = useState('');
     const [query, setQuery] = useState('');
+    const [doctorPage, setDoctorPage] = useState(1);
 
     useEffect(() => {
         let ignore = false;
@@ -84,6 +90,13 @@ export function UnionClinicView({ unionSlug }) {
         if (!needle) return doctors;
         return doctors.filter((doctor) => `${doctor.name || ''} ${doctor.specialty || ''} ${doctor.qualifications || ''}`.toLowerCase().includes(needle));
     }, [doctors, query]);
+    const doctorPages = Math.max(1, Math.ceil(filteredDoctors.length / DOCTOR_PAGE_SIZE));
+    const safeDoctorPage = Math.min(doctorPage, doctorPages);
+    const visibleDoctors = filteredDoctors.slice((safeDoctorPage - 1) * DOCTOR_PAGE_SIZE, safeDoctorPage * DOCTOR_PAGE_SIZE);
+
+    useEffect(() => {
+        setDoctorPage(1);
+    }, [query, doctors]);
 
     if (loading) {
         return (
@@ -152,6 +165,9 @@ export function UnionClinicView({ unionSlug }) {
                         <div>
                             <p className="text-[10px] font-black uppercase tracking-[0.22em] text-rose-600">Doctor schedule</p>
                             <h2 className="text-2xl font-black text-slate-950">আজকের ডাক্তার ও সেবা</h2>
+                            <p className="mt-1 text-xs font-black text-slate-400">
+                                মোট {toBnDigits(String(filteredDoctors.length))} জন · পৃষ্ঠা {toBnDigits(String(safeDoctorPage))}/{toBnDigits(String(doctorPages))}
+                            </p>
                         </div>
                         <div className="relative w-full sm:w-72">
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
@@ -167,11 +183,19 @@ export function UnionClinicView({ unionSlug }) {
                     {filteredDoctors.length === 0 ? (
                         <EmptyState text="এই ইউনিয়নে এখনো ডাক্তার schedule যোগ করা হয়নি। ইউনিয়ন admin থেকে ডাক্তার যোগ করলে এখানে দেখা যাবে।" />
                     ) : (
-                        <div className="grid gap-4 md:grid-cols-2">
-                            {filteredDoctors.map((doctor) => (
-                                <DoctorCard key={doctor.id || doctor.name} doctor={doctor} />
-                            ))}
-                        </div>
+                        <>
+                            <div className="grid gap-4 md:grid-cols-2">
+                                {visibleDoctors.map((doctor) => (
+                                    <DoctorCard key={doctor.id || doctor.name} doctor={doctor} />
+                                ))}
+                            </div>
+                            <Pagination
+                                className="mt-5"
+                                page={safeDoctorPage}
+                                totalPages={doctorPages}
+                                onPageChange={setDoctorPage}
+                            />
+                        </>
                     )}
                 </section>
 
@@ -243,25 +267,88 @@ function DoctorCard({ doctor }) {
 }
 
 function DirectoryCard({ title, icon: Icon, rows, emptyText, renderRow }) {
+    const [query, setQuery] = useState('');
+    const [page, setPage] = useState(1);
+    const filteredRows = useMemo(() => {
+        const needle = query.trim().toLowerCase();
+        if (!needle) return rows;
+        return rows.filter((row) => Object.values(row || {}).some((value) => String(value || '').toLowerCase().includes(needle)));
+    }, [query, rows]);
+    const totalPages = Math.max(1, Math.ceil(filteredRows.length / DIRECTORY_PAGE_SIZE));
+    const safePage = Math.min(page, totalPages);
+    const visibleRows = filteredRows.slice((safePage - 1) * DIRECTORY_PAGE_SIZE, safePage * DIRECTORY_PAGE_SIZE);
+
     return (
         <div className="rounded-[32px] border border-slate-100 bg-white p-5 shadow-sm">
             <div className="mb-4 flex items-center gap-3">
                 <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-rose-50 text-rose-600">
                     <Icon size={20} />
                 </div>
-                <h3 className="text-lg font-black text-slate-950">{title}</h3>
+                <div>
+                    <h3 className="text-lg font-black text-slate-950">{title}</h3>
+                    <p className="text-[10px] font-black text-slate-400">{toBnDigits(String(filteredRows.length))}টি রেকর্ড</p>
+                </div>
             </div>
-            {rows.length === 0 ? (
+            <label className="relative mb-4 block">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
+                <input
+                    value={query}
+                    onChange={(event) => {
+                        setQuery(event.target.value);
+                        setPage(1);
+                    }}
+                    placeholder={`${title} খুঁজুন`}
+                    className="h-11 w-full rounded-2xl border border-slate-200 bg-slate-50 pl-9 pr-3 text-xs font-bold outline-none focus:border-rose-300 focus:bg-white"
+                />
+            </label>
+            {filteredRows.length === 0 ? (
                 <EmptyState text={emptyText} compact />
             ) : (
-                <div className="space-y-3">
-                    {rows.slice(0, 8).map((row) => (
-                        <div key={row.id || row.phone || row.name} className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 p-3">
-                            {renderRow(row)}
-                        </div>
-                    ))}
-                </div>
+                <>
+                    <div className="space-y-3">
+                        {visibleRows.map((row) => (
+                            <div key={row.id || row.phone || row.name} className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 p-3">
+                                {renderRow(row)}
+                            </div>
+                        ))}
+                    </div>
+                    <Pagination
+                        className="mt-4"
+                        page={safePage}
+                        totalPages={totalPages}
+                        onPageChange={setPage}
+                        compact
+                    />
+                </>
             )}
+        </div>
+    );
+}
+
+function Pagination({ page, totalPages, onPageChange, className = '', compact = false }) {
+    return (
+        <div className={`flex items-center justify-center gap-2 ${className}`}>
+            <button
+                type="button"
+                onClick={() => onPageChange(Math.max(1, page - 1))}
+                disabled={page <= 1}
+                className={`${compact ? 'h-9 px-3' : 'h-11 px-4'} inline-flex items-center gap-1 rounded-2xl border border-slate-200 bg-white text-xs font-black text-slate-600 disabled:opacity-40`}
+            >
+                <ChevronLeft size={15} />
+                আগে
+            </button>
+            <span className={`${compact ? 'px-3 py-2' : 'px-4 py-3'} rounded-2xl bg-slate-950 text-xs font-black text-white`}>
+                {toBnDigits(String(page))}/{toBnDigits(String(totalPages))}
+            </span>
+            <button
+                type="button"
+                onClick={() => onPageChange(Math.min(totalPages, page + 1))}
+                disabled={page >= totalPages}
+                className={`${compact ? 'h-9 px-3' : 'h-11 px-4'} inline-flex items-center gap-1 rounded-2xl border border-slate-200 bg-white text-xs font-black text-slate-600 disabled:opacity-40`}
+            >
+                পরে
+                <ChevronRight size={15} />
+            </button>
         </div>
     );
 }

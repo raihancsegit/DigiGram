@@ -7,7 +7,7 @@ import {
     LayoutDashboard, Users, Settings, Bell,
     LogOut, Menu, X, Shield, Globe,
     CreditCard, Zap, School, Activity, MapPin, ShoppingBag, Database, MessageSquareText,
-    ScanSearch, FileClock, GitBranch
+    ScanSearch, FileClock, GitBranch, Landmark, Rocket
 } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { performLogout } from '@/lib/store/features/authSlice';
@@ -44,9 +44,12 @@ export default function AdminShell({ children }) {
         { name: 'শিক্ষা প্রতিষ্ঠান', icon: School, path: '/admin/institutions', permission: 'can_manage_institutions' },
         { name: 'ইউজার ম্যানেজমেন্ট', icon: Users, path: '/admin/members', permission: 'can_manage_users' },
         { name: 'নোটিশবোর্ড', icon: Bell, path: '/admin/notices', permission: 'can_manage_news' },
+        { name: 'Smart Search', icon: ScanSearch, path: '/admin/search', permission: 'can_manage_system' },
         { name: 'ডাটা কোয়ালিটি', icon: ScanSearch, path: '/admin/data-quality', permission: 'can_manage_system' },
         { name: 'SMS', icon: MessageSquareText, path: '/admin/sms', permission: 'can_manage_system' },
         { name: 'SLA / Operations', icon: FileClock, path: '/admin/operations', permission: 'can_manage_system' },
+        { name: 'Governance Center', icon: Landmark, path: '/admin/governance', permission: 'can_manage_system' },
+        { name: 'Launch Readiness', icon: Rocket, path: '/admin/launch', permission: 'can_manage_system' },
         { name: 'SQL Migrations', icon: GitBranch, path: '/admin/migrations', permission: 'can_manage_system' },
         { name: 'বিলিং / ক্রেডিট', icon: CreditCard, path: '/admin/billing' },
         { name: 'সিস্টেম মেনটেন্যান্স', icon: Database, path: '/admin/maintenance', permission: 'can_manage_system' },

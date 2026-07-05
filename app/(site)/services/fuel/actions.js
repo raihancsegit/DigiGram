@@ -7,6 +7,12 @@ import {
     getFuelPassData, updateUnionFuelSettings, getUnionFuelSettings
 } from '@/lib/services/fuelService';
 import { revalidatePath } from 'next/cache';
+import {
+    clearFuelOperatorSession,
+    createFuelOperatorSession,
+    hasFuelOperatorSession,
+    requireFuelOperatorSession
+} from '@/lib/utils/fuel-operator-session';
 
 /**
  * Action: Request a new Fuel Token.
@@ -40,6 +46,7 @@ export async function requestFuelTokenAction(formData) {
  */
 export async function authorizeRefillAction(bikeNumber, amount, unionSlug) {
     try {
+        await requireFuelOperatorSession(unionSlug);
         const result = await registerRefill(bikeNumber, amount, unionSlug);
         revalidatePath('/services/fuel');
         return { success: true, message: result.message };
@@ -63,8 +70,9 @@ export async function getLivePumpsAction(unionSlug) {
 /**
  * Action: Verify Bike Eligibility (Operator Mode)
  */
-export async function verifyBikeAction(bikeNumber) {
+export async function verifyBikeAction(bikeNumber, unionSlug) {
     try {
+        await requireFuelOperatorSession(unionSlug);
         const result = await verifyBikeEligibility(bikeNumber);
         return { success: true, data: result };
     } catch (error) {
@@ -77,6 +85,7 @@ export async function verifyBikeAction(bikeNumber) {
  */
 export async function getLiveQueueAction(unionSlug) {
     try {
+        await requireFuelOperatorSession(unionSlug);
         const queue = await getPumpQueue(unionSlug);
         return { success: true, data: queue };
     } catch (error) {
@@ -90,6 +99,7 @@ export async function getLiveQueueAction(unionSlug) {
 export async function verifyOperatorLoginAction(unionSlug, password) {
     try {
         const isValid = await verifyOperatorPassword(unionSlug, password);
+        if (isValid) await createFuelOperatorSession(unionSlug);
         return { success: isValid };
     } catch (error) {
         return { success: false, error: 'লগইন করতে সমস্যা হয়েছে।' };
@@ -101,6 +111,7 @@ export async function verifyOperatorLoginAction(unionSlug, password) {
  */
 export async function updateOperatorPasswordAction(unionSlug, newPassword) {
     try {
+        await requireFuelOperatorSession(unionSlug);
         await updateOperatorPassword(unionSlug, newPassword);
         return { success: true };
     } catch (error) {
@@ -113,6 +124,7 @@ export async function updateOperatorPasswordAction(unionSlug, newPassword) {
  */
 export async function getFuelLogsAction(unionSlug) {
     try {
+        await requireFuelOperatorSession(unionSlug);
         const logs = await fetchFuelLogs(unionSlug);
         return { success: true, data: logs };
     } catch (error) {
@@ -137,6 +149,7 @@ export async function getFuelPassAction(bikeNumber, unionSlug) {
  */
 export async function updateUnionFuelSettingsAction(unionSlug, settings) {
     try {
+        await requireFuelOperatorSession(unionSlug);
         await updateUnionFuelSettings(unionSlug, settings);
         return { success: true };
     } catch (error) {
@@ -149,9 +162,19 @@ export async function updateUnionFuelSettingsAction(unionSlug, settings) {
  */
 export async function getUnionFuelSettingsAction(unionSlug) {
     try {
+        await requireFuelOperatorSession(unionSlug);
         const settings = await getUnionFuelSettings(unionSlug);
         return { success: true, data: settings };
     } catch (error) {
         return { success: false, error: 'সেটিংস লোড করা যায়নি।' };
     }
+}
+
+export async function checkOperatorSessionAction(unionSlug) {
+    return { success: await hasFuelOperatorSession(unionSlug) };
+}
+
+export async function logoutOperatorAction() {
+    await clearFuelOperatorSession();
+    return { success: true };
 }

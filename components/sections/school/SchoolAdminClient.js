@@ -12,8 +12,10 @@ import {
     Loader2,
     Megaphone,
     Plus,
+    Search,
     Settings2,
     ShieldCheck,
+    UserPlus,
     Users
 } from 'lucide-react';
 import { schoolService } from '@/lib/services/schoolService';
@@ -82,11 +84,14 @@ export default function SchoolAdminClient({ schoolId }) {
         roll_no: '',
         guardian_name: '',
         guardian_phone: '',
-        create_login: true,
-        email: '',
-        password: 'password123'
+        household_id: '',
+        resident_id: '',
+        source_label: ''
     });
-    const [studentLoginDrafts, setStudentLoginDrafts] = useState({});
+    const [householdSearch, setHouseholdSearch] = useState('');
+    const [householdResults, setHouseholdResults] = useState([]);
+    const [householdSearching, setHouseholdSearching] = useState(false);
+    const [householdSearchError, setHouseholdSearchError] = useState('');
     const [subjectForm, setSubjectForm] = useState({ name: '', teacher_id: '' });
     const [teacherForm, setTeacherForm] = useState({
         first_name: '',
@@ -191,6 +196,11 @@ export default function SchoolAdminClient({ schoolId }) {
         load();
     }, [schoolId]);
 
+    useEffect(() => {
+        const requestedTab = new URLSearchParams(window.location.search).get('tab');
+        if (requestedTab) setActiveTab(requestedTab);
+    }, []);
+
     async function createClass(event) {
         event.preventDefault();
         const created = await schoolService.createClass({
@@ -226,76 +236,70 @@ export default function SchoolAdminClient({ schoolId }) {
 
     async function createStudent(event) {
         event.preventDefault();
-        let profileId = null;
-        if (studentForm.create_login) {
-            const createdUser = await adminService.quickCreateChairman({
-                email: studentForm.email,
-                password: studentForm.password,
-                first_name: studentForm.student_name,
-                last_name: '',
-                phone: null,
-                role: 'student',
-                access_scope_id: institution?.village_location_id || institution?.location_id || null
-            });
-            profileId = createdUser.data.id;
-        }
         const created = await schoolService.createStudent({
             institution_id: schoolId,
             class_id: selectedClass.id,
+            class_name: selectedClass.name,
             student_name: studentForm.student_name,
             roll_no: studentForm.roll_no,
             guardian_name: studentForm.guardian_name,
             guardian_phone: studentForm.guardian_phone,
-            profile_id: profileId
+            household_id: studentForm.household_id || null,
+            resident_id: studentForm.resident_id || null,
+            enrollment_source: studentForm.resident_id ? 'household_profile' : 'school_admin',
+            enrollment_status: 'studying'
         });
-        if (profileId) {
-            await institutionPortalService.addMembership({
-                institution_id: schoolId,
-                profile_id: profileId,
-                member_role: 'student',
-                title: portalCopy.studentLabel,
-                display_name: studentForm.student_name,
-                is_active: true
-            });
-        }
         setStudents((current) => [...current, created]);
         setStudentForm({
             student_name: '',
             roll_no: '',
             guardian_name: '',
             guardian_phone: '',
-            create_login: true,
-            email: '',
-            password: 'password123'
+            household_id: '',
+            resident_id: '',
+            source_label: ''
         });
     }
 
-    async function createStudentLogin(student) {
-        const draft = studentLoginDrafts[student.id] || {};
-        const createdUser = await adminService.quickCreateChairman({
-            email: draft.email,
-            password: draft.password || 'password123',
-            first_name: student.student_name,
-            last_name: '',
-            phone: null,
-            role: 'student',
-            access_scope_id: institution?.village_location_id || institution?.location_id || null
-        });
-        const updatedStudent = await schoolService.updateStudent(student.id, {
-            profile_id: createdUser.data.id
-        });
-        await institutionPortalService.addMembership({
-            institution_id: schoolId,
-            profile_id: createdUser.data.id,
-            member_role: 'student',
-            title: portalCopy.studentLabel,
-            display_name: student.student_name,
-            is_active: true
-        });
-        setStudents((current) => current.map((item) => item.id === student.id ? updatedStudent : item));
-        setStudentLoginDrafts((current) => ({
+    async function searchHouseholdMembers(event) {
+        event.preventDefault();
+        const query = householdSearch.trim();
+        if (query.length < 2) return;
+        setHouseholdSearching(true);
+        setHouseholdSearchError('');
+        try {
+            const rows = await schoolService.searchHouseholdMembers(schoolId, query);
+            setHouseholdResults(rows);
+        } catch (error) {
+            setHouseholdSearchError(error.message || 'Home member search failed');
+            setHouseholdResults([]);
+        } finally {
+            setHouseholdSearching(false);
+        }
+    }
+
+    function selectHouseholdMember(household, resident) {
+        setStudentForm((current) => ({
             ...current,
-            [student.id]: { email: '', password: 'password123' }
+            student_name: resident.name || resident.legal_name || '',
+            guardian_name: household.owner_name || current.guardian_name,
+            guardian_phone: household.guardian_phone || resident.phone || current.guardian_phone,
+            household_id: household.id,
+            resident_id: resident.id,
+            source_label: [
+                household.house_no && `House ${household.house_no}`,
+                household.owner_name,
+                resident.age !== null && resident.age !== undefined ? `${resident.age}y` : ''
+            ].filter(Boolean).join(' · ')
+        }));
+    }
+
+    function clearHouseholdSelection() {
+        setStudentForm((current) => ({
+            ...current,
+            household_id: '',
+            resident_id: '',
+            source_label: ''
         }));
     }
 
@@ -571,6 +575,18 @@ export default function SchoolAdminClient({ schoolId }) {
         { id: 'admissions', label: 'ভর্তি আবেদন', icon: CalendarCheck },
         { id: 'notices', label: 'নোটিশ', icon: Bell },
         { id: 'website', label: 'ওয়েবসাইট CMS', icon: Settings2 }
+    ];
+    const adminSetupSteps = [
+        { title: '১. ক্লাস খুলুন', text: 'প্রথমে শ্রেণি/সেকশন তৈরি করুন, না হলে ভর্তি ও ফলাফল ঠিকভাবে বসবে না।', tab: 'classes' },
+        { title: '২. শিক্ষক যোগ করুন', text: 'শিক্ষকের login তৈরি করুন, পরে subject-এর সাথে শিক্ষক assign করুন।', tab: 'teachers' },
+        { title: '৩. বিষয় assign করুন', text: 'প্রতি ক্লাসে subject যোগ করে শিক্ষক বসালে teacher portal সহজ হবে।', tab: 'subjects' },
+        { title: '৪. ভর্তি নিন', text: 'Home search থেকে member select করুন, না থাকলে manual student add করুন।', tab: 'students' }
+    ];
+    const adminDailySteps = [
+        { title: 'উপস্থিতি', text: 'প্রতিদিন present/absent/late/leave mark করুন।', tab: 'attendance' },
+        { title: 'নোটিশ', text: 'পরীক্ষা, ছুটি বা জরুরি ঘোষণার জন্য notice publish করুন।', tab: 'notices' },
+        { title: 'ফলাফল', text: 'Exam তৈরি করে subject-wise marks দিয়ে publish করুন।', tab: 'results' },
+        { title: 'Website', text: 'Admission, gallery, principal message ও public info update করুন।', tab: 'website' }
     ];
 
     const filteredClasses = classes.filter((item) => matchesSearch(item, listSearch.classes, ['name', 'section', 'academic_year']));
@@ -870,6 +886,41 @@ export default function SchoolAdminClient({ schoolId }) {
                                         </article>
                                     ))}
                                 </div>
+                                <section className="rounded-2xl border border-emerald-100 bg-white p-5 shadow-sm">
+                                    <div className="flex flex-wrap items-center justify-between gap-3">
+                                        <div>
+                                            <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-700">সহজ কাজের পথ</p>
+                                            <h2 className="mt-1 text-xl font-black text-slate-900">প্রথমবার setup করলে এই ৪ ধাপ অনুসরণ করুন</h2>
+                                            <p className="mt-1 text-sm font-bold text-slate-500">প্রতিটি কার্ডে চাপ দিলে সরাসরি সেই কাজের পেজ খুলবে।</p>
+                                        </div>
+                                        <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700">Admin guide</span>
+                                    </div>
+                                    <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                                        {adminSetupSteps.map((step) => (
+                                            <button key={step.title} type="button" onClick={() => setActiveTab(step.tab)} className="rounded-2xl border border-slate-200 bg-[#f8faf8] p-4 text-left transition hover:border-emerald-300 hover:bg-emerald-50">
+                                                <p className="font-black text-slate-900">{step.title}</p>
+                                                <p className="mt-2 text-sm font-bold leading-6 text-slate-500">{step.text}</p>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </section>
+                                <section className="rounded-2xl border border-amber-100 bg-amber-50 p-5">
+                                    <div className="flex flex-wrap items-center justify-between gap-3">
+                                        <div>
+                                            <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-700">প্রতিদিনের কাজ</p>
+                                            <h2 className="mt-1 text-xl font-black text-slate-900">স্কুল চালানোর মূল কাজগুলো</h2>
+                                        </div>
+                                        <button type="button" onClick={() => setActiveTab('attendance')} className="rounded-xl bg-slate-900 px-4 py-3 text-sm font-black text-white">আজকের উপস্থিতি নিন</button>
+                                    </div>
+                                    <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                                        {adminDailySteps.map((step) => (
+                                            <button key={step.title} type="button" onClick={() => setActiveTab(step.tab)} className="rounded-2xl bg-white p-4 text-left shadow-sm transition hover:bg-slate-50">
+                                                <p className="font-black text-slate-900">{step.title}</p>
+                                                <p className="mt-2 text-sm font-bold leading-6 text-slate-500">{step.text}</p>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </section>
                                 <section className="rounded-2xl border border-[#d6d3cb] bg-white p-5">
                                     <h2 className="mb-4 font-black">দ্রুত কাজ</h2>
                                     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -983,28 +1034,104 @@ export default function SchoolAdminClient({ schoolId }) {
 
                         {activeTab === 'students' && (
                             <div className="space-y-5">
+                                <section className="rounded-2xl border border-sky-100 bg-sky-50 p-5">
+                                    <p className="text-xs font-black uppercase tracking-[0.18em] text-sky-700">ভর্তি নিয়ম</p>
+                                    <div className="mt-3 grid gap-3 md:grid-cols-3">
+                                        {[
+                                            ['Home থেকে নিন', 'আগে search দিন। Member পেলে select করলেই student info বসে যাবে।'],
+                                            ['না পেলে manual', 'Home entry না থাকলে নাম, roll, guardian phone লিখে ভর্তি করুন।'],
+                                            ['Guardian check', 'Student login না থাকলেও guardian roll + phone দিয়ে update দেখতে পারবে।']
+                                        ].map(([title, text]) => (
+                                            <div key={title} className="rounded-2xl bg-white p-4">
+                                                <p className="font-black text-slate-900">{title}</p>
+                                                <p className="mt-2 text-sm font-bold leading-6 text-slate-500">{text}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </section>
                                 <form onSubmit={createStudent} className="rounded-2xl border border-[#d6d3cb] bg-white p-5">
-                                    <div className="mb-4 flex items-center gap-3"><Plus className="text-[#1b6e3c]" /><h2 className="text-xl font-black">নতুন {portalCopy.studentLabel}</h2></div>
+                                    <div className="mb-4 flex items-center gap-3"><Plus className="text-[#1b6e3c]" /><h2 className="text-xl font-black">ভর্তি / নতুন {portalCopy.studentLabel}</h2></div>
+                                    <div className="mb-4 rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
+                                        <div className="flex flex-wrap items-end gap-3">
+                                            <label className="min-w-0 flex-1">
+                                                <span className="mb-1 block text-[10px] font-black uppercase tracking-widest text-emerald-700">Home member search</span>
+                                                <input
+                                                    value={householdSearch}
+                                                    onChange={(e) => setHouseholdSearch(e.target.value)}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') {
+                                                            e.preventDefault();
+                                                            searchHouseholdMembers(e);
+                                                        }
+                                                    }}
+                                                    placeholder="House no, guardian name, phone, NID, birth reg"
+                                                    className="h-12 w-full rounded-xl border border-emerald-100 bg-white px-4 text-sm font-bold outline-none focus:border-emerald-400"
+                                                />
+                                            </label>
+                                            <button
+                                                type="button"
+                                                onClick={searchHouseholdMembers}
+                                                disabled={householdSearching || householdSearch.trim().length < 2}
+                                                className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 text-sm font-black text-white disabled:bg-slate-300"
+                                            >
+                                                {householdSearching ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
+                                                Search
+                                            </button>
+                                        </div>
+                                        {householdSearchError && <p className="mt-3 text-xs font-black text-rose-600">{householdSearchError}</p>}
+                                        {studentForm.resident_id && (
+                                            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-white px-4 py-3 text-xs font-black text-emerald-800">
+                                                <span>Selected from home: {studentForm.source_label}</span>
+                                                <button type="button" onClick={clearHouseholdSelection} className="rounded-lg bg-rose-50 px-3 py-2 text-rose-700">Clear link</button>
+                                            </div>
+                                        )}
+                                        {householdResults.length > 0 && (
+                                            <div className="mt-4 grid gap-3">
+                                                {householdResults.map((household) => (
+                                                    <div key={household.id} className="rounded-2xl bg-white p-3 ring-1 ring-emerald-100">
+                                                        <div className="flex flex-wrap items-start justify-between gap-2">
+                                                            <div>
+                                                                <p className="font-black text-slate-900">{household.owner_name || 'Household'}</p>
+                                                                <p className="text-xs font-bold text-slate-500">
+                                                                    {[household.house_no && `House ${household.house_no}`, household.village_name, household.ward_name, household.guardian_phone].filter(Boolean).join(' · ')}
+                                                                </p>
+                                                            </div>
+                                                            <span className="rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-black text-emerald-700">{household.residents.length} members</span>
+                                                        </div>
+                                                        <div className="mt-3 grid gap-2 md:grid-cols-2">
+                                                            {household.residents.map((resident) => (
+                                                                <button
+                                                                    key={resident.id}
+                                                                    type="button"
+                                                                    onClick={() => selectHouseholdMember(household, resident)}
+                                                                    className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-3 text-left transition hover:border-emerald-200 hover:bg-emerald-50"
+                                                                >
+                                                                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-emerald-700">
+                                                                        <UserPlus size={16} />
+                                                                    </span>
+                                                                    <span className="min-w-0">
+                                                                        <span className="block truncate text-sm font-black text-slate-900">{resident.name || 'Unnamed member'}</span>
+                                                                        <span className="block truncate text-[11px] font-bold text-slate-500">
+                                                                            {[resident.age !== null ? `${resident.age}y` : '', resident.student_status, resident.birth_reg_no || resident.nid].filter(Boolean).join(' · ')}
+                                                                        </span>
+                                                                    </span>
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
                                     <div className="grid gap-3 md:grid-cols-2">
                                         <input required disabled={!selectedClass} value={studentForm.student_name} onChange={(e) => setStudentForm({ ...studentForm, student_name: e.target.value })} placeholder="Student name" className="rounded-xl border border-slate-200 px-4 py-3" />
                                         <input value={studentForm.roll_no} onChange={(e) => setStudentForm({ ...studentForm, roll_no: e.target.value })} placeholder="Roll" className="rounded-xl border border-slate-200 px-4 py-3" />
                                         <input value={studentForm.guardian_name} onChange={(e) => setStudentForm({ ...studentForm, guardian_name: e.target.value })} placeholder="Guardian name" className="rounded-xl border border-slate-200 px-4 py-3" />
                                         <input value={studentForm.guardian_phone} onChange={(e) => setStudentForm({ ...studentForm, guardian_phone: e.target.value })} placeholder="Guardian phone" className="rounded-xl border border-slate-200 px-4 py-3" />
                                     </div>
-                                    <label className="mt-4 flex items-center gap-3 rounded-2xl bg-[#f4f2ee] p-4 text-sm font-black text-slate-700">
-                                        <input
-                                            type="checkbox"
-                                            checked={studentForm.create_login}
-                                            onChange={(e) => setStudentForm({ ...studentForm, create_login: e.target.checked })}
-                                        />
-                                        একই সাথে student login account তৈরি করুন
-                                    </label>
-                                    {studentForm.create_login && (
-                                        <div className="mt-3 grid gap-3 md:grid-cols-2">
-                                            <input required type="email" value={studentForm.email} onChange={(e) => setStudentForm({ ...studentForm, email: e.target.value })} placeholder="student@example.com" className="rounded-xl border border-slate-200 px-4 py-3" />
-                                            <input required value={studentForm.password} onChange={(e) => setStudentForm({ ...studentForm, password: e.target.value })} placeholder="Temporary password" className="rounded-xl border border-slate-200 px-4 py-3" />
-                                        </div>
-                                    )}
+                                    <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50 p-4 text-sm font-bold leading-6 text-emerald-800">
+                                        Student add korle আলাদা login account তৈরি হবে না। Guardian update/result দেখার জন্য roll + guardian phone ব্যবহার হবে, আর family tree/home profile থেকে household link রাখা যাবে।
+                                    </div>
                                     <button disabled={!selectedClass} className="mt-4 rounded-xl bg-[#1b6e3c] px-4 py-3 font-black text-white disabled:bg-slate-300">{portalCopy.studentLabel} যোগ করুন</button>
                                 </form>
 
@@ -1012,7 +1139,7 @@ export default function SchoolAdminClient({ schoolId }) {
                                     <div className="flex flex-wrap items-center justify-between gap-3">
                                         <div>
                                             <h2 className="text-xl font-black">{portalCopy.studentLabel} তালিকা</h2>
-                                            <p className="mt-1 text-sm font-bold text-slate-500">Login account link থাকলে student portal-এ ফলাফল দেখা যাবে।</p>
+                                            <p className="mt-1 text-sm font-bold text-slate-500">Student account ছাড়া guardian phone/roll দিয়ে result, attendance ও homework দেখা যাবে। Household link থাকলে family profile-এ school status থাকবে।</p>
                                         </div>
                                         <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700">{students.length} জন</span>
                                     </div>
@@ -1027,41 +1154,13 @@ export default function SchoolAdminClient({ schoolId }) {
                                                         <p className="font-black text-slate-900">{student.student_name}</p>
                                                         <p className="mt-1 text-sm font-bold text-slate-500">রোল {student.roll_no || '-'} · {student.guardian_phone || 'Guardian phone নেই'}</p>
                                                     </div>
-                                                    <span className={`rounded-full px-3 py-1 text-xs font-black ${student.profile_id ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
-                                                        {student.profile_id ? 'Portal linked' : 'Login নেই'}
+                                                    <span className={`rounded-full px-3 py-1 text-xs font-black ${student.household_id || student.resident_id ? 'bg-emerald-50 text-emerald-700' : 'bg-sky-50 text-sky-700'}`}>
+                                                        {student.household_id || student.resident_id ? 'Home linked' : 'Guardian check'}
                                                     </span>
                                                 </div>
-                                                {!student.profile_id && (
-                                                    <div className="mt-4 grid gap-3 md:grid-cols-[1fr_1fr_auto]">
-                                                        <input
-                                                            type="email"
-                                                            value={studentLoginDrafts[student.id]?.email || ''}
-                                                            onChange={(e) => setStudentLoginDrafts((current) => ({
-                                                                ...current,
-                                                                [student.id]: { ...current[student.id], email: e.target.value }
-                                                            }))}
-                                                            placeholder="student@example.com"
-                                                            className="rounded-xl border border-slate-200 px-4 py-3"
-                                                        />
-                                                        <input
-                                                            value={studentLoginDrafts[student.id]?.password || 'password123'}
-                                                            onChange={(e) => setStudentLoginDrafts((current) => ({
-                                                                ...current,
-                                                                [student.id]: { ...current[student.id], password: e.target.value }
-                                                            }))}
-                                                            placeholder="Temporary password"
-                                                            className="rounded-xl border border-slate-200 px-4 py-3"
-                                                        />
-                                                        <button
-                                                            type="button"
-                                                            disabled={!studentLoginDrafts[student.id]?.email}
-                                                            onClick={() => createStudentLogin(student)}
-                                                            className="rounded-xl bg-slate-900 px-4 py-3 font-black text-white disabled:bg-slate-300"
-                                                        >
-                                                            Login তৈরি
-                                                        </button>
-                                                    </div>
-                                                )}
+                                                <div className="mt-4 rounded-xl bg-white px-4 py-3 text-xs font-bold leading-5 text-slate-500">
+                                                    Guardian: {student.guardian_name || '-'} · Source: {student.enrollment_source || 'school record'}
+                                                </div>
                                             </div>
                                         ))}
                                     </div>
@@ -1072,6 +1171,11 @@ export default function SchoolAdminClient({ schoolId }) {
 
                         {activeTab === 'subjects' && (
                             <div className="grid gap-5 xl:grid-cols-[0.8fr_1.2fr]">
+                                <section className="rounded-2xl border border-indigo-100 bg-indigo-50 p-5 xl:col-span-2">
+                                    <p className="text-xs font-black uppercase tracking-[0.18em] text-indigo-700">Subject setup</p>
+                                    <h2 className="mt-1 text-xl font-black text-slate-900">প্রতি class-এর subject আলাদা করে দিন</h2>
+                                    <p className="mt-2 text-sm font-bold leading-6 text-slate-600">Subject-এর সাথে teacher assign করলে teacher portal-এ শুধু তার class/subject দেখাবে। এতে ভুল topic বা ভুল class-এ homework যাওয়ার ঝুঁকি কমে।</p>
+                                </section>
                                 <form onSubmit={createSubject} className="rounded-2xl border border-[#d6d3cb] bg-white p-5">
                                     <h2 className="text-xl font-black">নতুন {portalCopy.subjectLabel}</h2>
                                     <p className="mt-2 text-sm font-bold text-slate-500">
@@ -1155,6 +1259,11 @@ export default function SchoolAdminClient({ schoolId }) {
 
                         {activeTab === 'teachers' && (
                             <div className="grid gap-5 xl:grid-cols-[0.85fr_1.15fr]">
+                                <section className="rounded-2xl border border-emerald-100 bg-emerald-50 p-5 xl:col-span-2">
+                                    <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-700">Teacher access</p>
+                                    <h2 className="mt-1 text-xl font-black text-slate-900">শিক্ষকের জন্য সহজ login তৈরি করুন</h2>
+                                    <p className="mt-2 text-sm font-bold leading-6 text-slate-600">শিক্ষক তৈরি করার পর Subjects menu থেকে তার subject assign করুন। তারপর শিক্ষক portal-এ topic, homework, quiz এবং review করতে পারবে।</p>
+                                </section>
                                 <form onSubmit={createTeacher} className="rounded-2xl border border-[#d6d3cb] bg-white p-5">
                                     <h2 className="text-xl font-black">নতুন শিক্ষক</h2>
                                     <p className="mt-2 text-sm font-bold text-slate-500">এই প্রতিষ্ঠানের জন্য আলাদা teacher login তৈরি হবে।</p>
@@ -1380,6 +1489,11 @@ export default function SchoolAdminClient({ schoolId }) {
 
                         {activeTab === 'attendance' && (
                             <div className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
+                                <section className="rounded-2xl border border-amber-100 bg-amber-50 p-5 xl:col-span-2">
+                                    <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-700">Attendance guide</p>
+                                    <h2 className="mt-1 text-xl font-black text-slate-900">প্রতিদিন একবার attendance mark করুন</h2>
+                                    <p className="mt-2 text-sm font-bold leading-6 text-slate-600">Absent দিলে guardian SMS যাবে। Late, leave, excused ব্যবহার করলে রিপোর্ট বেশি পরিষ্কার হবে।</p>
+                                </section>
                                 <section className="rounded-2xl border border-[#d6d3cb] bg-white p-5">
                                     <h2 className="mb-4 text-xl font-black">আজকের উপস্থিতি</h2>
                                     <input value={listSearch.attendance} onChange={(e) => setSearch('attendance', e.target.value)} placeholder="Student name/roll দিয়ে খুঁজুন" className="mb-4 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold" />
@@ -1390,9 +1504,12 @@ export default function SchoolAdminClient({ schoolId }) {
                                                     <p className="font-black">{student.student_name}</p>
                                                     <p className="text-xs font-bold text-slate-400">রোল {student.roll_no || '-'}</p>
                                                 </div>
-                                                <div className="flex gap-2">
+                                                <div className="flex flex-wrap gap-2">
                                                     <button type="button" onClick={() => markAttendance(student, 'present')} className="rounded-lg bg-emerald-100 px-3 py-2 text-sm font-black text-emerald-700">উপস্থিত</button>
                                                     <button type="button" onClick={() => markAttendance(student, 'absent')} className="rounded-lg bg-rose-100 px-3 py-2 text-sm font-black text-rose-700">অনুপস্থিত</button>
+                                                    <button type="button" onClick={() => markAttendance(student, 'late')} className="rounded-lg bg-amber-100 px-3 py-2 text-sm font-black text-amber-700">দেরি</button>
+                                                    <button type="button" onClick={() => markAttendance(student, 'leave')} className="rounded-lg bg-blue-100 px-3 py-2 text-sm font-black text-blue-700">ছুটি</button>
+                                                    <button type="button" onClick={() => markAttendance(student, 'excused')} className="rounded-lg bg-slate-200 px-3 py-2 text-sm font-black text-slate-700">কারণসহ</button>
                                                 </div>
                                             </div>
                                     ))}

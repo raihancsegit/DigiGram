@@ -34,7 +34,9 @@ export default function GlobalNewsPage() {
     const [loading, setLoading] = useState(true);
     const [timeframe, setTimeframe] = useState('all');
     const [page, setPage] = useState(1);
-    const [hasMore, setHasMore] = useState(true);
+    const [pageSize, setPageSize] = useState(12);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [totalCount, setTotalCount] = useState(0);
 
     const TIMEFRAMES = [
         { id: 'all', label: 'সবগুলো' },
@@ -45,16 +47,13 @@ export default function GlobalNewsPage() {
     ];
 
     useEffect(() => {
+        const delay = setTimeout(() => {
         const fetchAllNews = async () => {
             setLoading(true);
             try {
-                const data = await newsService.getGlobalNews(page, 12, timeframe);
-                if (page === 1) {
-                    setNews(data);
-                } else {
-                    setNews(prev => [...prev, ...data]);
-                }
-                setHasMore(data.length === 12);
+                const result = await newsService.getGlobalNews(page, pageSize, timeframe, searchQuery, true);
+                setNews(result.data || []);
+                setTotalCount(result.count || 0);
             } catch (err) {
                 console.error("Error fetching news:", err);
             } finally {
@@ -62,7 +61,18 @@ export default function GlobalNewsPage() {
             }
         };
         fetchAllNews();
-    }, [timeframe, page]);
+        }, 300);
+
+        return () => clearTimeout(delay);
+    }, [timeframe, page, pageSize, searchQuery]);
+
+    useEffect(() => {
+        setPage(1);
+    }, [timeframe, pageSize, searchQuery]);
+
+    const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+    const resultStart = totalCount === 0 ? 0 : ((page - 1) * pageSize) + 1;
+    const resultEnd = Math.min(page * pageSize, totalCount);
 
     return (
         <main className="min-h-screen bg-slate-50 pb-24">
@@ -113,6 +123,8 @@ export default function GlobalNewsPage() {
                     <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-500 transition-colors" />
                     <input 
                         type="text" 
+                        value={searchQuery}
+                        onChange={(event) => setSearchQuery(event.target.value)}
                         placeholder="সংবাদ খুঁজুন..."
                         className="w-full pl-10 pr-5 py-2.5 rounded-full bg-white border border-slate-200 focus:ring-4 focus:ring-teal-500/10 focus:border-teal-500 focus:outline-none text-[10px] font-black shadow-xl shadow-slate-200 transition-all placeholder:text-slate-400"
                     />
@@ -129,8 +141,23 @@ export default function GlobalNewsPage() {
                                 <p className="mt-2 text-slate-500 font-bold text-xs">সমগ্র বাংলাদেশ থেকে সর্বশেষ তথ্যাদি</p>
                             </div>
                             <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-900 text-white text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-slate-200">
-                                <Calendar size={12} className="text-teal-400" /> পেজ: {page}
+                                <Calendar size={12} className="text-teal-400" /> পেজ: {page} / {totalPages}
                             </span>
+                        </div>
+                        <div className="mt-5 flex flex-col gap-3 rounded-[24px] bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
+                            <p className="text-xs font-black text-slate-500">
+                                মোট {totalCount.toLocaleString('bn-BD')}টি সংবাদ
+                                {totalCount > 0 && <span> · {resultStart.toLocaleString('bn-BD')}-{resultEnd.toLocaleString('bn-BD')} দেখানো হচ্ছে</span>}
+                            </p>
+                            <select
+                                value={pageSize}
+                                onChange={(event) => setPageSize(Number(event.target.value))}
+                                className="h-10 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-xs font-black text-slate-600 outline-none"
+                            >
+                                {[12, 24, 48].map((size) => (
+                                    <option key={size} value={size}>{size.toLocaleString('bn-BD')} করে</option>
+                                ))}
+                            </select>
                         </div>
                     </div>
 
@@ -203,16 +230,26 @@ export default function GlobalNewsPage() {
                         )}
                     </div>
 
-                    {/* Pagination - Pill Design */}
-                    {hasMore && (
-                        <div className="flex justify-center py-12 bg-slate-50/50 border-t border-slate-100">
+                    {totalCount > 0 && (
+                        <div className="flex flex-col items-center justify-center gap-4 py-12 bg-slate-50/50 border-t border-slate-100 sm:flex-row">
                             <button 
-                                onClick={() => setPage(prev => prev + 1)}
-                                disabled={loading}
-                                className="inline-flex items-center gap-3 px-10 py-4 rounded-full bg-slate-900 text-white font-black text-xs uppercase tracking-[0.2em] hover:bg-teal-600 transition-all active:scale-95 shadow-xl shadow-slate-200 disabled:opacity-50"
+                                onClick={() => setPage(prev => Math.max(1, prev - 1))}
+                                disabled={loading || page <= 1}
+                                className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white border border-slate-200 text-slate-600 font-black text-xs uppercase tracking-[0.15em] hover:bg-teal-600 hover:text-white transition-all active:scale-95 disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-slate-600"
                             >
-                                {loading ? <Loader2 size={18} className="animate-spin" /> : <TrendingUp size={18} />}
-                                আরও সংবাদ লোড করুন
+                                <ChevronLeft size={18} />
+                                আগের পৃষ্ঠা
+                            </button>
+                            <span className="rounded-full bg-slate-900 px-5 py-3 text-xs font-black text-white">
+                                {page.toLocaleString('bn-BD')} / {totalPages.toLocaleString('bn-BD')}
+                            </span>
+                            <button 
+                                onClick={() => setPage(prev => Math.min(totalPages, prev + 1))}
+                                disabled={loading || page >= totalPages}
+                                className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-slate-900 text-white font-black text-xs uppercase tracking-[0.15em] hover:bg-teal-600 transition-all active:scale-95 shadow-xl shadow-slate-200 disabled:opacity-40"
+                            >
+                                পরের পৃষ্ঠা
+                                <ChevronRight size={18} />
                             </button>
                         </div>
                     )}

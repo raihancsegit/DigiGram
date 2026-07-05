@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
     Plus, Building2, School, BookOpen, 
     Trash2, Edit3, ExternalLink, Search,
@@ -36,11 +36,7 @@ export default function InstitutionManager({ locationId }) {
         description: ''
     });
 
-    useEffect(() => {
-        loadInstitutions();
-    }, [locationId, currentPage]);
-
-    const loadInstitutions = async () => {
+    const loadInstitutions = useCallback(async () => {
         setLoading(true);
         try {
             const result = await institutionService.getInstitutionsByUnion(locationId, currentPage, 10);
@@ -51,7 +47,11 @@ export default function InstitutionManager({ locationId }) {
         } finally {
             setLoading(false);
         }
-    };
+    }, [locationId, currentPage]);
+
+    useEffect(() => {
+        loadInstitutions();
+    }, [loadInstitutions]);
 
     const handleAdd = async (e) => {
         e.preventDefault();

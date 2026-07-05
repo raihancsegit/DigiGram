@@ -25,6 +25,7 @@ const labelStyles = "text-[10px] font-black uppercase text-slate-400 tracking-wi
 const SERVICE_TYPES = {
     birth_registration: 'জন্ম নিবন্ধন',
     death_certificate: 'মৃত্যু সনদ',
+    warish_certificate: 'ওয়ারিশ সনদ',
     nid_application: 'NID আবেদন (নতুন)',
     nid_correction: 'NID সংশোধন',
     solvency_cert: 'সচ্ছলতার সনদ',
@@ -43,6 +44,7 @@ const STATUS_CONFIG = {
 const SERVICE_CHECKLISTS = {
     birth_registration: ['আবেদনকারীর নাম', 'জন্ম তারিখ', 'পিতার নাম', 'মাতার নাম', 'ঠিকানা'],
     death_certificate: ['মৃত ব্যক্তির নাম', 'মৃত্যুর তারিখ', 'মৃত্যুর স্থান', 'পিতার নাম', 'ঠিকানা'],
+    warish_certificate: ['যার ওয়ারিশ সনদ', 'মৃত্যুর তারিখ', 'ওয়ারিশদের নাম', 'সম্পর্ক', 'ঠিকানা'],
     nid_application: ['নাম', 'জন্ম নিবন্ধন', 'জন্ম তারিখ', 'ঠিকানা'],
     nid_correction: ['বর্তমান NID', 'সংশোধিত তথ্য', 'সমর্থনকারী দলিল']
 };
@@ -643,6 +645,13 @@ export default function HouseholdLockerManager({ household, onUpdate, onClose })
         const isDeceased = resident.is_dead || Boolean(deathRequest);
         const hasNid = Boolean(resident.nid);
         const hasBirthReg = Boolean(resident.birth_reg_no);
+        const hasSchoolStatus = resident.student_status && resident.student_status !== 'not_student';
+        const schoolStatusLabel = {
+            studying: 'পড়ছে',
+            applied: 'ভর্তি আবেদন',
+            completed: 'পড়া শেষ',
+            dropped: 'পড়া বন্ধ'
+        }[resident.student_status] || 'শিক্ষার্থী';
         const missingFields = [
             !resident.nid && 'NID',
             !resident.birth_reg_no && 'জন্ম সনদ',
@@ -684,7 +693,19 @@ export default function HouseholdLockerManager({ household, onUpdate, onClose })
                     <span className={`rounded-full px-2.5 py-1 text-[8px] font-black ${hasBirthReg ? 'bg-sky-50 text-sky-700' : 'bg-slate-100 text-slate-400'}`}>
                         জন্ম সনদ {hasBirthReg ? 'আছে' : 'নেই'}
                     </span>
+                    {hasSchoolStatus && (
+                        <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-[8px] font-black text-indigo-700">
+                            {schoolStatusLabel}
+                        </span>
+                    )}
                 </div>
+                {hasSchoolStatus && (
+                    <div className="mt-3 rounded-xl border border-indigo-100 bg-indigo-50 px-3 py-2 text-[9px] font-bold leading-4 text-indigo-800">
+                        {resident.current_school_name || 'School name নেই'}
+                        {resident.current_class_name ? ` · ${resident.current_class_name}` : ''}
+                        {resident.current_roll_no ? ` · Roll ${resident.current_roll_no}` : ''}
+                    </div>
+                )}
                 <div className="mt-3">
                     <div className="mb-1 flex items-center justify-between text-[9px] font-black text-slate-400">
                         <span>তথ্য প্রস্তুতি</span>

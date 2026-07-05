@@ -6,6 +6,7 @@ import {
     Save, Loader2, Globe, Phone, Mail
 } from 'lucide-react';
 import { toBnDigits } from '@/lib/utils/format';
+import { unionService } from '@/lib/services/unionService';
 
 export default function UnionManagementSection({ user, unionInfo }) {
     const [saving, setSaving] = useState(false);
@@ -18,20 +19,36 @@ export default function UnionManagementSection({ user, unionInfo }) {
     });
 
     async function handleUpdate() {
+        if (!user?.access_scope_id) {
+            alert("ইউনিয়ন আইডি পাওয়া যায়নি।");
+            return;
+        }
+
         setSaving(true);
         try {
-            // Logic to update union info would go here
-            setTimeout(() => setSaving(false), 1000);
+            await unionService.updateUnionProfile(user.access_scope_id, {
+                name_bn: formData.name_bn,
+                name_en: formData.name_en,
+                stats: {
+                    ...(unionInfo?.stats || {}),
+                    phone: formData.phone,
+                    email: formData.email,
+                    website: formData.website
+                },
+                updated_at: new Date()
+            });
             alert("ইউনিয়ন প্রোফাইল আপডেট করা হয়েছে।");
         } catch (err) {
+            console.error('Union profile update failed:', err);
             alert("আপডেট করতে সমস্যা হয়েছে।");
+        } finally {
             setSaving(false);
         }
     }
 
     return (
-        <div className="space-y-10">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="space-y-8 sm:space-y-10">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-8">
                 <div className="space-y-6">
                     <h4 className="text-lg font-black text-slate-800 flex items-center gap-2">
                         <Settings size={20} className="text-indigo-600" />
@@ -70,6 +87,8 @@ export default function UnionManagementSection({ user, unionInfo }) {
                                 <Phone size={18} />
                             </div>
                             <input 
+                                value={formData.phone}
+                                onChange={(e) => setFormData({...formData, phone: e.target.value})}
                                 placeholder="অফিসিয়াল ফোন নম্বর"
                                 className="bg-transparent border-none flex-1 font-bold text-sm focus:ring-0"
                             />
@@ -79,6 +98,8 @@ export default function UnionManagementSection({ user, unionInfo }) {
                                 <Mail size={18} />
                             </div>
                             <input 
+                                value={formData.email}
+                                onChange={(e) => setFormData({...formData, email: e.target.value})}
                                 placeholder="অফিসিয়াল ইমেইল"
                                 className="bg-transparent border-none flex-1 font-bold text-sm focus:ring-0"
                             />
@@ -87,11 +108,11 @@ export default function UnionManagementSection({ user, unionInfo }) {
                 </div>
             </div>
 
-            <div className="pt-6 border-t border-slate-100 flex justify-end">
+            <div className="pt-6 border-t border-slate-100 flex justify-stretch sm:justify-end">
                 <button 
                     onClick={handleUpdate}
                     disabled={saving}
-                    className="px-10 py-5 rounded-2xl bg-slate-900 text-white font-black text-sm uppercase tracking-widest hover:bg-indigo-600 transition-all flex items-center gap-3 disabled:opacity-50 shadow-xl"
+                    className="w-full sm:w-auto px-6 sm:px-10 py-4 sm:py-5 rounded-2xl bg-slate-900 text-white font-black text-sm uppercase tracking-widest hover:bg-indigo-600 transition-all flex items-center justify-center gap-3 disabled:opacity-50 shadow-xl"
                 >
                     {saving ? <Loader2 className="animate-spin" /> : <Save size={20} />}
                     তথ্য আপডেট করুন

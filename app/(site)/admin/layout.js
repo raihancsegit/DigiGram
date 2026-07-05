@@ -17,7 +17,8 @@ export default function AdminLayout({ children }) {
     const [hasMounted, setHasMounted] = useState(false);
 
     useEffect(() => {
-        setHasMounted(true);
+        const frame = requestAnimationFrame(() => setHasMounted(true));
+        return () => cancelAnimationFrame(frame);
     }, []);
 
     useEffect(() => {
@@ -72,7 +73,7 @@ export default function AdminLayout({ children }) {
         };
 
         checkAuth();
-    }, [isAuthenticated, router, dispatch]);
+    }, [isAuthenticated, router, dispatch, user?.role]);
 
     if (!hasMounted || loading) {
         return (

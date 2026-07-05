@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
     Search, Plus, Trash2, Edit2, 
     X, Loader2, Newspaper, Calendar, CheckCircle2,
@@ -27,12 +27,7 @@ export default function NewsManager({ locationId, isAdmin = false }) {
     const [formData, setFormData] = useState(EMPTY_FORM);
     const [errorMsg, setErrorMsg] = useState('');
 
-    useEffect(() => {
-        if (!locationId) return;
-        loadNews();
-    }, [locationId, currentPage]);
-
-    const loadNews = async () => {
+    const loadNews = useCallback(async () => {
         setListLoading(true);
         try {
             const result = await newsService.getNews(locationId, currentPage, ITEMS_PER_PAGE);
@@ -43,7 +38,12 @@ export default function NewsManager({ locationId, isAdmin = false }) {
         } finally {
             setListLoading(false);
         }
-    };
+    }, [locationId, currentPage]);
+
+    useEffect(() => {
+        if (!locationId) return;
+        loadNews();
+    }, [locationId, loadNews]);
 
     const openAddModal = () => {
         setEditingNews(null);

@@ -107,6 +107,113 @@ expectText('Database security diagnostic view exists', hardeningSql, [
     /review_permissive_policy/
 ]);
 
+const publicHardeningSql = read('database/70_security_hardening_fuel_otp_public_forms.sql');
+expectText('Fuel demo mutation policies are removed', publicHardeningSql, [
+    /DROP POLICY IF EXISTS "Anyone can upsert refill log"/,
+    /DROP POLICY IF EXISTS "Anyone can upsert vehicle"/,
+    /REVOKE ALL ON public\.fuel_pump_settings FROM anon, authenticated/
+]);
+expectText('Fuel operator PIN is hashed and service-role only', publicHardeningSql, [
+    /access_password_hash/,
+    /verify_fuel_operator_password/,
+    /GRANT EXECUTE ON FUNCTION public\.verify_fuel_operator_password\(TEXT, TEXT\) TO service_role/
+]);
+
+const fuelActions = read('app/(site)/services/fuel/actions.js');
+expectText('Fuel operator mutations require a signed session', fuelActions, [
+    /requireFuelOperatorSession\(unionSlug\)/,
+    /createFuelOperatorSession\(unionSlug\)/,
+    /logoutOperatorAction/
+]);
+
+const marketComplaintRoute = read('app/api/market/complaints/route.js');
+expectText('Market complaint management requires scoped authentication', marketComplaintRoute, [
+    /requireRequestProfile\(request, \['super_admin', 'chairman', 'market_manager'\]\)/,
+    /canAccessLocation\(auth\.profile, complaint\.location_id\)/
+]);
+
+const citizenOtp = read('lib/utils/citizen-otp.js');
+expectText('Citizen OTP is atomically consumed and exchanged for a session', citizenOtp, [
+    /\.update\(\{ used_at: new Date\(\)\.toISOString\(\) \}\)/,
+    /createCitizenAccessToken/,
+    /verifyCitizenAccessToken/
+]);
+
+const secureOfflineStorage = read('lib/utils/secureOfflineStorage.js');
+expectText('Household offline drafts use encrypted device storage', secureOfflineStorage, [
+    /name: 'AES-GCM'/,
+    /indexedDB/,
+    /extractable|false/
+]);
+
+const householdOutbox = read('lib/services/householdOfflineOutbox.js');
+expectText('Household offline outbox encrypts sensitive payloads', householdOutbox, [
+    /encryptOfflineJson/,
+    /digigram-household-outbox:v2/,
+    /removeItem\(LEGACY_OUTBOX_KEY\)/
+]);
+
+const householdEntryForm = read('components/sections/ward/HouseholdEntryForm.js');
+expectText('Household field drafts no longer write plaintext localStorage', householdEntryForm, [
+    /writeSecureLocalJson/,
+    /readSecureLocalJson/
+]);
+if (/window\.localStorage\.setItem\(draftKey/.test(householdEntryForm)) {
+    fail('Household field draft storage', 'draftKey is still written to plaintext localStorage');
+}
+
+const duplicateReviewSql = read('database/71_duplicate_citizen_review.sql');
+expectText('Duplicate citizen decisions are audited and non-destructive', duplicateReviewSql, [
+    /CREATE TABLE IF NOT EXISTS public\.duplicate_citizen_reviews/,
+    /confirmed_duplicate/,
+    /different_people/,
+    /No resident is deleted automatically/
+]);
+
+const dataQualityRoute = read('app/api/admin/data-quality/route.js');
+expectText('Duplicate review API validates the matched resident group', dataQualityRoute, [
+    /action === 'review_duplicate'/,
+    /fingerprintValid/,
+    /duplicate_citizen_reviews/
+]);
+
+const governanceRoute = read('app/api/admin/governance/route.js');
+expectText('Governance center is restricted to super admins', governanceRoute, [
+    /requireRequestProfile\(request, \['super_admin'\]\)/,
+    /rollback_duplicate_resident_merge/
+]);
+
+const officerDeviceRoute = read('app/api/officer/device/route.js');
+expectText('Officer device registration requires an authenticated officer', officerDeviceRoute, [
+    /requireRequestProfile\(request, OFFICER_ROLES\)/,
+    /device_token_hash/
+]);
+
+const governanceMigration = read('database/72_citizen_governance_center.sql');
+expectText('Citizen merge is reversible and never deletes resident records', governanceMigration, [
+    /rollback_duplicate_resident_merge/,
+    /merged_into_resident_id/,
+    /Reversible, audited duplicate-resident merges/
+]);
+if (/DELETE FROM public\.residents/i.test(governanceMigration)) {
+    fail('Citizen merge safety', 'governance migration deletes resident records');
+}
+
+const demoDataRoute = read('app/api/admin/demo-data/route.js');
+expectText('Demo data manager is authenticated and registry-scoped', demoDataRoute, [
+    /requireRequestProfile\(request, \['super_admin'\]\)/,
+    /demo_data_records/,
+    /record\.table_name/,
+    /record\.record_id/
+]);
+
+const demoRegistrySql = read('database/73_demo_data_registry.sql');
+expectText('Demo cleanup registry tracks exact generated rows', demoRegistrySql, [
+    /CREATE TABLE IF NOT EXISTS public\.demo_data_batches/,
+    /CREATE TABLE IF NOT EXISTS public\.demo_data_records/,
+    /UNIQUE\(batch_id, table_name, record_id\)/
+]);
+
 const allClientSources = [];
 for (const directory of ['app', 'components', 'lib']) {
     const start = path.join(root, directory);
@@ -143,4 +250,3 @@ if (legacySql.length) {
 console.log(`\n${checks - failures.length}/${checks} security checks passed.`);
 if (warnings.length) console.log(`${warnings.length} warning(s) require operational awareness.`);
 if (failures.length) process.exitCode = 1;
-

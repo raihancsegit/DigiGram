@@ -36,7 +36,9 @@ export default function BloodGroupManagement({ donors = [], onUpdate }) {
         if (editingId) {
             newDonors = donors.map(d => d.id === editingId ? { ...formData, id: editingId } : d);
         } else {
-            newDonors = [...donors, { ...formData, id: Date.now().toString() }];
+            const normalizedPhone = formData.phone.replace(/\D/g, '') || 'unknown';
+            const localId = `donor-${normalizedPhone}-${donors.length + 1}`;
+            newDonors = [...donors, { ...formData, id: localId }];
         }
         
         onUpdate(newDonors);

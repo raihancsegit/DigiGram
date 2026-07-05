@@ -135,8 +135,68 @@ AS $$
                         WHERE table_schema = 'public'
                           AND table_name = 'citizen_life_support_cases'
                           AND column_name = 'sla_due_at'
-                    ),
+                ),
                 'RLS, officer activity history, and SLA escalation for citizen queues.'
+            ),
+            (
+                '68',
+                'SMS delivery monitoring and retry',
+                'database/68_sms_delivery_monitoring.sql',
+                to_regclass('public.sms_delivery_attempts') IS NOT NULL
+                    AND to_regprocedure('public.claim_sms_messages(integer,text)') IS NOT NULL,
+                'Atomic worker claims, retry scheduling, provider health, and delivery-attempt audit.'
+            ),
+            (
+                '69',
+                'SMS gateway failover and webhook',
+                'database/69_sms_failover_webhook.sql',
+                to_regclass('public.sms_delivery_webhooks') IS NOT NULL
+                    AND EXISTS (
+                        SELECT 1 FROM information_schema.columns
+                        WHERE table_schema = 'public'
+                          AND table_name = 'sms_gateways'
+                          AND column_name = 'priority'
+                ),
+                'Priority-based provider failover and signed delivery-status callbacks.'
+            ),
+            (
+                '70',
+                'Fuel, OTP, and public-form security hardening',
+                'database/70_security_hardening_fuel_otp_public_forms.sql',
+                to_regprocedure('public.verify_fuel_operator_password(text,text)') IS NOT NULL
+                    AND EXISTS (
+                        SELECT 1 FROM information_schema.columns
+                        WHERE table_schema = 'public'
+                          AND table_name = 'fuel_pump_settings'
+                          AND column_name = 'access_password_hash'
+                ),
+                'Signed operator sessions, hashed fuel PINs, single-use OTP support, and public form throttling.'
+            ),
+            (
+                '71',
+                'Duplicate citizen review workflow',
+                'database/71_duplicate_citizen_review.sql',
+                to_regclass('public.duplicate_citizen_reviews') IS NOT NULL,
+                'Grouped duplicate matching with audited confirmed/different-person decisions.'
+            ),
+            (
+                '72',
+                'Citizen governance center',
+                'database/72_citizen_governance_center.sql',
+                to_regclass('public.citizen_consents') IS NOT NULL
+                    AND to_regclass('public.officer_devices') IS NOT NULL
+                    AND to_regclass('public.citizen_merge_events') IS NOT NULL
+                    AND to_regclass('public.sms_automation_rules') IS NOT NULL
+                    AND to_regclass('public.system_recovery_snapshots') IS NOT NULL,
+                'Consent, officer devices, reversible citizen merge, SMS rules, and recovery snapshots.'
+            ),
+            (
+                '73',
+                'Safe demo data registry',
+                'database/73_demo_data_registry.sql',
+                to_regclass('public.demo_data_batches') IS NOT NULL
+                    AND to_regclass('public.demo_data_records') IS NOT NULL,
+                'Tracks every generated demo row for one-click, real-data-safe cleanup.'
             )
     ) AS checks(migration_id, title, sql_file, installed, detail)
     ORDER BY migration_id::INTEGER;

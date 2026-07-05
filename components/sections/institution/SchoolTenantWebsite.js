@@ -433,6 +433,26 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
     const sideGallery = galleryItems.slice(1, 4);
     const featuredProgram = programItems[0] || {};
     const sidePrograms = programItems.slice(1, 4);
+    const demoCards = [
+        {
+            title: 'School Demo',
+            description: 'Notice, class, teacher and guardian update focused layout',
+            accent: 'bg-sky-400',
+            template: 'School / Academy'
+        },
+        {
+            title: 'College Demo',
+            description: 'Department, result, admission and career guidance sections',
+            accent: 'bg-indigo-400',
+            template: 'College / HSC'
+        },
+        {
+            title: 'Madrasha Demo',
+            description: 'Deeni education, academic tracking and trust-based presentation',
+            accent: 'bg-emerald-400',
+            template: 'Dakhil / Alim'
+        }
+    ];
     const goToSlide = (direction) => {
         setActiveSlide((current) => (current + direction + sliderItems.length) % sliderItems.length);
     };
@@ -546,7 +566,7 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
                         <div className="pointer-events-none absolute bottom-0 right-0 h-48 w-[42vw] border-l border-t border-white/20 bg-white/10" />
                     </>
                 )}
-                <div className="relative z-10 mx-auto flex min-h-[76vh] max-w-7xl flex-col justify-center px-4 py-16 md:min-h-[82vh]">
+                <div className="relative z-10 mx-auto grid min-h-[76vh] max-w-7xl gap-8 px-4 py-16 md:min-h-[82vh] lg:grid-cols-[1fr_420px] lg:items-center">
                     <div className="max-w-3xl">
                         <p className={`mb-4 inline-flex px-4 py-2 text-sm font-bold ${badgeClass}`}>
                             {currentSlide.badge || institution.village || design.eyebrow} {page?.established_year ? `প্রতিষ্ঠিত ${page.established_year}` : ''}
@@ -583,7 +603,7 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
                             </div>
                         )}
                     </div>
-                    <div className={`hidden p-4 ${template.cardClass} ${heroFrameClass}`}>
+                    <div className={`p-4 ${template.cardClass} ${heroFrameClass}`}>
                         <div className={`grid gap-4 border p-5 ${template.cardClass} ${websitePatternClass}`}>
                             <div className="overflow-hidden rounded-2xl border border-white/10 bg-slate-950/15">
                                 {currentSlide.image_url || page?.banner_image_url ? (
@@ -591,6 +611,28 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
                                 ) : (
                                     <div className="flex h-52 items-center justify-center bg-[var(--school-primary)]/20 text-5xl">🏫</div>
                                 )}
+                            </div>
+                            <div className="grid gap-3">
+                                <div className="flex items-center justify-between gap-3">
+                                    <p className={`text-xs font-black uppercase tracking-[0.22em] ${websiteAccentClass}`}>
+                                        Ready website demos
+                                    </p>
+                                    <span className={`rounded-full px-3 py-1 text-xs font-black ${isDarkTemplate ? 'bg-white/[0.07] text-white/70' : 'bg-slate-100 text-slate-500'}`}>
+                                        3 styles
+                                    </span>
+                                </div>
+                                {demoCards.map((item) => (
+                                    <article key={item.title} className={`grid grid-cols-[auto_1fr] gap-3 rounded-2xl border p-3 ${isDarkTemplate ? 'border-white/10 bg-white/[0.05]' : 'border-slate-100 bg-white'}`}>
+                                        <span className={`mt-1 h-3 w-3 rounded-full ${item.accent}`} />
+                                        <div>
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <h3 className={`text-sm font-black ${isDarkTemplate ? 'text-white' : 'text-slate-950'}`}>{item.title}</h3>
+                                                <span className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.12em] ${isDarkTemplate ? 'bg-white/[0.08] text-white/50' : 'bg-slate-100 text-slate-400'}`}>{item.template}</span>
+                                            </div>
+                                            <p className={`mt-1 text-xs font-medium leading-5 ${isDarkTemplate ? 'text-white/62' : 'text-slate-500'}`}>{item.description}</p>
+                                        </div>
+                                    </article>
+                                ))}
                             </div>
                             <div className="flex flex-wrap items-center justify-between gap-3">
                                 <p className={`text-xs font-black uppercase tracking-[0.22em] ${websiteAccentClass}`}>
@@ -1527,6 +1569,20 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
                                                                             <p className="text-xs font-black text-[var(--school-primary)]">{lesson.subject_name}</p>
                                                                             <p className={`font-black ${isDarkTemplate ? 'text-white' : 'text-slate-900'}`}>{lesson.title}</p>
                                                                             {lesson.homework && <p className={`mt-1 text-xs font-bold ${isDarkTemplate ? mutedTextClass : 'text-slate-500'}`}>হোমওয়ার্ক: {lesson.homework}</p>}
+                                                                            <p className={`mt-2 text-xs font-black ${
+                                                                                lesson.homework_submission?.status === 'completed'
+                                                                                    ? 'text-emerald-700'
+                                                                                    : lesson.homework_submission?.status === 'needs_revision'
+                                                                                        ? 'text-amber-700'
+                                                                                        : lesson.homework_submission
+                                                                                            ? 'text-blue-700'
+                                                                                            : isDarkTemplate ? mutedTextClass : 'text-slate-400'
+                                                                            }`}>
+                                                                                জমা: {lesson.homework_submission?.status?.replace('_', ' ') || 'not submitted'}
+                                                                            </p>
+                                                                            {lesson.homework_submission?.teacher_note && (
+                                                                                <p className={`mt-1 text-xs font-bold ${isDarkTemplate ? mutedTextClass : 'text-slate-500'}`}>Teacher note: {lesson.homework_submission.teacher_note}</p>
+                                                                            )}
                                                                         </div>
                                                                         <span className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-black ${lesson.progress?.status === 'completed' ? 'bg-emerald-50 text-emerald-700' : lesson.progress?.status === 'not_completed' ? 'bg-rose-50 text-rose-700' : 'bg-amber-50 text-amber-700'}`}>
                                                                             {lesson.progress?.status === 'completed' ? 'সম্পন্ন' : lesson.progress?.status === 'not_completed' ? 'করেনি' : 'বাকি'}
