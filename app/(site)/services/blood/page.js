@@ -1,4 +1,5 @@
 import BloodBankClient from '@/components/sections/blood/BloodBankClient';
+import { Suspense } from 'react';
 
 export const metadata = {
     title: 'ব্লাড ব্যাংক - ডিজিগ্রাম ডিজিটাল সেবা',
@@ -6,5 +7,9 @@ export const metadata = {
 };
 
 export default function BloodBankPage() {
-    return <BloodBankClient />;
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-slate-50" aria-busy="true" />}>
+            <BloodBankClient />
+        </Suspense>
+    );
 }

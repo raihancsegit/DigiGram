@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { Suspense } from 'react';
 import { servicePageContent } from '@/lib/content/servicePages';
 import ServicePageView from '@/components/templates/ServicePageView';
 
@@ -10,5 +11,9 @@ export default async function ServicePage({ params }) {
     const { slug } = await params;
     const data = servicePageContent[slug];
     if (!data) notFound();
-    return <ServicePageView slug={slug} data={data} />;
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-slate-50" aria-busy="true" />}>
+            <ServicePageView slug={slug} data={data} />
+        </Suspense>
+    );
 }

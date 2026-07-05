@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { 
@@ -13,7 +13,7 @@ import { lostFoundService } from '@/lib/services/lostFoundService';
 import LostFoundDetailView from '@/components/templates/LostFoundDetailView';
 import RelatedServiceLinks from '@/components/common/RelatedServiceLinks';
 
-export default function GlobalLostFoundPage() {
+function GlobalLostFoundPageContent() {
     const searchParams = useSearchParams();
     const postId = searchParams.get('post');
     const [post, setPost] = useState(null);
@@ -328,5 +328,19 @@ export default function GlobalLostFoundPage() {
                 </div>
             </div>
         </main>
+    );
+}
+
+export default function GlobalLostFoundPage() {
+    return (
+        <Suspense
+            fallback={(
+                <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+                    <Loader2 size={40} className="animate-spin text-amber-500" />
+                </div>
+            )}
+        >
+            <GlobalLostFoundPageContent />
+        </Suspense>
     );
 }
