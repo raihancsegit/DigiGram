@@ -210,22 +210,22 @@ async function seedSchool(batchId, scope, suffix) {
         name: `Demo Class ${suffix.slice(-3)}`,
         academic_year: new Date().getFullYear(),
         grade_level: 8,
-        section: 'à¦•'
+        section: 'ক'
     }, 650, 'Demo class');
     created += 1;
     const subject = await insertTracked(batchId, 'school_subjects', {
         institution_id: institution.id,
         class_id: schoolClass.id,
-        name: 'à¦¡à§‡à¦®à§‹ à¦—à¦£à¦¿à¦¤'
+        name: 'ডেমো গণিত'
     }, 700, 'Demo subject');
     created += 1;
     for (let index = 1; index <= 5; index += 1) {
         await insertTracked(batchId, 'school_students', {
             institution_id: institution.id,
             class_id: schoolClass.id,
-            student_name: `à¦¡à§‡à¦®à§‹ à¦¶à¦¿à¦•à§à¦·à¦¾à¦°à§à¦¥à§€ ${index}`,
+            student_name: `ডেমো শিক্ষার্থী ${index}`,
             roll_no: `D${index}`,
-            guardian_name: `à¦¡à§‡à¦®à§‹ à¦…à¦­à¦¿à¦­à¦¾à¦¬à¦• ${index}`,
+            guardian_name: `ডেমো অভিভাবক ${index}`,
             guardian_phone: `${DEMO_PHONE.slice(0, -1)}${index}`,
             active: true
         }, 750, `Demo student ${index}`);
@@ -235,27 +235,27 @@ async function seedSchool(batchId, scope, suffix) {
         institution_id: institution.id,
         class_id: schoolClass.id,
         subject_id: subject.id,
-        title: 'à¦­à¦—à§à¦¨à¦¾à¦‚à¦¶à§‡à¦° à¦¸à¦¹à¦œ à¦§à¦¾à¦°à¦£à¦¾',
-        description: '<p><strong>à¦²à¦¬</strong> à¦“ <em>à¦¹à¦°</em> à¦šà¦¿à¦¹à§à¦¨à¦¿à¦¤ à¦•à¦°à§‡ à¦¬à¦¾à¦¸à§à¦¤à¦¬ à¦‰à¦¦à¦¾à¦¹à¦°à¦£ à¦¸à¦®à¦¾à¦§à¦¾à¦¨ à¦•à¦°à§à¦¨à¥¤</p>',
-        homework: 'à¦…à¦¨à§à¦¶à§€à¦²à¦¨à§€ à¦¥à§‡à¦•à§‡ à§§-à§« à¦¨à¦®à§à¦¬à¦° à¦¸à¦®à¦¾à¦§à¦¾à¦¨ à¦•à¦°à§à¦¨à¥¤',
+        title: 'ভগ্নাংশের সহজ ধারণা',
+        description: '<p><strong>লব</strong> ও <em>হর</em> চিহ্নিত করে বাস্তব উদাহরণ সমাধান করুন।</p>',
+        homework: 'অনুশীলনী থেকে ১-৫ নম্বর সমাধান করুন।',
         lesson_date: new Date().toISOString().slice(0, 10),
         status: 'published'
     }, 800, 'Demo lesson topic');
     created += 1;
     await insertTracked(batchId, 'institution_notices', {
         institution_id: institution.id,
-        title: 'à¦¡à§‡à¦®à§‹: à¦¨à¦¤à§à¦¨ à¦¶à¦¿à¦•à§à¦·à¦¾à¦¬à¦°à§à¦·à§‡ à¦­à¦°à§à¦¤à¦¿ à¦šà¦²à¦›à§‡',
-        body: 'Website admission page à¦¥à§‡à¦•à§‡ à¦†à¦¬à§‡à¦¦à¦¨ à¦•à¦°à¦¾ à¦¯à¦¾à¦¬à§‡à¥¤',
+        title: 'ডেমো: নতুন শিক্ষাবর্ষে ভর্তি চলছে',
+        body: 'Website admission page থেকে আবেদন করা যাবে।',
         audience: 'public'
     }, 750, 'Demo school notice');
     created += 1;
     await insertTracked(batchId, 'school_admission_applications', {
         institution_id: institution.id,
-        student_name: 'à¦¡à§‡à¦®à§‹ à¦­à¦°à§à¦¤à¦¿ à¦¶à¦¿à¦•à§à¦·à¦¾à¦°à§à¦¥à§€',
-        desired_class: 'à§®à¦® à¦¶à§à¦°à§‡à¦£à¦¿',
-        guardian_name: 'à¦¡à§‡à¦®à§‹ à¦…à¦­à¦¿à¦­à¦¾à¦¬à¦•',
+        student_name: 'ডেমো ভর্তি শিক্ষার্থী',
+        desired_class: '৮ম শ্রেণি',
+        guardian_name: 'ডেমো অভিভাবক',
         guardian_phone: DEMO_PHONE,
-        address: 'à¦¡à§‡à¦®à§‹ à¦¸à§à¦®à¦¾à¦°à§à¦Ÿ à¦—à§à¦°à¦¾à¦®',
+        address: 'ডেমো স্মার্ট গ্রাম',
         status: 'pending'
     }, 800, 'Demo admission');
     return created + 1;
@@ -333,7 +333,7 @@ async function seedAll(profile) {
                 request_type: 'birth_registration',
                 applicant_name: residents[0].bn_name,
                 contact_phone: households[0].phone,
-                details: 'à¦¡à§‡à¦®à§‹ à¦œà¦¨à§à¦® à¦¨à¦¿à¦¬à¦¨à§à¦§à¦¨ à¦†à¦¬à§‡à¦¦à¦¨',
+                details: 'ডেমো জন্ম নিবন্ধন আবেদন',
                 status: 'processing'
             }, 850, 'Demo service request');
             await insertTracked(batch.id, 'household_taxes', {
@@ -344,7 +344,7 @@ async function seedAll(profile) {
                 amount_paid: 200,
                 due_date: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
                 status: 'partial',
-                notes: 'à¦¡à§‡à¦®à§‹ tax record'
+                notes: 'ডেমো tax record'
             }, 850, 'Demo tax');
             return request ? 2 : 0;
         });
@@ -352,24 +352,24 @@ async function seedAll(profile) {
         await optionalModule(summary, 'citizen_center', async () => {
             const rows = [
                 ['citizen_complaints', {
-                    phone: DEMO_PHONE, citizen_name: 'à¦¡à§‡à¦®à§‹ à¦¨à¦¾à¦—à¦°à¦¿à¦•', complaint_type: 'road',
-                    title: 'à¦¡à§‡à¦®à§‹ à¦°à¦¾à¦¸à§à¦¤à¦¾ à¦®à§‡à¦°à¦¾à¦®à¦¤à§‡à¦° à¦†à¦¬à§‡à¦¦à¦¨', description: 'à¦¬à§ƒà¦·à§à¦Ÿà¦¿à¦¤à§‡ à¦°à¦¾à¦¸à§à¦¤à¦¾à¦° à¦…à¦‚à¦¶ à¦•à§à¦·à¦¤à¦¿à¦—à§à¦°à¦¸à§à¦¤ à¦¹à§Ÿà§‡à¦›à§‡à¥¤',
+                    phone: DEMO_PHONE, citizen_name: 'ডেমো নাগরিক', complaint_type: 'road',
+                    title: 'ডেমো রাস্তা মেরামতের আবেদন', description: 'বৃষ্টিতে রাস্তার অংশ ক্ষতিগ্রস্ত হয়েছে।',
                     location_text: scope.villageLocation.name_bn, assigned_scope_type: 'union', assigned_scope_id: scope.union.id,
                     status: 'reviewing'
                 }, 'Demo complaint'],
                 ['citizen_appointments', {
-                    phone: DEMO_PHONE, citizen_name: 'à¦¡à§‡à¦®à§‹ à¦¨à¦¾à¦—à¦°à¦¿à¦•', appointment_type: 'office_visit',
-                    title: 'à¦¸à¦¨à¦¦ à¦¸à¦‚à¦—à§à¦°à¦¹à§‡à¦° appointment', assigned_scope_type: 'union', assigned_scope_id: scope.union.id,
+                    phone: DEMO_PHONE, citizen_name: 'ডেমো নাগরিক', appointment_type: 'office_visit',
+                    title: 'সনদ সংগ্রহের appointment', assigned_scope_type: 'union', assigned_scope_id: scope.union.id,
                     preferred_date: new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10), status: 'scheduled'
                 }, 'Demo appointment'],
                 ['citizen_life_support_cases', {
-                    phone: DEMO_PHONE, citizen_name: 'à¦¡à§‡à¦®à§‹ à¦¨à¦¾à¦—à¦°à¦¿à¦•', case_type: 'benefit', category: 'widow_allowance',
-                    title: 'à¦¬à¦¿à¦§à¦¬à¦¾ à¦­à¦¾à¦¤à¦¾ à¦¯à¦¾à¦šà¦¾à¦‡', description: 'à¦¡à§‡à¦®à§‹ support case', assigned_scope_type: 'union',
+                    phone: DEMO_PHONE, citizen_name: 'ডেমো নাগরিক', case_type: 'benefit', category: 'widow_allowance',
+                    title: 'বিধবা ভাতা যাচাই', description: 'ডেমো support case', assigned_scope_type: 'union',
                     assigned_scope_id: scope.union.id, status: 'reviewing'
                 }, 'Demo support case'],
                 ['citizen_blood_requests', {
-                    requester_name: 'à¦¡à§‡à¦®à§‹ à¦¨à¦¾à¦—à¦°à¦¿à¦•', phone: DEMO_PHONE, blood_group: 'A+',
-                    patient_name: 'à¦¡à§‡à¦®à§‹ à¦°à§‹à¦—à§€', hospital_or_location: 'à¦¡à§‡à¦®à§‹ à¦‰à¦ªà¦œà§‡à¦²à¦¾ à¦¸à§à¦¬à¦¾à¦¸à§à¦¥à§à¦¯à¦•à§‡à¦¨à§à¦¦à§à¦°', status: 'active'
+                    requester_name: 'ডেমো নাগরিক', phone: DEMO_PHONE, blood_group: 'A+',
+                    patient_name: 'ডেমো রোগী', hospital_or_location: 'ডেমো উপজেলা স্বাস্থ্যকেন্দ্র', status: 'active'
                 }, 'Demo blood request']
             ];
             for (const [table, payload, label] of rows) await insertTracked(batch.id, table, payload, 850, label);
@@ -378,23 +378,23 @@ async function seedAll(profile) {
 
         await optionalModule(summary, 'market', async () => {
             const market = await insertTracked(batch.id, 'markets', {
-                name: `à¦¡à§‡à¦®à§‹ à¦¸à§à¦®à¦¾à¦°à§à¦Ÿ à¦¬à¦¾à¦œà¦¾à¦° ${suffix.slice(-3)}`, type: 'à¦ªà§à¦°à¦¤à¦¿à¦¦à¦¿à¦¨',
+                name: `ডেমো স্মার্ট বাজার ${suffix.slice(-3)}`, type: 'প্রতিদিন',
                 days: ['Saturday', 'Monday'], location_id: scope.union.id, is_active: true
             }, 500, 'Demo market');
             const commodity = await insertTracked(batch.id, 'market_commodities', {
-                name: `à¦¡à§‡à¦®à§‹ à¦šà¦¾à¦² ${suffix.slice(-3)}`, category: 'à¦šà¦¾à¦²', unit: 'à¦•à§‡à¦œà¦¿', icon: 'package'
+                name: `ডেমো চাল ${suffix.slice(-3)}`, category: 'চাল', unit: 'কেজি', icon: 'package'
             }, 450, 'Demo commodity');
             const rows = [
                 ['market_prices', { market_id: market.id, commodity_id: commodity.id, price: 68, prev_price: 72, trend: 'down', supply: 'Normal' }, 'Demo market price'],
                 ['market_demands', {
                     location_id: scope.union.id, market_id: market.id, commodity_id: commodity.id,
-                    demand_type: 'sell', title: 'à¦¡à§‡à¦®à§‹ à¦•à§ƒà¦·à¦•à§‡à¦° à¦§à¦¾à¦¨ à¦¬à¦¿à¦•à§à¦°à¦¿', quantity: 'à§¨à§¦ à¦®à¦£',
-                    expected_price: 1300, contact_name: 'à¦¡à§‡à¦®à§‹ à¦•à§ƒà¦·à¦•', contact_phone: DEMO_PHONE,
+                    demand_type: 'sell', title: 'ডেমো কৃষকের ধান বিক্রি', quantity: '২০ মণ',
+                    expected_price: 1300, contact_name: 'ডেমো কৃষক', contact_phone: DEMO_PHONE,
                     village_name: scope.villageLocation.name_bn, status: 'active', phone_verified: true
                 }, 'Demo market demand'],
                 ['market_complaints', {
-                    location_id: scope.union.id, market_id: market.id, complainant_name: 'à¦¡à§‡à¦®à§‹ à¦•à§à¦°à§‡à¦¤à¦¾',
-                    complainant_phone: DEMO_PHONE, complaint_type: 'high_price', note: 'à¦®à§‚à¦²à§à¦¯ à¦¤à¦¾à¦²à¦¿à¦•à¦¾à¦° à¦šà§‡à§Ÿà§‡ à¦¬à§‡à¦¶à¦¿ à¦¨à§‡à¦“à§Ÿà¦¾ à¦¹à§Ÿà§‡à¦›à§‡à¥¤',
+                    location_id: scope.union.id, market_id: market.id, complainant_name: 'ডেমো ক্রেতা',
+                    complainant_phone: DEMO_PHONE, complaint_type: 'high_price', note: 'মূল্য তালিকার চেয়ে বেশি নেওয়া হয়েছে।',
                     status: 'pending'
                 }, 'Demo market complaint']
             ];
@@ -405,14 +405,14 @@ async function seedAll(profile) {
         await optionalModule(summary, 'lost_found', async () => {
             const post = await insertTracked(batch.id, 'lost_found_posts', {
                 location_id: scope.union.id, type: 'lost', category: 'document',
-                title: 'à¦¡à§‡à¦®à§‹ à¦œà¦¾à¦¤à§€à§Ÿ à¦ªà¦°à¦¿à¦šà§Ÿà¦ªà¦¤à§à¦° à¦¹à¦¾à¦°à¦¿à§Ÿà§‡à¦›à§‡', description: 'à¦¬à¦¾à¦œà¦¾à¦° à¦à¦²à¦¾à¦•à¦¾à§Ÿ à¦¹à¦¾à¦°à¦¿à§Ÿà§‡à¦›à§‡à¥¤',
+                title: 'ডেমো জাতীয় পরিচয়পত্র হারিয়েছে', description: 'বাজার এলাকায় হারিয়েছে।',
                 location: scope.villageLocation.name_bn, event_date: new Date().toISOString().slice(0, 10),
-                contact_name: 'à¦¡à§‡à¦®à§‹ à¦¨à¦¾à¦—à¦°à¦¿à¦•', contact_phone: DEMO_PHONE, reporter_phone: DEMO_PHONE,
+                contact_name: 'ডেমো নাগরিক', contact_phone: DEMO_PHONE, reporter_phone: DEMO_PHONE,
                 status: 'active', phone_verified: true
             }, 600, 'Demo lost-found post');
             await insertTracked(batch.id, 'lost_found_claims', {
-                post_id: post.id, location_id: scope.union.id, claimant_name: 'à¦¡à§‡à¦®à§‹ à¦¦à¦¾à¦¬à¦¿à¦¦à¦¾à¦°',
-                claimant_phone: DEMO_PHONE, proof_note: 'à¦¨à¦¾à¦® à¦“ à¦œà¦¨à§à¦®à¦¤à¦¾à¦°à¦¿à¦– à¦®à¦¿à¦²à§‡à¦›à§‡à¥¤',
+                post_id: post.id, location_id: scope.union.id, claimant_name: 'ডেমো দাবিদার',
+                claimant_phone: DEMO_PHONE, proof_note: 'নাম ও জন্মতারিখ মিলেছে।',
                 status: 'pending', phone_verified: true
             }, 850, 'Demo lost-found claim');
             return 2;
@@ -421,16 +421,16 @@ async function seedAll(profile) {
         await optionalModule(summary, 'business_directory', async () => {
             const business = await insertTracked(batch.id, 'local_businesses', {
                 union_id: scope.union.id, ward_id: scope.ward.id, village_id: scope.villageLocation.id,
-                name: 'à¦¡à§‡à¦®à§‹ à¦¡à¦¿à¦œà¦¿à¦Ÿà¦¾à¦² à¦¸à§‡à¦¬à¦¾ à¦•à§‡à¦¨à§à¦¦à§à¦°', category: 'technology',
-                description: 'à¦…à¦¨à¦²à¦¾à¦‡à¦¨ à¦†à¦¬à§‡à¦¦à¦¨, à¦ªà§à¦°à¦¿à¦¨à§à¦Ÿ, à¦›à¦¬à¦¿ à¦“ à¦¡à¦¿à¦œà¦¿à¦Ÿà¦¾à¦² à¦¸à¦¹à¦¾à§Ÿà¦¤à¦¾à¥¤',
-                owner_name: 'à¦¡à§‡à¦®à§‹ à¦‰à¦¦à§à¦¯à§‹à¦•à§à¦¤à¦¾', phone: DEMO_PHONE, whatsapp: DEMO_PHONE,
-                address: scope.villageLocation.name_bn, service_area: 'à¦ªà§à¦°à§‹ à¦‡à¦‰à¦¨à¦¿à§Ÿà¦¨',
-                opening_hours: 'à¦¸à¦•à¦¾à¦² à§¯à¦Ÿà¦¾ - à¦°à¦¾à¦¤ à§®à¦Ÿà¦¾', plan: 'featured', status: 'approved',
+                name: 'ডেমো ডিজিটাল সেবা কেন্দ্র', category: 'technology',
+                description: 'অনলাইন আবেদন, প্রিন্ট, ছবি ও ডিজিটাল সহায়তা।',
+                owner_name: 'ডেমো উদ্যোক্তা', phone: DEMO_PHONE, whatsapp: DEMO_PHONE,
+                address: scope.villageLocation.name_bn, service_area: 'পুরো ইউনিয়ন',
+                opening_hours: 'সকাল ৯টা - রাত ৮টা', plan: 'featured', status: 'approved',
                 is_verified: true, is_featured: true, approved_at: new Date().toISOString()
             }, 600, 'Demo business');
             await insertTracked(batch.id, 'business_ads', {
                 business_id: business.id, union_id: scope.union.id,
-                title: 'à¦¡à§‡à¦®à§‹: à¦…à¦¨à¦²à¦¾à¦‡à¦¨ à¦¸à§‡à¦¬à¦¾à§Ÿ à§§à§¦% à¦›à¦¾à§œ', subtitle: 'DigiGram user offer',
+                title: 'ডেমো: অনলাইন সেবায় ১০% ছাড়', subtitle: 'DigiGram user offer',
                 placement: 'directory_top', daily_budget: 100, total_budget: 1000,
                 status: 'active', ends_at: new Date(Date.now() + 30 * 86400000).toISOString()
             }, 850, 'Demo business ad');
@@ -453,7 +453,7 @@ async function seedAll(profile) {
             }
             await insertTracked(batch.id, 'sms_messages', {
                 wallet_id: wallet.id, owner_type: 'location', owner_id: scope.union.id,
-                recipient_phone: DEMO_PHONE, message: 'DigiGram demo: à¦†à¦ªà¦¨à¦¾à¦° à¦†à¦¬à§‡à¦¦à¦¨ processing à¦…à¦¬à¦¸à§à¦¥à¦¾à§Ÿ à¦†à¦›à§‡à¥¤',
+                recipient_phone: DEMO_PHONE, message: 'DigiGram demo: আপনার আবেদন processing অবস্থায় আছে।',
                 category: 'service', status: 'queued', source_type: 'demo'
             }, 850, 'Demo SMS');
             await insertTracked(batch.id, 'citizen_consents', {
@@ -550,16 +550,16 @@ export async function POST(request) {
         if (body.action === 'seed') {
             const active = await findActiveBatch();
             if (active) {
-                return NextResponse.json({ error: 'à¦à¦•à¦Ÿà¦¿ demo batch à¦‡à¦¤à§‹à¦®à¦§à§à¦¯à§‡ active à¦†à¦›à§‡à¥¤ à¦†à¦—à§‡ Remove Demo Data à¦šà¦¾à¦²à¦¾à¦¨à¥¤' }, { status: 409 });
+                return NextResponse.json({ error: 'একটি demo batch ইতোমধ্যে active আছে। আগে Remove Demo Data চালান।' }, { status: 409 });
             }
             const result = await seedAll(profile);
-            return NextResponse.json({ success: true, message: 'à¦¸à¦¬ module-à¦à¦° demo data à¦¤à§ˆà¦°à¦¿ à¦¹à§Ÿà§‡à¦›à§‡à¥¤', ...result });
+            return NextResponse.json({ success: true, message: 'সব module-এর demo data তৈরি হয়েছে।', ...result });
         }
         if (body.action === 'remove') {
             const batch = await findActiveBatch();
-            if (!batch) return NextResponse.json({ success: true, message: 'Active demo data à¦¨à§‡à¦‡à¥¤' });
+            if (!batch) return NextResponse.json({ success: true, message: 'Active demo data নেই।' });
             const result = await removeBatch(batch);
-            return NextResponse.json({ success: true, message: 'à¦¶à§à¦§à§ registered demo data remove à¦¹à§Ÿà§‡à¦›à§‡à¥¤', ...result });
+            return NextResponse.json({ success: true, message: 'শুধু registered demo data remove হয়েছে।', ...result });
         }
         if (body.action === 'reset') {
             const batch = await findActiveBatch();
@@ -568,8 +568,8 @@ export async function POST(request) {
             return NextResponse.json({
                 success: true,
                 message: batch
-                    ? 'à¦ªà§à¦°à¦¨à§‹ registered demo data remove à¦•à¦°à§‡ à¦¨à¦¤à§à¦¨ demo data à¦¤à§ˆà¦°à¦¿ à¦¹à§Ÿà§‡à¦›à§‡à¥¤'
-                    : 'Active demo à¦›à¦¿à¦² à¦¨à¦¾, à¦¨à¦¤à§à¦¨ demo data à¦¤à§ˆà¦°à¦¿ à¦¹à§Ÿà§‡à¦›à§‡à¥¤',
+                    ? 'পুরনো registered demo data remove করে নতুন demo data তৈরি হয়েছে।'
+                    : 'Active demo ছিল না, নতুন demo data তৈরি হয়েছে।',
                 cleanup,
                 ...result
             });
@@ -578,7 +578,7 @@ export async function POST(request) {
     } catch (error) {
         console.error('Demo data manager failed:', error);
         if (isOptionalSchemaError(error)) {
-            return NextResponse.json({ error: 'à¦ªà§à¦°à¦¥à¦®à§‡ database/73_demo_data_registry.sql à¦šà¦¾à¦²à¦¾à¦¨à¥¤' }, { status: 409 });
+            return NextResponse.json({ error: 'প্রথমে database/73_demo_data_registry.sql চালান।' }, { status: 409 });
         }
         return NextResponse.json({ error: error.message || 'Demo data operation failed' }, { status: 500 });
     }

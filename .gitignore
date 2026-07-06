@@ -45,3 +45,8 @@ next-env.d.ts
 # Local machine/runtime files that do not belong to the Next.js app
 php.ini
 dev-server*.log
+.codex-*.log
+.codex-*.pid
+.codex-*.job
+.codex-*.cmd
+.eslint-audit.json

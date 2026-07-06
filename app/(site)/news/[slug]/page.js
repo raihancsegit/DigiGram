@@ -11,12 +11,14 @@ export async function generateMetadata({ params }) {
     if (!news) return { title: 'News Not Found' };
 
     return {
-        title: `${news.title} - DigiGram`,
+        title: news.title,
         description: news.excerpt,
+        alternates: { canonical: `/news/${slug}` },
         openGraph: {
             title: news.title,
             description: news.excerpt,
-            images: [news.image_url],
+            type: 'article',
+            images: news.image_url ? [news.image_url] : undefined,
         },
     };
 }
@@ -29,4 +31,3 @@ export default async function NewsPage({ params }) {
 
     return <NewsDetailsView news={news} />;
 }
-

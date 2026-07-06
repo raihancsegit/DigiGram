@@ -10,8 +10,14 @@ export async function generateMetadata({ params }) {
     if (!post) return { title: 'Not Found' };
     const typeLabel = post.type === 'lost' ? 'হারানো' : 'প্রাপ্তি';
     return {
-        title: `${post.title} - ${typeLabel} | DigiGram`,
+        title: `${post.title} - ${typeLabel}`,
         description: post.description,
+        alternates: { canonical: `/lost-found/${id}` },
+        openGraph: {
+            title: post.title,
+            description: post.description,
+            images: post.image_url ? [post.image_url] : undefined,
+        },
     };
 }
 
@@ -21,4 +27,3 @@ export default async function LostFoundDetailPage({ params }) {
     if (!post) notFound();
     return <LostFoundDetailView post={post} />;
 }
-

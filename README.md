@@ -26,6 +26,8 @@ Open `http://localhost:3000`.
 
 ```bash
 npm run lint
+npm test
+npm run quality:audit
 npm run build
 npm run security:audit
 npm run audit
@@ -55,12 +57,14 @@ Important launch migrations include:
 
 ## Current Verification
 
-Last local verification performed on 2026-06-09:
+Last local verification performed on 2026-07-06:
 
+- `npm test`: passed
+- `npm run quality:audit`: passed
 - `npm run lint`: passed with warnings only
 - `npm run build`: passed
-- `npm run security:audit`: 53/53 passed
-- `npm run audit`: 44/44 passed, 1 skipped because external Supabase route discovery is unavailable in this environment
+- `npm run security:audit`: 57/57 passed
+- `npm run audit`: 49/49 passed, with database-backed discovery skipped when external Supabase access is unavailable
 
 ## Launch Checklist
 

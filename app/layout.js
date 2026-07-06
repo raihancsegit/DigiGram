@@ -6,11 +6,34 @@ import HouseholdOutboxSync from "@/components/common/HouseholdOutboxSync";
 import OfficerDeviceHeartbeat from "@/components/auth/OfficerDeviceHeartbeat";
 import { Suspense } from "react";
 import { Toaster } from 'react-hot-toast';
+import { getSiteUrl } from '@/lib/utils/siteUrl';
 import "./globals.css";
 
 export const metadata = {
-  title: "DigiGram — উন্নত নাগরিক সেবা পোর্টাল",
+  metadataBase: new URL(getSiteUrl()),
+  title: {
+    default: "DigiGram — উন্নত নাগরিক সেবা পোর্টাল",
+    template: "%s | DigiGram",
+  },
   description: "ডিজিগ্রাম - ডিজিটাল ইউনিয়নের স্মার্ট সমাধান।",
+  applicationName: "DigiGram",
+  keywords: ["ডিজিটাল ইউনিয়ন", "নাগরিক সেবা", "ইউনিয়ন পরিষদ", "DigiGram", "Bangladesh"],
+  alternates: { canonical: '/' },
+  openGraph: {
+    type: 'website',
+    locale: 'bn_BD',
+    siteName: 'DigiGram',
+    title: 'DigiGram — উন্নত নাগরিক সেবা পোর্টাল',
+    description: 'ডিজিটাল ইউনিয়নের নাগরিক সেবা, স্থানীয় তথ্য ও প্রশাসনিক কার্যক্রম এক জায়গায়।',
+    images: [{ url: '/icon-512x512.png', width: 512, height: 512, alt: 'DigiGram' }],
+  },
+  twitter: {
+    card: 'summary',
+    title: 'DigiGram — উন্নত নাগরিক সেবা পোর্টাল',
+    description: 'ডিজিটাল ইউনিয়নের নাগরিক সেবা, স্থানীয় তথ্য ও প্রশাসনিক কার্যক্রম এক জায়গায়।',
+    images: ['/icon-512x512.png'],
+  },
+  robots: { index: true, follow: true },
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,

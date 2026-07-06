@@ -96,6 +96,7 @@ Mobile viewport-e check korun:
 
 Vercel/Supabase:
 
+- `NEXT_PUBLIC_SITE_URL`
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
@@ -103,6 +104,19 @@ Vercel/Supabase:
 - Webhook secret
 - Subdomain/custom domain routing
 - Storage bucket policies
+
+Automated release checks:
+
+```bash
+npm run quality:audit
+npm test
+npm run lint
+npm run build
+npm run security:audit
+npm run audit
+```
+
+Production database access is required for the database-backed route checks in `npm run audit`. Verify every authenticated role manually with dedicated test accounts before launch.
 
 ## 9. Pilot launch recommendation
 

@@ -109,6 +109,8 @@ await checkPage('News', '/news');
 await checkPage('Market', '/services/market');
 await checkPage('Lost and found', '/lost-found');
 await checkPage('Business directory', '/business');
+await checkPage('Sitemap', '/sitemap.xml');
+await checkPage('Robots', '/robots.txt');
 
 try {
     const [unions, wards, villages, households, institutions] = await Promise.all([
