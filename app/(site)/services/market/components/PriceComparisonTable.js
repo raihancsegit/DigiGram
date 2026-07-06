@@ -1,8 +1,26 @@
 "use client";
 
 import { useMemo, useState } from 'react';
-import { TrendingUp, TrendingDown, Minus, Filter, Sparkles } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Filter, Package, Wheat, Apple, Beef, Fish, Milk, Sparkles } from 'lucide-react';
 import { toBnDigits } from '@/lib/utils/format';
+
+const COMMODITY_ICONS = {
+    package: Package,
+    wheat: Wheat,
+    grain: Wheat,
+    fruit: Apple,
+    apple: Apple,
+    meat: Beef,
+    beef: Beef,
+    fish: Fish,
+    milk: Milk,
+};
+
+function CommodityIcon({ value }) {
+    const Icon = COMMODITY_ICONS[String(value || '').toLowerCase()];
+    if (Icon) return <Icon size={26} aria-hidden="true" />;
+    return <span aria-hidden="true">{value || '📦'}</span>;
+}
 
 export function PriceComparisonTable({ 
     filterProduct = '', 
@@ -119,7 +137,9 @@ export function PriceComparisonTable({
                                 <tr key={commodity.id} className="hover:bg-slate-50 transition-colors group">
                                     <td className="py-6 px-8 border-r border-slate-50 bg-slate-50/30">
                                         <div className="flex items-center gap-4">
-                                            <span className="text-4xl bg-white w-14 h-14 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform duration-500 border border-slate-100">{commodity.icon}</span>
+                                            <span className="text-2xl bg-white w-14 h-14 rounded-2xl flex items-center justify-center text-teal-600 shadow-sm group-hover:scale-110 transition-transform duration-500 border border-slate-100">
+                                                <CommodityIcon value={commodity.icon} />
+                                            </span>
                                             <div>
                                                 <p className="font-black text-slate-800 text-base">{commodity.name}</p>
                                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">{commodity.unit}</p>
