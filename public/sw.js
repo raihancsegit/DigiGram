@@ -1,9 +1,10 @@
-const CACHE_NAME = 'digigram-cache-v2';
+const CACHE_NAME = 'digigram-cache-v3';
 const ASSETS_TO_CACHE = [
   '/',
   '/favicon.ico',
   '/icon-192x192.png',
-  '/icon-512x512.png'
+  '/icon-512x512.png',
+  '/offline'
 ];
 
 self.addEventListener('install', (event) => {
@@ -31,31 +32,35 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Only handle GET requests
   if (event.request.method !== 'GET') return;
+
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match('/offline'))
+    );
+    return;
+  }
+
+  const isStaticAsset = event.request.url.startsWith(self.location.origin)
+    && (event.request.url.includes('/_next/static/')
+      || event.request.url.includes('/images/')
+      || event.request.url.includes('/webfonts/')
+      || event.request.destination === 'image');
+  if (!isStaticAsset) return;
 
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-
-      return fetch(event.request).then((response) => {
-        // Cache new static assets
-        if (event.request.url.startsWith(self.location.origin) && 
-            (event.request.url.includes('/_next/static/') || 
-             event.request.url.includes('/images/') ||
-             event.request.url.includes('/webfonts/'))) {
-          const responseToCache = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
+      const networkResponse = fetch(event.request).then((response) => {
+        if (response.ok) {
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, response.clone()));
         }
         return response;
-      }).catch(() => {
-        // Fallback for offline if needed
-        return Response.error();
       });
+      return cachedResponse || networkResponse;
     })
   );
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
 });

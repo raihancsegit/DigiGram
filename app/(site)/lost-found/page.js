@@ -9,6 +9,7 @@ import {
     Loader2, Package, Tag, Clock, Search, Filter, Star, Bookmark, ChevronLeft, ChevronRight, TrendingUp
 } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { lostFoundService } from '@/lib/services/lostFoundService';
 import LostFoundDetailView from '@/components/templates/LostFoundDetailView';
 import RelatedServiceLinks from '@/components/common/RelatedServiceLinks';
@@ -250,10 +251,12 @@ function GlobalLostFoundPageContent() {
                                             <div className="h-full overflow-hidden rounded-[32px] border border-slate-100 bg-white shadow-sm transition-all duration-500 hover:shadow-2xl hover:shadow-slate-200/50 hover:border-amber-200 flex flex-col">
                                                 <div className="relative h-56 bg-slate-950 overflow-hidden shrink-0">
                                                     {item.image_url ? (
-                                                        <img 
+                                                        <Image
                                                             src={item.image_url} 
                                                             alt={item.title} 
-                                                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                                                            fill
+                                                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                                                            className="object-cover group-hover:scale-110 transition-transform duration-700"
                                                         />
                                                     ) : (
                                                         <div className="w-full h-full flex items-center justify-center opacity-20">

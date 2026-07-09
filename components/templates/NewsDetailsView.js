@@ -1,6 +1,7 @@
 "use client"
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { motion, useScroll, useSpring } from 'framer-motion';
 import { 
     Calendar, User, Clock, Share2, 
@@ -204,10 +205,13 @@ export default function NewsDetailsView({ news }) {
                     className="relative aspect-[16/9] rounded-[48px] overflow-hidden bg-slate-950 mb-16 shadow-3xl shadow-slate-200/60"
                 >
                     {news.image_url ? (
-                        <img 
+                        <Image
                             src={news.image_url} 
                             alt={news.title}
-                            className="absolute inset-0 w-full h-full object-cover"
+                            fill
+                            sizes="(max-width: 1280px) 100vw, 1280px"
+                            preload
+                            className="object-cover"
                         />
                     ) : (
                         <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
@@ -282,7 +286,7 @@ export default function NewsDetailsView({ news }) {
                         {relatedNews.map((item) => (
                             <Link key={item.id} href={`/news/${item.slug}`} className="group flex gap-4 p-4 rounded-3xl hover:bg-slate-50 transition-all border border-transparent hover:border-slate-100">
                                 <div className="w-24 h-24 rounded-2xl overflow-hidden shrink-0 bg-slate-100">
-                                    <img src={item.image} alt={item.title} className="w-full h-full object-cover group-hover:scale-110 transition-duration-700" />
+                                    <Image src={item.image} alt={item.title} width={96} height={96} className="h-full w-full object-cover group-hover:scale-110 transition-duration-700" />
                                 </div>
                                 <div>
                                     <h4 className="text-base font-bold text-slate-800 line-clamp-2 leading-snug group-hover:text-teal-600 mb-2">{item.title}</h4>

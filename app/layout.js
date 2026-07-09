@@ -4,6 +4,8 @@ import PWARegistration from "@/components/PWARegistration";
 import RouteChangeListener from "@/components/common/RouteChangeListener";
 import HouseholdOutboxSync from "@/components/common/HouseholdOutboxSync";
 import OfficerDeviceHeartbeat from "@/components/auth/OfficerDeviceHeartbeat";
+import WebVitalsReporter from "@/components/common/WebVitalsReporter";
+import ClientErrorReporter from "@/components/common/ClientErrorReporter";
 import { Suspense } from "react";
 import { Toaster } from 'react-hot-toast';
 import { getSiteUrl } from '@/lib/utils/siteUrl';
@@ -56,7 +58,10 @@ export default function RootLayout({ children }) {
         <link rel="apple-touch-icon" href="/icon-192x192.png" />
       </head>
       <body>
+        <a href="#main-content" className="dg-skip-link">মূল কনটেন্টে যান</a>
         <PWARegistration />
+        <WebVitalsReporter />
+        <ClientErrorReporter />
         <ReduxProvider>
           <AuthSessionSync />
           <OfficerDeviceHeartbeat />

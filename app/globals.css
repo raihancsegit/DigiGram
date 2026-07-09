@@ -29,6 +29,38 @@ body {
   overflow-x: hidden;
 }
 
+.dg-skip-link {
+  position: fixed;
+  left: 1rem;
+  top: -5rem;
+  z-index: 11000;
+  border-radius: 0.875rem;
+  background: #0f172a;
+  color: #fff;
+  padding: 0.75rem 1rem;
+  font-weight: 800;
+  transition: top 150ms ease;
+}
+
+.dg-skip-link:focus {
+  top: 1rem;
+}
+
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 3px solid rgba(13, 148, 136, 0.75);
+  outline-offset: 3px;
+}
+
+@media (max-width: 639px) {
+  body {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  :where(button, [role="button"], input:not([type="hidden"]), select) {
+    min-height: 44px;
+  }
+}
+
 .custom-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: rgba(15, 23, 42, 0.22) transparent;

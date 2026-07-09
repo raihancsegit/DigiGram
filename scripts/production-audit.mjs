@@ -83,6 +83,29 @@ async function checkLocked(label, pathname, method = 'POST') {
     }
 }
 
+async function checkSecurityHeaders() {
+    const response = await fetch(`${baseUrl}/`);
+    const requiredHeaders = [
+        'x-content-type-options',
+        'x-frame-options',
+        'referrer-policy',
+        'permissions-policy'
+    ];
+    const missing = requiredHeaders.filter((header) => !response.headers.get(header));
+    if (missing.length) fail('Security headers', `missing ${missing.join(', ')}`);
+    else pass('Security headers');
+}
+
+async function checkMonitoringValidation() {
+    const response = await fetch(`${baseUrl}/api/monitoring/client-event`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'unsupported' })
+    });
+    if (response.status === 400) pass('Monitoring endpoint validation (400)');
+    else fail('Monitoring endpoint validation', `expected 400, received ${response.status}`);
+}
+
 async function supabaseRows(table, query) {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -111,6 +134,10 @@ await checkPage('Lost and found', '/lost-found');
 await checkPage('Business directory', '/business');
 await checkPage('Sitemap', '/sitemap.xml');
 await checkPage('Robots', '/robots.txt');
+await checkPage('Web manifest', '/manifest.json');
+await checkPage('Offline fallback', '/offline');
+await checkSecurityHeaders();
+await checkMonitoringValidation();
 
 try {
     const [unions, wards, villages, households, institutions] = await Promise.all([

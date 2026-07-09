@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, ArrowRight, Zap, Clock, ArrowUpRight, Newspaper, TrendingUp, Star, Loader2, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { newsService } from '@/lib/services/newsService';
 
 const CATEGORY_CONFIG = {
@@ -49,10 +50,12 @@ function FeaturedCard({ news }) {
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/20 to-transparent z-10 opacity-80 group-hover:opacity-60 transition-opacity duration-700" />
                     
                     {news.image ? (
-                        <img
+                        <Image
                             src={news.image}
                             alt={news.title}
-                            className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-[1200ms] ease-out"
+                            fill
+                            sizes="(max-width: 1024px) 100vw, 60vw"
+                            className="object-cover group-hover:scale-110 transition-transform duration-[1200ms] ease-out"
                         />
                     ) : (
                         <div className="absolute inset-0 bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center">
@@ -96,7 +99,7 @@ function CompactCard({ news, index }) {
                 {/* Thumb */}
                 <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden bg-slate-100 shrink-0 shadow-inner">
                     {news.image ? (
-                        <img src={news.image} alt="" className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                        <Image src={news.image} alt="" fill sizes="112px" className="object-cover group-hover:scale-110 transition-transform duration-700" />
                     ) : (
                         <div className="absolute inset-0 bg-slate-200 flex items-center justify-center">
                             <Newspaper size={24} className="text-slate-400 opacity-40" />

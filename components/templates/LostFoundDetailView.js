@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import {
     ArrowLeft, MapPin, Calendar, Share2,
@@ -78,10 +79,13 @@ export default function LostFoundDetailView({ post }) {
                             className="relative aspect-[16/9] rounded-[32px] overflow-hidden bg-slate-900 shadow-xl"
                         >
                             {post.image_url ? (
-                                <img
+                                <Image
                                     src={post.image_url}
                                     alt={post.title}
-                                    className="w-full h-full object-cover"
+                                    fill
+                                    sizes="(max-width: 1024px) 100vw, 1024px"
+                                    preload
+                                    className="object-cover"
                                 />
                             ) : (
                                 <div className="w-full h-full flex flex-col items-center justify-center gap-4 opacity-20">

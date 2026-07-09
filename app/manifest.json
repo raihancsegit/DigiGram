@@ -1,9 +1,13 @@
 {
   "name": "DigiGram Portal",
   "short_name": "DigiGram",
-  "description": "Premium Digital Services Portal",
+  "description": "বাংলাদেশের ইউনিয়নভিত্তিক নাগরিক সেবা ও স্থানীয় তথ্যের ডিজিটাল প্ল্যাটফর্ম",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait-primary",
+  "lang": "bn-BD",
+  "categories": ["government", "utilities", "education"],
   "background_color": "#ffffff",
   "theme_color": "#0d9488",
   "icons": [

@@ -17,7 +17,7 @@ export default function SiteShell({ children }) {
     return (
         <PageShell>
             {showPublicChrome && <Header />}
-            <div className={isDashboard ? "min-h-screen bg-slate-50" : "dg-content-stack"}>
+            <div id="main-content" tabIndex={-1} className={isDashboard ? "min-h-screen bg-slate-50 outline-none" : "dg-content-stack outline-none"}>
                 {children}
             </div>
             {showPublicChrome && <SiteFooter />}

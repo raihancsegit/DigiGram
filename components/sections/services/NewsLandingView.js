@@ -7,6 +7,7 @@ import { wardService } from '@/lib/services/wardService';
 import { getLocationBySlug } from '@/lib/services/hierarchyService';
 import { toBnDigits } from '@/lib/utils/format';
 import { menuStyles } from '@/components/common/menuStyles';
+import Image from 'next/image';
 
 export default function NewsLandingView() {
     const searchParams = useSearchParams();
@@ -142,7 +143,7 @@ export default function NewsLandingView() {
                                     <div key={i} className="flex gap-4 group cursor-pointer">
                                         <div className={`w-16 h-16 rounded-xl overflow-hidden ${item.image_url ? 'bg-slate-800' : 'bg-black'} shrink-0 flex items-center justify-center`}>
                                             {item.image_url ? (
-                                                <img src={item.image_url} alt={item.title} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" />
+                                                <Image src={item.image_url} alt={item.title} fill sizes="64px" className="object-cover opacity-60 group-hover:opacity-100 transition-opacity" />
                                             ) : (
                                                 <Newspaper size={16} className="text-white opacity-20" />
                                             )}
@@ -246,7 +247,7 @@ export default function NewsLandingView() {
                                 >
                                     <div className={`relative h-56 ${item.image_url ? 'bg-slate-100' : 'bg-black'} overflow-hidden shrink-0`}>
                                         {item.image_url ? (
-                                            <img src={item.image_url} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                                            <Image src={item.image_url} alt={item.title} fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover group-hover:scale-105 transition-transform duration-700" />
                                         ) : (
                                             <div className="w-full h-full flex items-center justify-center opacity-20">
                                                 <Newspaper size={48} className="text-white" />

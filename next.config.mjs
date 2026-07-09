@@ -1,5 +1,26 @@
 /** @type {import('next').NextConfig} */
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const remotePatterns = [];
+if (supabaseUrl) {
+  try {
+    const url = new URL(supabaseUrl);
+    remotePatterns.push({
+      protocol: url.protocol.replace(':', ''),
+      hostname: url.hostname,
+      port: url.port,
+      pathname: '/storage/v1/object/**',
+    });
+  } catch {
+    console.warn('NEXT_PUBLIC_SUPABASE_URL is invalid; remote image optimization is disabled.');
+  }
+}
+
 const nextConfig = {
+  images: {
+    remotePatterns,
+    formats: ['image/avif', 'image/webp'],
+    qualities: [60, 75, 85],
+  },
   async headers() {
     return [
       {

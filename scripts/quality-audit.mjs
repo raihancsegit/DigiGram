@@ -30,6 +30,22 @@ for (const requiredFile of ['app/sitemap.js', 'app/robots.js']) {
     if (!fs.existsSync(path.join(root, requiredFile))) failures.push(`${requiredFile}: missing`);
 }
 
+for (const requiredFile of [
+    'app/error.js',
+    'app/global-error.js',
+    'app/opengraph-image.js',
+    'app/(site)/offline/page.js',
+    'app/api/monitoring/client-event/route.js',
+]) {
+    if (!fs.existsSync(path.join(root, requiredFile))) failures.push(`${requiredFile}: missing`);
+}
+
+const rawImageCount = sourceFiles.reduce((count, file) => {
+    const source = fs.readFileSync(file, 'utf8');
+    return count + (source.match(/<img\b/g) || []).length;
+}, 0);
+if (rawImageCount > 52) failures.push(`raw <img> count increased to ${rawImageCount}; use next/image for product UI`);
+
 const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
 for (const script of ['build', 'lint', 'test', 'audit', 'quality:audit', 'security:audit']) {
     if (!packageJson.scripts?.[script]) failures.push(`package.json: missing ${script} script`);
@@ -42,4 +58,5 @@ if (failures.length) {
     console.log(`PASS  ${sourceFiles.length} source files checked for encoding regressions`);
     console.log('PASS  SEO metadata routes are present');
     console.log('PASS  Required verification scripts are configured');
+    console.log(`PASS  Raw image budget maintained (${rawImageCount}/52)`);
 }
