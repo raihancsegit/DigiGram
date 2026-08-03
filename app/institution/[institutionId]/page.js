@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import TenantWebsiteClient from '@/components/sections/institution/TenantWebsiteClient';
+import PublicInstitutionWebsite from '@/components/sections/institution/PublicInstitutionWebsite';
 import {
     getPublicInstitutionById,
     getTenantPage,
@@ -27,10 +27,5 @@ export default async function InstitutionPublicWebsite({ params }) {
         getTenantPublicNotices(institution.id)
     ]);
 
-    return <TenantWebsiteClient
-        domain={institution.subdomain || institution.id}
-        initialInstitution={institution}
-        initialPage={page}
-        initialNotices={notices}
-    />;
+    return <PublicInstitutionWebsite institution={institution} page={page || {}} notices={notices || []} />;
 }
