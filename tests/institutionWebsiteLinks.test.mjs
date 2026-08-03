@@ -8,7 +8,7 @@ const unionPage = fs.readFileSync('app/(site)/admin/union/page.js', 'utf8');
 
 test('institution website buttons use the deployed tenant route instead of localhost', () => {
     assert.doesNotMatch(adminPage, /inst\.subdomain\}\.localhost:3000/);
-    assert.match(adminPage, /encodeURIComponent\(inst\.subdomain\)/);
+    assert.match(adminPage, /`\/institution\/\$\{inst\.id\}`/);
 });
 
 test('local institution demos include website content and a public notice', () => {

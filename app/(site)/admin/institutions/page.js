@@ -355,7 +355,7 @@ export default function InstitutionManagementPage() {
                                             </div>
                                             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                                                 <a 
-                                                    href={inst.custom_domain ? `https://${inst.custom_domain}` : `/${encodeURIComponent(inst.subdomain)}`}
+                                                    href={inst.custom_domain ? `https://${inst.custom_domain}` : `/institution/${inst.id}`}
                                                     target="_blank"
                                                     className="flex min-w-0 items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-xs font-black text-white shadow-lg shadow-slate-900/10 transition-all hover:bg-teal-600 active:scale-95"
                                                 >
