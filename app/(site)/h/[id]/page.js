@@ -6,7 +6,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
     Home, Users, MapPin, Droplets, ShieldCheck, 
     ArrowLeft, FileText, Heart, AlertCircle, Loader2, QrCode,
-    Plus, Trash2, Download, File, Lock, Unlock, Eye, CreditCard, Bell, CheckCircle2
+    Plus, Trash2, Download, File, Lock, Unlock, Eye, CreditCard, Bell, CheckCircle2,
+    BriefcaseBusiness, GraduationCap, HandHeart, Sprout
 } from 'lucide-react';
 import { householdService } from '@/lib/services/householdService';
 import { toBnDigits } from '@/lib/utils/format';
@@ -180,7 +181,7 @@ export default function HouseholdPublicProfile() {
     const bloodGroups = [...new Set(data.residents_summary?.map(r => r.blood_group).filter(Boolean))];
     const profileForService = isLockerUnlocked && fullData ? fullData : data;
     const residentsForService = isLockerUnlocked && fullData?.residents ? fullData.residents : [];
-    const certificateServices = [
+    const householdServices = [
         {
             key: 'birth_registration',
             title: 'জন্ম নিবন্ধন আবেদন',
@@ -201,13 +202,58 @@ export default function HouseholdPublicProfile() {
             hint: 'যার জন্য সনদ, তাকে বাছাই করে ওয়ারিশদের select করুন',
             icon: Users,
             iconClass: 'bg-amber-50 text-amber-600 group-hover:bg-amber-500 group-hover:text-white'
+        },
+        {
+            key: 'benefit_support', title: 'ভাতা ও সামাজিক সহায়তা', hint: 'পরিবারের সদস্য বাছাই করে ভাতার আবেদন/সহায়তা নিন',
+            icon: HandHeart, iconClass: 'bg-amber-50 text-amber-600 group-hover:bg-amber-500 group-hover:text-white'
+        },
+        {
+            key: 'local_problem', title: 'এলাকার সমস্যা ও অভিযোগ', hint: 'রাস্তা, পানি, ড্রেন, বিদ্যুৎ বা বর্জ্যের সমস্যা জানান',
+            icon: MapPin, iconClass: 'bg-rose-50 text-rose-600 group-hover:bg-rose-500 group-hover:text-white'
+        },
+        {
+            key: 'emergency_support', title: 'জরুরি ও রক্ত সহায়তা', hint: 'জরুরি follow-up request—জীবনঝুঁকিতে সরাসরি ৯৯৯',
+            icon: Bell, iconClass: 'bg-red-50 text-red-600 group-hover:bg-red-600 group-hover:text-white'
+        },
+        {
+            key: 'document_update', title: 'পরিবারের নথি ও তথ্য', hint: 'NID, জন্মনিবন্ধন, profile বা locker সহায়তা',
+            icon: ShieldCheck, iconClass: 'bg-cyan-50 text-cyan-600 group-hover:bg-cyan-600 group-hover:text-white'
+        },
+        {
+            key: 'farmer_support', title: 'কৃষক সহায়তা', hint: 'ফসল, রোগ, সার-বীজ, বাজারদর ও কৃষি পরামর্শ',
+            icon: Sprout, iconClass: 'bg-emerald-50 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white'
+        },
+        {
+            key: 'job_training', title: 'কাজ ও প্রশিক্ষণ', hint: 'দক্ষতা, স্থানীয় কাজ ও যুব প্রশিক্ষণের সহায়তা',
+            icon: BriefcaseBusiness, iconClass: 'bg-sky-50 text-sky-600 group-hover:bg-sky-600 group-hover:text-white'
+        },
+        {
+            key: 'health_support', title: 'স্বাস্থ্য, মা ও শিশু', hint: 'Checkup, টিকা, মা-শিশু follow-up ও appointment',
+            icon: Heart, iconClass: 'bg-pink-50 text-pink-600 group-hover:bg-pink-600 group-hover:text-white'
+        },
+        {
+            key: 'education_support', title: 'শিক্ষা ও উপবৃত্তি', hint: 'ভর্তি, স্কুল, result, উপবৃত্তি ও guardian support',
+            icon: GraduationCap, iconClass: 'bg-violet-50 text-violet-600 group-hover:bg-violet-600 group-hover:text-white'
+        },
+        {
+            key: 'fee_support', title: 'ফি, payment ও receipt', hint: 'সরকারি fee যাচাই, payment ও receipt সহায়তা',
+            icon: CreditCard, iconClass: 'bg-slate-100 text-slate-600 group-hover:bg-slate-800 group-hover:text-white'
         }
     ];
     const requestLabels = {
         birth_registration: 'জন্ম নিবন্ধন',
         death_certificate: 'মৃত্যু সনদ',
         warish_certificate: 'ওয়ারিশ সনদ',
-        utility_request: 'ইউটিলিটি সেবা'
+        utility_request: 'ইউটিলিটি সেবা',
+        benefit_support: 'ভাতা সহায়তা',
+        local_problem: 'এলাকার অভিযোগ',
+        emergency_support: 'জরুরি সহায়তা',
+        document_update: 'নথি সহায়তা',
+        farmer_support: 'কৃষক সহায়তা',
+        job_training: 'কাজ ও প্রশিক্ষণ',
+        health_support: 'স্বাস্থ্য সহায়তা',
+        education_support: 'শিক্ষা সহায়তা',
+        fee_support: 'ফি ও payment'
     };
     const statusLabels = {
         pending: 'পেন্ডিং',
@@ -502,19 +548,20 @@ export default function HouseholdPublicProfile() {
                 {/* Services Section */}
                 <div className="space-y-4 pt-4">
                     <div className="px-4">
-                        <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">সনদ / নিবন্ধন আবেদন</h3>
+                        <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">এই বাড়ির সব সেবা</h3>
                         <p className="mt-2 text-xs font-bold leading-5 text-slate-500">
-                            Locker unlock করলে family tree থেকে সদস্য বাছাই করে তথ্য auto-fill হবে। না হলে manual entry দিয়েও আবেদন করা যাবে।
+                            Locker unlock করে পরিবারের সদস্য বাছাই করুন। সদস্যের নাম, পরিচয় ও ঠিকানা auto-fill হবে; শুধু প্রয়োজনটি লিখে আবেদন দিন।
                         </p>
                     </div>
 
-                    {certificateServices.map((service) => {
+                    <div className="grid gap-3 sm:grid-cols-2">
+                    {householdServices.map((service) => {
                         const Icon = service.icon;
                         return (
                             <button
                                 key={service.key}
                                 onClick={() => setActiveService(service.key)}
-                                className="group flex w-full min-w-0 items-center justify-between gap-3 rounded-3xl border border-slate-200 bg-white p-4 text-left transition-all hover:border-teal-500 sm:rounded-[32px] sm:p-6"
+                                className="group flex w-full min-w-0 items-center justify-between gap-3 rounded-3xl border border-slate-200 bg-white p-4 text-left transition-all hover:border-teal-500 sm:p-5"
                             >
                                 <div className="flex min-w-0 items-center gap-3 sm:gap-4">
                                     <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl transition-colors ${service.iconClass}`}>
@@ -529,6 +576,7 @@ export default function HouseholdPublicProfile() {
                             </button>
                         );
                     })}
+                    </div>
                 </div>
 
                 {/* Footer Info */}

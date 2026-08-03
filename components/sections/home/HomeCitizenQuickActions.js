@@ -28,7 +28,7 @@ const PRIMARY_ACTIONS = [
     {
         title: 'আবেদন করুন',
         text: 'সনদ, অভিযোগ, appointment, blood help বা ইউনিয়ন সেবা সহজ ফর্মে পাঠান।',
-        href: '/citizen/services',
+        href: '/#citizen-services',
         icon: ClipboardCheck,
         tone: 'border-sky-100 bg-sky-50 text-sky-700'
     },

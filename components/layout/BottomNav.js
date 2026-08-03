@@ -18,7 +18,7 @@ export default function BottomNav() {
         { href: paths.home, icon: Home, label: 'হোম' },
         { href: paths.area, icon: MapPin, label: 'এলাকা' },
         { href: '#search', icon: Search, label: 'সার্চ', isSearchTrigger: true },
-        { href: paths.citizen, icon: Smartphone, label: 'নাগরিক' },
+        { href: paths.homeHousehold, icon: Smartphone, label: 'আমার বাড়ি' },
         { href: paths.login, icon: User, label: 'প্রোফাইল' },
     ];
 

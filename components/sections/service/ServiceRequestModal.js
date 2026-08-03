@@ -56,6 +56,42 @@ const SERVICE_CONFIG = {
         fee: 0,
         color: 'blue',
         note: 'Manual তথ্য দিয়ে আবেদন করা যাবে।'
+    },
+    benefit_support: {
+        title: 'ভাতা ও সামাজিক সহায়তার আবেদন', shortTitle: 'ভাতা সহায়তা', subjectLabel: 'যার জন্য আবেদন', fee: 0, color: 'amber', generic: true,
+        note: 'পরিবারের সদস্য বাছাই করুন এবং বয়স্ক, বিধবা, মাতৃত্বকালীন, প্রতিবন্ধী বা অন্য ভাতার নাম লিখুন।'
+    },
+    local_problem: {
+        title: 'এলাকার সমস্যা ও অভিযোগ', shortTitle: 'অভিযোগ', subjectLabel: 'অভিযোগকারী/প্রভাবিত সদস্য', fee: 0, color: 'rose', generic: true,
+        note: 'রাস্তা, পানি, ড্রেন, বর্জ্য, বিদ্যুৎ বা অন্য সমস্যার স্থান ও বিবরণ লিখুন। জরুরি বিপদে ৯৯৯-এ কল করুন।'
+    },
+    emergency_support: {
+        title: 'জরুরি সহায়তা request', shortTitle: 'জরুরি সহায়তা', subjectLabel: 'যার সহায়তা প্রয়োজন', fee: 0, color: 'rose', generic: true,
+        note: 'রক্ত, হাসপাতাল বা জরুরি follow-up-এর তথ্য দিন। জীবনঝুঁকিতে online request-এর অপেক্ষা না করে ৯৯৯-এ কল করুন।'
+    },
+    document_update: {
+        title: 'পরিবারের নথি ও তথ্য সহায়তা', shortTitle: 'নথি সহায়তা', subjectLabel: 'যার নথি/তথ্য', fee: 0, color: 'teal', generic: true,
+        note: 'NID, জন্মনিবন্ধন, পরিবার profile বা document locker-এর কী সহায়তা দরকার লিখুন।'
+    },
+    farmer_support: {
+        title: 'কৃষক সহায়তা request', shortTitle: 'কৃষি সহায়তা', subjectLabel: 'কৃষক/আবেদনকারীর নাম', fee: 0, color: 'emerald', generic: true,
+        note: 'ফসল, রোগ, সার-বীজ, বাজারদর বা কৃষি কর্মকর্তার পরামর্শের প্রয়োজন লিখুন।'
+    },
+    job_training: {
+        title: 'কাজ ও প্রশিক্ষণ সহায়তা', shortTitle: 'কর্মসংস্থান', subjectLabel: 'কাজ/প্রশিক্ষণপ্রার্থীর নাম', fee: 0, color: 'sky', generic: true,
+        note: 'দক্ষতা, অভিজ্ঞতা, পছন্দের কাজ বা প্রশিক্ষণের ধরন লিখুন। চাকরির নামে অগ্রিম টাকা দেবেন না।'
+    },
+    health_support: {
+        title: 'স্বাস্থ্য, মা ও শিশু সহায়তা', shortTitle: 'স্বাস্থ্য সহায়তা', subjectLabel: 'রোগী/সেবাগ্রহীতার নাম', fee: 0, color: 'rose', generic: true,
+        note: 'Checkup, টিকা, মা-শিশু follow-up বা appointment-এর প্রয়োজন লিখুন। গুরুতর অবস্থায় সরাসরি হাসপাতালে যান।'
+    },
+    education_support: {
+        title: 'শিক্ষা ও উপবৃত্তি সহায়তা', shortTitle: 'শিক্ষা সহায়তা', subjectLabel: 'শিক্ষার্থীর নাম', fee: 0, color: 'violet', generic: true,
+        note: 'ভর্তি, স্কুল, result, উপবৃত্তি বা guardian support-এর প্রয়োজন লিখুন।'
+    },
+    fee_support: {
+        title: 'সরকারি ফি ও payment সহায়তা', shortTitle: 'ফি সহায়তা', subjectLabel: 'সেবাগ্রহীতার নাম', fee: 0, color: 'slate', generic: true,
+        note: 'কোন সেবার fee/payment/receipt নিয়ে সহায়তা দরকার তা লিখুন। Receipt ছাড়া অতিরিক্ত অর্থ দেবেন না।'
     }
 };
 
@@ -388,31 +424,19 @@ export default function ServiceRequestModal({
                             placeholder="পূর্ণ নাম"
                         />
                     </Field>
-                    <Field label="পিতার নাম">
-                        <input
-                            required
-                            value={formData.father_name}
-                            onChange={(event) => updateField('father_name', event.target.value)}
-                            className={FIELD_INPUT_CLASS}
-                        />
-                    </Field>
-                    <Field label="মাতার নাম">
-                        <input
-                            required
-                            value={formData.mother_name}
-                            onChange={(event) => updateField('mother_name', event.target.value)}
-                            className={FIELD_INPUT_CLASS}
-                        />
-                    </Field>
-                    <Field label={config.dateLabel} icon={Calendar}>
-                        <input
-                            required
-                            type="date"
-                            value={formData.date_value}
-                            onChange={(event) => updateField('date_value', event.target.value)}
-                            className={FIELD_INPUT_CLASS}
-                        />
-                    </Field>
+                    {!config.generic && (
+                        <>
+                            <Field label="পিতার নাম">
+                                <input required value={formData.father_name} onChange={(event) => updateField('father_name', event.target.value)} className={FIELD_INPUT_CLASS} />
+                            </Field>
+                            <Field label="মাতার নাম">
+                                <input required value={formData.mother_name} onChange={(event) => updateField('mother_name', event.target.value)} className={FIELD_INPUT_CLASS} />
+                            </Field>
+                            <Field label={config.dateLabel} icon={Calendar}>
+                                <input required type="date" value={formData.date_value} onChange={(event) => updateField('date_value', event.target.value)} className={FIELD_INPUT_CLASS} />
+                            </Field>
+                        </>
+                    )}
                     {['death_certificate', 'warish_certificate'].includes(serviceType) && (
                         <Field label="মৃত্যুর স্থান">
                             <input
@@ -463,6 +487,7 @@ export default function ServiceRequestModal({
 
                 <Field label="অতিরিক্ত নোট">
                     <textarea
+                        required={Boolean(config.generic)}
                         value={formData.request_note}
                         onChange={(event) => updateField('request_note', event.target.value)}
                         className={`${FIELD_INPUT_CLASS} min-h-[96px] resize-none`}
