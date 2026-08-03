@@ -1,6 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { canManageInstitution, requireRequestProfile } from '@/lib/utils/server-auth';
+import { internalServerError } from '@/lib/utils/api-response';
+import { createSafeUploadName, validateUploadedFile } from '@/lib/utils/upload-security';
 
 const bucketName = 'public-uploads';
 
@@ -44,7 +46,8 @@ export async function GET(request) {
             });
 
         if (error) {
-            return NextResponse.json({ error: error.message }, { status: 500 });
+            console.error('Institution media storage list error:', error);
+            return internalServerError('Institution media could not be loaded.');
         }
 
         const media = (data || [])
@@ -66,7 +69,7 @@ export async function GET(request) {
         return NextResponse.json({ success: true, media });
     } catch (err) {
         console.error('Institution media list API error:', err);
-        return NextResponse.json({ error: err.message }, { status: 500 });
+        return internalServerError('Institution media could not be loaded.');
     }
 }
 
@@ -90,13 +93,14 @@ export async function DELETE(request) {
         const { error } = await supabaseAdmin.storage.from(bucketName).remove([path]);
 
         if (error) {
-            return NextResponse.json({ error: error.message }, { status: 500 });
+            console.error('Institution media storage delete error:', error);
+            return internalServerError('Institution media could not be deleted.');
         }
 
         return NextResponse.json({ success: true });
     } catch (err) {
         console.error('Institution media delete API error:', err);
-        return NextResponse.json({ error: err.message }, { status: 500 });
+        return internalServerError('Institution media could not be deleted.');
     }
 }
 
@@ -116,8 +120,12 @@ export async function POST(request) {
             return NextResponse.json({ error: 'This institution is outside your assigned scope' }, { status: 403 });
         }
 
-        if (!file.type?.startsWith('image/')) {
-            return NextResponse.json({ error: 'Only image files are allowed' }, { status: 400 });
+        const validatedFile = await validateUploadedFile(file, {
+            kind: 'image',
+            maxBytes: 5 * 1024 * 1024
+        });
+        if (validatedFile.error) {
+            return NextResponse.json({ error: validatedFile.error }, { status: 400 });
         }
 
         const supabaseAdmin = createAdminClient();
@@ -132,23 +140,24 @@ export async function POST(request) {
             });
 
             if (createError) {
-                return NextResponse.json({ error: createError.message }, { status: 500 });
+                console.error('Institution media bucket creation error:', createError);
+                return internalServerError('Institution image upload failed. Please try again.');
             }
         }
 
-        const fileExt = file.name.split('.').pop() || 'jpg';
         const safeInstitutionId = safeInstitutionFolder(institutionId);
-        const filePath = `institutions/${safeInstitutionId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
+        const filePath = `institutions/${safeInstitutionId}/${createSafeUploadName(validatedFile.extension)}`;
 
         const { error: uploadError } = await supabaseAdmin.storage
             .from(bucketName)
             .upload(filePath, file, {
                 upsert: true,
-                contentType: file.type
+                contentType: validatedFile.mimeType
             });
 
         if (uploadError) {
-            return NextResponse.json({ error: uploadError.message }, { status: 500 });
+            console.error('Institution storage upload error:', uploadError);
+            return internalServerError('Institution image upload failed. Please try again.');
         }
 
         const { data: { publicUrl } } = supabaseAdmin.storage
@@ -158,6 +167,6 @@ export async function POST(request) {
         return NextResponse.json({ success: true, publicUrl });
     } catch (err) {
         console.error('Institution image upload API error:', err);
-        return NextResponse.json({ error: err.message }, { status: 500 });
+        return internalServerError('Institution image upload failed. Please try again.');
     }
 }

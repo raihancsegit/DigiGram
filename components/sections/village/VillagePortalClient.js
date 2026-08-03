@@ -16,9 +16,45 @@ import { SERVICE_CATEGORIES } from '@/lib/constants/serviceCategories';
 import { searchLocations } from '@/lib/services/hierarchyService';
 import { layout } from '@/lib/theme';
 import { paths } from '@/lib/constants/paths';
-import { toBnDigits } from '@/lib/utils/format';
+import { toBnDigits, toEnDigits } from '@/lib/utils/format';
 import PortalLoginModal from '@/components/modals/PortalLoginModal';
 import WardHouseholdManager from '@/components/sections/ward/WardHouseholdManager';
+
+function normalizeHouseholdSearchText(value) {
+    const text = String(value ?? '');
+    if (!text.trim()) return '';
+    return toEnDigits(text)
+        .normalize('NFKC')
+        .toLowerCase()
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function householdMatchesSearch(household, query) {
+    const normalizedQuery = normalizeHouseholdSearchText(query);
+    if (!normalizedQuery) return true;
+    const compactQuery = normalizedQuery.replace(/[^\p{L}\p{N}]+/gu, '');
+    const fields = [
+        household.owner_name,
+        household.house_no,
+        `holding ${household.house_no || ''}`,
+        `হোল্ডিং ${household.house_no || ''}`,
+        ...(household.residents || []).flatMap((resident) => [
+            resident.name,
+            resident.bn_name,
+            resident.nid,
+            resident.birth_reg_no,
+            resident.phone,
+            resident.id
+        ])
+    ];
+
+    return fields.some((field) => {
+        const normalizedField = normalizeHouseholdSearchText(field);
+        const compactField = normalizedField.replace(/[^\p{L}\p{N}]+/gu, '');
+        return normalizedField.includes(normalizedQuery) || (compactQuery && compactField.includes(compactQuery));
+    });
+}
 
 export default function VillagePortalClient({ ctx, ward, village }) {
     const { district, upazila, union, volunteers = [] } = ctx || {};
@@ -1095,7 +1131,7 @@ function PublicHouseholdSummary({ villageId, onLogin }) {
     }, { homes: 0, members: 0, voters: 0, blood: 0 });
 
     const filteredHouseholds = useMemo(() => {
-        const query = houseSearch.trim().toLowerCase();
+        const query = normalizeHouseholdSearchText(houseSearch);
         let next = households;
 
         if (activeFilter === 'incomplete') {
@@ -1110,10 +1146,7 @@ function PublicHouseholdSummary({ villageId, onLogin }) {
 
         if (!query) return next;
 
-        return next.filter((household) => (
-            String(household.owner_name || '').toLowerCase().includes(query) ||
-            String(household.house_no || '').toLowerCase().includes(query)
-        ));
+        return next.filter((household) => householdMatchesSearch(household, query));
     }, [activeFilter, houseSearch, households]);
 
     const totalPages = Math.max(1, Math.ceil(filteredHouseholds.length / pageSize));

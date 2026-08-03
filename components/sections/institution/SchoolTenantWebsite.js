@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import {
     BookOpen,
@@ -21,6 +22,8 @@ import {
     getInstitutionDesignProfile,
     getSchoolWebsiteTemplate
 } from '@/lib/constants/institutionDesignProfiles';
+import { getInstitutionProfile } from '@/lib/constants/institutionProfiles';
+import { getInstitutionWebsiteExperience } from '@/lib/constants/institutionWebsiteExperience';
 import {
     SCHOOL_WEBSITE_DEMO_CONTENT,
     SCHOOL_WEBSITE_EXTRA_SECTIONS,
@@ -80,9 +83,10 @@ const DEFAULT_SLIDER_IMAGES = [
 ];
 
 function cssFont(fontFamily) {
-    if (fontFamily === 'noto_sans_bengali') return '"Noto Sans Bengali", sans-serif';
-    if (fontFamily === 'system') return 'system-ui, sans-serif';
-    return '"Hind Siliguri", sans-serif';
+    const banglaFallback = '"Noto Sans Bengali", "Hind Siliguri", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+    if (fontFamily === 'noto_sans_bengali') return banglaFallback;
+    if (fontFamily === 'system') return 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+    return '"Hind Siliguri", "Noto Sans Bengali", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
 }
 
 function safeArray(value, fallback = []) {
@@ -93,7 +97,18 @@ function minimumArray(value, fallback = [], minimumLength = 1) {
     return Array.isArray(value) && value.length >= minimumLength ? value : fallback;
 }
 
+function formatMoney(value) {
+    return new Intl.NumberFormat('bn-BD', {
+        style: 'currency',
+        currency: 'BDT',
+        maximumFractionDigits: 0
+    }).format(Number(value || 0));
+}
+
 const PAGE_SIZE = 6;
+const HERO_IMAGE_SIZES = '100vw';
+const CARD_IMAGE_SIZES = '(max-width: 1024px) 100vw, 420px';
+const CONTENT_IMAGE_SIZES = '(max-width: 1024px) 100vw, 50vw';
 
 function clampPage(page, totalItems, pageSize = PAGE_SIZE) {
     const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
@@ -119,13 +134,15 @@ function Pagination({ page, totalItems, onPageChange, pageSize = PAGE_SIZE }) {
 
 export default function SchoolTenantWebsite({ institution, page, notices }) {
     const design = getInstitutionDesignProfile(institution.category);
+    const profile = getInstitutionProfile(institution.category);
+    const experience = getInstitutionWebsiteExperience(institution.category);
     const theme = {
         primary_color: institution.theme?.primary_color || design.primaryColor,
         accent_color: institution.theme?.accent_color || '#f59e0b',
-        layout_variant: institution.theme?.layout_variant || 'split',
+        layout_variant: institution.theme?.layout_variant || experience.layout,
         font_family: institution.theme?.font_family || design.fontFamily,
         menu_items: institution.theme?.menu_items || DEFAULT_MENU,
-        template: institution.theme?.template || design.defaultTemplate || 'classic'
+        template: institution.theme?.template || experience.template || design.defaultTemplate || 'classic'
     };
     const template = getSchoolWebsiteTemplate(theme.template);
     const isDarkTemplate = template.tone === 'dark';
@@ -150,13 +167,23 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
         ? 'border-white/10 bg-white/[0.04] text-white placeholder:text-white/35 focus:border-cyan-300'
         : 'border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:border-emerald-400';
     const enabledMenuItems = Array.from(new Set([...DEFAULT_MENU, ...theme.menu_items]));
-    const menuItems = SCHOOL_MENU_OPTIONS.filter((item) => enabledMenuItems.includes(item.value));
-    const stats = minimumArray(page?.stats, fallbackStats, 4);
+    const websiteMenu = profile.portal?.websiteMenu || {};
+    const menuItems = SCHOOL_MENU_OPTIONS
+        .filter((item) => enabledMenuItems.includes(item.value))
+        .map((item) => ({
+            ...item,
+            label: websiteMenu[item.value] || item.label
+        }));
+    const stats = minimumArray(page?.stats, experience.stats || fallbackStats, 4);
     const highlights = minimumArray(page?.about_highlights, SCHOOL_WEBSITE_DEMO_CONTENT.highlights, 3);
-    const classSections = minimumArray(page?.class_sections, SCHOOL_WEBSITE_DEMO_CONTENT.classes, 4);
+    const classSections = minimumArray(page?.class_sections, experience.classes || SCHOOL_WEBSITE_DEMO_CONTENT.classes, 3);
     const teachers = minimumArray(page?.public_teachers, SCHOOL_WEBSITE_DEMO_CONTENT.teachers, 3);
-    const facilities = minimumArray(page?.facilities, SCHOOL_WEBSITE_DEMO_CONTENT.facilities, 4);
-    const admissionFeatures = minimumArray(page?.admission_features, SCHOOL_WEBSITE_DEMO_CONTENT.admissionFeatures, 3);
+    const facilities = minimumArray(page?.facilities, experience.facilities || SCHOOL_WEBSITE_DEMO_CONTENT.facilities, 4);
+    const admissionFeatures = minimumArray(
+        page?.admission_features,
+        (experience.admission || []).map((title) => ({ title, description: 'ভর্তির সময় এই তথ্য/কাগজ প্রস্তুত রাখুন।' })),
+        3
+    );
     const noticeRows = safeArray(notices, SCHOOL_WEBSITE_DEMO_CONTENT.ticker.map((title, index) => ({
         id: `demo-notice-${index}`,
         title,
@@ -178,8 +205,8 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
     const extraSections = footerLinks.extra_sections || DEFAULT_EXTRA_SECTIONS;
     const fallbackSlider = [
         {
-            title: page?.hero_title || siteName,
-            subtitle: page?.hero_subtitle || design.heroLine,
+            title: page?.hero_title || experience.heroTitle || siteName,
+            subtitle: page?.hero_subtitle || experience.heroSubtitle || design.heroLine,
             badge: institution.village || design.eyebrow,
             image_url: page?.banner_image_url || '',
             button_label: 'ভর্তি তথ্য'
@@ -236,7 +263,18 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
     const [admissionMessage, setAdmissionMessage] = useState('');
     const [admissionError, setAdmissionError] = useState('');
     const activeMenuItem = menuItems.find((item) => item.value === activePage) || menuItems[0];
-    const activeMeta = PAGE_META[activePage] || { title: activeMenuItem?.label || 'Page', subtitle: siteName };
+    const activeMetaBase = PAGE_META[activePage] || { title: activeMenuItem?.label || 'Page', subtitle: siteName };
+    const activeMeta = {
+        ...activeMetaBase,
+        title: activeMenuItem?.label || activeMetaBase.title,
+        subtitle: activePage === 'classes'
+            ? `${profile.portal.classLabel}, পাঠদান ও শিক্ষা কার্যক্রম`
+            : activePage === 'teachers'
+                ? `${profile.staffLabel || 'শিক্ষক'} পরিচিতি ও দায়িত্ব`
+                : activePage === 'guardian'
+                    ? `${profile.portal.studentLabel} অগ্রগতি, উপস্থিতি ও ফলাফল`
+                    : activeMetaBase.subtitle
+    };
 
     useEffect(() => {
         const url = new URL(window.location.href);
@@ -470,7 +508,7 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
                 <div className="mx-auto flex max-w-7xl items-center justify-between gap-6 px-4 py-4">
                     <div className="flex items-center gap-3">
                         {page?.logo_url ? (
-                            <img src={page.logo_url} alt="" className="h-11 w-11 rounded-full object-cover" />
+                            <Image src={page.logo_url} alt="" width={44} height={44} sizes="44px" className="h-11 w-11 rounded-full object-cover" />
                         ) : (
                             <div className={`flex h-11 w-11 items-center justify-center rounded-full font-black ${logoClass}`}>
                                 {siteName?.slice(0, 1)}
@@ -543,9 +581,25 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
                 style={{ order: sectionOrder('hero') }}
             >
                 {currentSlide.image_url ? (
-                    <img src={currentSlide.image_url} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                    <Image
+                        src={currentSlide.image_url}
+                        alt=""
+                        fill
+                        preload
+                        sizes={HERO_IMAGE_SIZES}
+                        quality={60}
+                        className="object-cover"
+                    />
                 ) : page?.banner_image_url ? (
-                    <img src={page.banner_image_url} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                    <Image
+                        src={page.banner_image_url}
+                        alt=""
+                        fill
+                        preload
+                        sizes={HERO_IMAGE_SIZES}
+                        quality={60}
+                        className="object-cover"
+                    />
                 ) : null}
                 <div
                     className="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/55 to-slate-950/20"
@@ -575,7 +629,7 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
                             <span className={heroAccentClass}>{currentSlide.title || page?.hero_title || siteName}</span>
                         </h2>
                         <p className="mt-5 max-w-2xl text-lg font-medium leading-8 text-white/80 md:text-xl">
-                            {currentSlide.subtitle || page?.hero_subtitle || design.heroLine}
+                            {currentSlide.subtitle || page?.hero_subtitle || experience.heroSubtitle || design.heroLine}
                         </p>
                         <div className="mt-6 flex flex-wrap gap-3">
                             <button type="button" onClick={() => navigatePage('admission')} style={brandGradient} className={`rounded-md px-5 py-3 font-black ${primaryButtonClass}`}>{currentSlide.button_label || 'ভর্তি তথ্য'}</button>
@@ -605,9 +659,9 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
                     </div>
                     <div className={`p-4 ${template.cardClass} ${heroFrameClass}`}>
                         <div className={`grid gap-4 border p-5 ${template.cardClass} ${websitePatternClass}`}>
-                            <div className="overflow-hidden rounded-2xl border border-white/10 bg-slate-950/15">
+                            <div className="relative h-52 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/15">
                                 {currentSlide.image_url || page?.banner_image_url ? (
-                                    <img src={currentSlide.image_url || page.banner_image_url} alt="" className="h-52 w-full object-cover" />
+                                    <Image src={currentSlide.image_url || page.banner_image_url} alt="" fill sizes={CARD_IMAGE_SIZES} quality={60} className="object-cover" />
                                 ) : (
                                     <div className="flex h-52 items-center justify-center bg-[var(--school-primary)]/20 text-5xl">🏫</div>
                                 )}
@@ -647,7 +701,7 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
                                     Institution desk
                                 </p>
                                 <p className={`mt-3 text-lg font-black leading-8 ${isDarkTemplate ? 'text-white' : 'text-slate-950'}`}>
-                                    {page?.principal_message || page?.approval_text || design.heroLine}
+                                    {page?.principal_message || page?.approval_text || experience.heroSubtitle || design.heroLine}
                                 </p>
                                 <div className={`mt-4 flex flex-wrap gap-2 text-xs font-black ${isDarkTemplate ? 'text-white/70' : 'text-slate-600'}`}>
                                     <span className={`rounded-full px-3 py-1 ${isDarkTemplate ? 'bg-white/[0.07]' : 'bg-white'}`}>{page?.contact_phone || 'Admission desk'}</span>
@@ -697,7 +751,7 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
                         <div className={`relative overflow-hidden rounded-[2rem] border p-3 shadow-2xl ${isDarkTemplate ? 'border-white/10 bg-white/[0.04]' : 'border-white bg-white'}`}>
                             <div className="relative min-h-[410px] overflow-hidden rounded-[1.55rem]">
                                 {featuredGallery.image_url || page?.banner_image_url || currentSlide.image_url ? (
-                                    <img src={featuredGallery.image_url || page?.banner_image_url || currentSlide.image_url} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                                    <Image src={featuredGallery.image_url || page?.banner_image_url || currentSlide.image_url} alt="" fill sizes={CONTENT_IMAGE_SIZES} quality={60} className="object-cover" />
                                 ) : (
                                     <div className={`absolute inset-0 ${websitePatternClass}`} />
                                 )}
@@ -818,7 +872,7 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
                         <p className={sectionLeadClass}>প্রতিষ্ঠান প্রোফাইল</p>
                         <h2 className="mt-3 text-4xl font-black leading-tight">ক্যাম্পাস জীবন, আস্থা ও প্রয়োজনীয় তথ্য</h2>
                         <p className={`mt-4 text-lg font-medium leading-8 ${isDarkTemplate ? bodyTextClass : 'text-slate-600'}`}>
-                            {page?.approval_text || page?.hero_subtitle || design.heroLine}
+                            {page?.approval_text || page?.hero_subtitle || experience.heroSubtitle || design.heroLine}
                         </p>
                     </div>
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -857,7 +911,7 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
                             <div className="grid min-h-[420px] gap-4 md:grid-cols-2">
                                 <article className={`relative overflow-hidden md:row-span-2 ${template.cardClass} ${panelClass}`}>
                                     {featuredGallery.image_url ? (
-                                        <img src={featuredGallery.image_url} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                                        <Image src={featuredGallery.image_url} alt="" fill sizes={CONTENT_IMAGE_SIZES} quality={60} className="object-cover" />
                                     ) : (
                                         <div className={`absolute inset-0 ${websitePatternClass}`} />
                                     )}
@@ -870,7 +924,9 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
                                 {sideGallery.map((item, index) => (
                                     <article key={`gallery-mini-${item.title}-${index}`} className={`overflow-hidden ${template.cardClass} ${panelClass}`}>
                                         {item.image_url ? (
-                                            <img src={item.image_url} alt="" className="h-32 w-full object-cover" />
+                                            <div className="relative h-32 w-full">
+                                                <Image src={item.image_url} alt="" fill sizes="(max-width: 768px) 100vw, 25vw" quality={60} className="object-cover" />
+                                            </div>
                                         ) : (
                                             <div className="flex h-32 items-center justify-center bg-[var(--school-primary)]/10 text-3xl">ক্যাম্পাস</div>
                                         )}
@@ -1060,7 +1116,7 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
                         <p className={sectionLeadClass}>Institution profile</p>
                         <h2 className="mt-2 text-3xl font-black">Academic trust, campus life and guardian support</h2>
                         <p className={`mt-3 font-medium leading-8 ${isDarkTemplate ? bodyTextClass : 'text-slate-600'}`}>
-                            {page?.approval_text || page?.hero_subtitle || design.heroLine}
+                            {page?.approval_text || page?.hero_subtitle || experience.heroSubtitle || design.heroLine}
                         </p>
                     </div>
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -1095,7 +1151,9 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
                                 {safeArray(extraSections.gallery, DEFAULT_EXTRA_SECTIONS.gallery).map((item, index) => (
                                     <article key={`${item.title}-${index}`} className={`overflow-hidden ${template.cardClass} ${panelClass}`}>
                                         {item.image_url ? (
-                                            <img src={item.image_url} alt="" className="h-40 w-full object-cover" />
+                                            <div className="relative h-40 w-full">
+                                                <Image src={item.image_url} alt="" fill sizes="(max-width: 768px) 100vw, 50vw" quality={60} className="object-cover" />
+                                            </div>
                                         ) : (
                                             <div className="flex h-40 items-center justify-center bg-[var(--school-primary)]/10 text-4xl">🏫</div>
                                         )}
@@ -1314,7 +1372,9 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
                             {pagedGallery.map((item, index) => (
                                 <article key={`about-gallery-${item.title}-${index}`} className={`overflow-hidden ${template.cardClass} ${panelClass}`}>
                                     {item.image_url ? (
-                                        <img src={item.image_url} alt="" className="h-60 w-full object-cover" />
+                                        <div className="relative h-60 w-full">
+                                            <Image src={item.image_url} alt="" fill sizes="(max-width: 768px) 100vw, 33vw" quality={60} className="object-cover" />
+                                        </div>
                                     ) : (
                                         <div className={`flex h-60 items-end p-5 ${websitePatternClass}`}>
                                             <div>
@@ -1418,7 +1478,7 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
                             {pagedTeachers.map((teacher, index) => (
                                 <article key={`${teacher.name}-${index}`} className={`rounded-2xl p-5 text-center ${panelClass}`}>
                                     {teacher.image_url ? (
-                                        <img src={teacher.image_url} alt="" className="mx-auto mb-4 h-20 w-20 rounded-full object-cover" />
+                                        <Image src={teacher.image_url} alt="" width={80} height={80} sizes="80px" className="mx-auto mb-4 h-20 w-20 rounded-full object-cover" />
                                     ) : (
                                         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[var(--school-primary)] text-lg font-black text-white">
                                             {teacher.name?.slice(0, 1)}
@@ -1604,6 +1664,33 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
                                                                     <p className={`mt-1 text-xs font-bold ${isDarkTemplate ? mutedTextClass : 'text-slate-500'}`}>{result.obtained}/{result.total}</p>
                                                                 </div>
                                                             )) : <p className={`text-sm font-bold ${isDarkTemplate ? mutedTextClass : 'text-slate-500'}`}>প্রকাশিত ফলাফল নেই।</p>}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="grid gap-4 lg:grid-cols-2">
+                                                    <div className={`rounded-2xl p-4 ${isDarkTemplate ? 'bg-white/[0.06]' : 'bg-white'}`}>
+                                                        <div className="flex items-center justify-between gap-3">
+                                                            <h5 className={`font-black ${isDarkTemplate ? 'text-white' : 'text-slate-900'}`}>ফি ও বকেয়া</h5>
+                                                            <span className="rounded-full bg-rose-50 px-3 py-1 text-xs font-black text-rose-700">{formatMoney(guardianStudent.fees?.total_due)}</span>
+                                                        </div>
+                                                        <div className="mt-3 space-y-2">
+                                                            {guardianStudent.fees?.invoices?.length ? guardianStudent.fees.invoices.slice(0, 6).map((invoice) => (
+                                                                <div key={invoice.invoice_no} className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 p-3">
+                                                                    <div><p className="font-black text-slate-900">{invoice.invoice_no}</p><p className="text-xs font-bold text-slate-500">{invoice.billing_month || invoice.due_date || '-'}</p></div>
+                                                                    <div className="text-right"><p className="font-black text-slate-900">{formatMoney(invoice.payable_amount)}</p><p className={`text-xs font-black ${invoice.status === 'paid' ? 'text-emerald-700' : 'text-rose-700'}`}>{invoice.status}</p></div>
+                                                                </div>
+                                                            )) : <p className={`text-sm font-bold ${isDarkTemplate ? mutedTextClass : 'text-slate-500'}`}>কোনো fee invoice নেই।</p>}
+                                                        </div>
+                                                    </div>
+                                                    <div className={`rounded-2xl p-4 ${isDarkTemplate ? 'bg-white/[0.06]' : 'bg-white'}`}>
+                                                        <h5 className={`font-black ${isDarkTemplate ? 'text-white' : 'text-slate-900'}`}>সাপ্তাহিক রুটিন</h5>
+                                                        <div className="mt-3 max-h-64 space-y-2 overflow-y-auto">
+                                                            {guardianStudent.routine?.length ? guardianStudent.routine.map((period) => (
+                                                                <div key={`${period.weekday}-${period.period_no}`} className="rounded-xl bg-slate-50 p-3">
+                                                                    <p className="font-black text-slate-900">দিন {Number(period.weekday) + 1} · পিরিয়ড {period.period_no} · {period.subject_name || period.activity_type}</p>
+                                                                    <p className="text-xs font-bold text-slate-500">{period.starts_at?.slice(0, 5)}–{period.ends_at?.slice(0, 5)} {period.room_label ? `· ${period.room_label}` : ''}</p>
+                                                                </div>
+                                                            )) : <p className={`text-sm font-bold ${isDarkTemplate ? mutedTextClass : 'text-slate-500'}`}>রুটিন প্রকাশ হয়নি।</p>}
                                                         </div>
                                                     </div>
                                                 </div>

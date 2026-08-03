@@ -48,6 +48,7 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
     const [step, setStep] = useState(1); // 1: House, 2: Residents, 3: Locker
     const [householdId, setHouseholdId] = useState(initialData?.id || null);
     const [scanningState, setScanningState] = useState({ idx: null, type: null }); // { idx, type }
+    const [showAdvancedFieldTools, setShowAdvancedFieldTools] = useState(false);
 
     const [houseForm, setHouseForm] = useState(() => {
         if (!initialData) return {
@@ -417,6 +418,11 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
     }
 
     async function handleSaveHouse() {
+        if (!houseForm.owner_name?.trim()) {
+            toast.error('খানা প্রধানের নাম দিন। এই নাম ছাড়া বাড়ি সেভ হবে না।');
+            return;
+        }
+
         setSaving(true);
         try {
             if (isEditMode && user?.role === 'super_admin') {
@@ -1012,6 +1018,27 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
                 {step === 1 && (
                     <motion.div initial={{opacity:0, x:20}} animate={{opacity:1, x:0}} className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(280px,0.65fr)]">
                         <div className="min-w-0 space-y-4 sm:space-y-5">
+                        <section className="rounded-2xl border border-teal-100 bg-gradient-to-br from-teal-50 via-white to-white p-4">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div className="min-w-0">
+                                    <p className="text-sm font-black text-slate-900">Simple house entry</p>
+                                    <p className="mt-1 text-xs font-bold leading-5 text-slate-500">
+                                        আগে শুধু খানা প্রধান, হোল্ডিং ও মোবাইল দিন। সদস্যদের তথ্য পরের ধাপে যোগ করবেন।
+                                    </p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowAdvancedFieldTools((value) => !value)}
+                                    className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-teal-200 bg-white px-4 py-3 text-xs font-black text-teal-700 transition hover:bg-teal-600 hover:text-white sm:w-auto"
+                                >
+                                    {showAdvancedFieldTools ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+                                    Voice/khata tools
+                                </button>
+                            </div>
+                        </section>
+
+                        {showAdvancedFieldTools && (
+                        <>
                         <section className="rounded-2xl border border-teal-100 bg-gradient-to-br from-teal-50 to-white p-4">
                             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                 <div>
@@ -1105,6 +1132,8 @@ export default function HouseholdEntryForm({ wardId, villageId, locationVillageI
                                 </div>
                             )}
                         </section>
+                        </>
+                        )}
 
                         <div className="rounded-2xl border border-teal-100 bg-teal-50/50 p-3 sm:p-4">
                             <label className={labelStyles}>Auto House ID</label>

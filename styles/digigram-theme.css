@@ -4,7 +4,7 @@
  */
 
 :root {
-  --dg-font: "Hind Siliguri", sans-serif;
+  --dg-font: "Hind Siliguri", "Noto Sans Bengali", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 
   --dg-ink: #0f172a;
   --dg-ink-muted: #475569;

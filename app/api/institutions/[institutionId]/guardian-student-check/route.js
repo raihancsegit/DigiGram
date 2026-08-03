@@ -124,6 +124,32 @@ export async function POST(request, { params }) {
             examSummaries.push(buildExamSummary(exam, entries || [], subjectsResult.data || []));
         }
 
+        let feeInvoices = [];
+        const feeResult = await supabaseAdmin
+            .from('school_fee_invoices')
+            .select('invoice_no,billing_month,due_date,payable_amount,paid_amount,status')
+            .eq('institution_id', institutionId)
+            .eq('student_id', student.id)
+            .order('created_at', { ascending: false })
+            .limit(24);
+        if (!feeResult.error) feeInvoices = feeResult.data || [];
+
+        let routine = [];
+        const routineResult = await supabaseAdmin
+            .from('school_routine_periods')
+            .select('weekday,period_no,starts_at,ends_at,room_label,activity_type,subject_id')
+            .eq('institution_id', institutionId)
+            .eq('class_id', classId)
+            .eq('is_active', true)
+            .order('weekday')
+            .order('period_no');
+        if (!routineResult.error) {
+            routine = (routineResult.data || []).map((item) => ({
+                ...item,
+                subject_name: (subjectsResult.data || []).find((subject) => subject.id === item.subject_id)?.name || null
+            }));
+        }
+
         return NextResponse.json({
             data: {
                 student: {
@@ -136,7 +162,14 @@ export async function POST(request, { params }) {
                 attendance: attendanceResult.data || [],
                 attendanceSummary,
                 lessons,
-                results: examSummaries
+                results: examSummaries,
+                routine,
+                fees: {
+                    invoices: feeInvoices,
+                    total_due: feeInvoices.reduce((sum, invoice) => (
+                        sum + Math.max(Number(invoice.payable_amount || 0) - Number(invoice.paid_amount || 0), 0)
+                    ), 0)
+                }
             }
         });
     } catch (error) {

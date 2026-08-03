@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/utils/supabase-admin';
 import { verifyCitizenAccessToken, verifyCitizenOtp } from '@/lib/utils/citizen-otp';
+import { internalServerError } from '@/lib/utils/api-response';
 
 const VALID_TYPES = new Set(['data_processing', 'document_access', 'sms_service', 'sms_marketing']);
 
@@ -52,6 +53,6 @@ export async function POST(request) {
             return NextResponse.json({ error: 'Consent system setup is pending.' }, { status: 409 });
         }
         console.error('Citizen consent update failed:', error);
-        return NextResponse.json({ error: error.message || 'Consent update failed' }, { status: 500 });
+        return internalServerError('Consent update failed. Please try again.');
     }
 }

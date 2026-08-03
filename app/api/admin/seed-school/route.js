@@ -373,6 +373,39 @@ function formatSeedError(error) {
     };
 }
 
+async function verifySeedResult(admin, institutionId) {
+    const checks = [
+        ['classes', 'school_classes', 4],
+        ['teachers', 'institution_memberships', 4, (query) => query.eq('member_role', 'teacher').eq('is_active', true)],
+        ['students', 'school_students', 8],
+        ['lessons', 'school_lessons', 4],
+        ['notices', 'institution_notices', 5],
+        ['websitePages', 'institution_pages', 1]
+    ];
+    const counts = {};
+    const failures = [];
+
+    for (const [key, table, minimum, refine] of checks) {
+        let query = admin
+            .from(table)
+            .select('id', { count: 'exact', head: true })
+            .eq('institution_id', institutionId);
+        if (refine) query = refine(query);
+        const { count, error } = await query;
+        if (error) throw error;
+        counts[key] = count || 0;
+        if (counts[key] < minimum) failures.push(`${key}: expected at least ${minimum}, found ${counts[key]}`);
+    }
+
+    if (failures.length) {
+        const error = new Error(`School demo seed verification failed | ${failures.join(' | ')}`);
+        error.code = 'SEED_VERIFICATION_FAILED';
+        throw error;
+    }
+
+    return { passed: true, checkedAt: new Date().toISOString(), counts };
+}
+
 export async function POST(request) {
     try {
         const auth = await requireRequestProfile(request, ['super_admin', 'institution_admin', 'school_admin']);
@@ -917,7 +950,7 @@ export async function POST(request) {
         if (noticeError) throw noticeError;
 
         const demoWebsitePage = buildSchoolWebsiteDemoPage(institution, seedTag);
-        await admin.from('institution_pages').upsert({
+        const { error: websitePageError } = await admin.from('institution_pages').upsert({
             institution_id: institutionId,
             ...demoWebsitePage,
             draft_content: demoWebsitePage,
@@ -925,8 +958,12 @@ export async function POST(request) {
             published_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
         }, { onConflict: 'institution_id' });
+        if (websitePageError) throw websitePageError;
+
+        const verification = await verifySeedResult(admin, institutionId);
 
         const seedResponse = {
+            verification,
             summary: {
                 classes: (allSeedClasses || []).length,
                 teachers: usableTeacherSeeds.length,

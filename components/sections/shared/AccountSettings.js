@@ -12,6 +12,7 @@ import { motion } from 'framer-motion';
 import { adminService } from '@/lib/services/adminService';
 import { authService } from '@/lib/services/authService';
 import { updateUser } from '@/lib/store/features/authSlice';
+import { getPortalRouteForRole } from '@/lib/utils/portalRoutes';
 
 export default function AccountSettings({ title = "অ্যাকাউন্ট সেটিংস", subtitle = "আপনার ব্যক্তিগত তথ্য এবং সিকিউরিটি ম্যানেজ করুন" }) {
     const dispatch = useDispatch();
@@ -141,10 +142,7 @@ export default function AccountSettings({ title = "অ্যাকাউন্�
     };
 
     const getBackPath = () => {
-        if (user?.role === 'chairman') return '/chairman/dashboard';
-        if (user?.role === 'ward_member') return '/ward-member/dashboard';
-        if (user?.role === 'super_admin') return '/admin';
-        return '/';
+        return getPortalRouteForRole(user?.role);
     };
 
     return (

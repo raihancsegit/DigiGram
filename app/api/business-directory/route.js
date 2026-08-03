@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/utils/supabase-admin';
+import { internalServerError } from '@/lib/utils/api-response';
 
 const VALID_CATEGORIES = new Set([
     'doctor', 'pharmacy', 'grocery', 'restaurant', 'transport', 'mechanic',
@@ -8,6 +9,32 @@ const VALID_CATEGORIES = new Set([
 ]);
 const VALID_PLANS = new Set(['free', 'featured', 'premium']);
 const VALID_STATUSES = new Set(['pending', 'approved', 'rejected', 'suspended']);
+const PUBLIC_BUSINESS_FIELDS = `
+    id,union_id,ward_id,village_id,name,category,description,phone,whatsapp,address,
+    service_area,opening_hours,price_note,logo_url,cover_url,website_url,facebook_url,
+    latitude,longitude,is_verified,is_featured,featured_until,
+    union:locations!local_businesses_union_id_fkey(id,name_bn,name_en,slug),
+    ward:locations!local_businesses_ward_id_fkey(id,name_bn,name_en),
+    village:locations!local_businesses_village_id_fkey(id,name_bn,name_en)
+`;
+const MANAGED_BUSINESS_FIELDS = `
+    id,union_id,ward_id,village_id,name,category,description,owner_name,phone,whatsapp,
+    address,service_area,opening_hours,price_note,logo_url,cover_url,website_url,
+    facebook_url,latitude,longitude,plan,status,is_verified,is_featured,featured_until,
+    rejection_reason,view_count,contact_click_count,created_at,
+    union:locations!local_businesses_union_id_fkey(id,name_bn,name_en,slug),
+    ward:locations!local_businesses_ward_id_fkey(id,name_bn,name_en),
+    village:locations!local_businesses_village_id_fkey(id,name_bn,name_en)
+`;
+const PUBLIC_AD_FIELDS = `
+    id,business_id,title,subtitle,image_url,target_url,placement,
+    business:local_businesses(id,name,phone,category,logo_url)
+`;
+const MANAGED_AD_FIELDS = `
+    id,business_id,title,subtitle,image_url,target_url,placement,status,starts_at,ends_at,
+    impression_count,click_count,
+    business:local_businesses(id,name,phone,category,logo_url)
+`;
 
 function normalizePhone(value) {
     const digits = String(value || '').replace(/[^0-9]/g, '');
@@ -75,6 +102,18 @@ function canManage(officer, business) {
     return false;
 }
 
+function isDirectoryMigrationError(error) {
+    const code = error?.code;
+    const message = String(error?.message || '');
+    return ['42P01', '42703', 'PGRST200', 'PGRST204'].includes(code)
+        || /local_businesses|business_ads|local_businesses_.*_fkey/i.test(message);
+}
+
+function isBackendUnavailableError(error) {
+    const message = String(error?.message || '');
+    return /fetch failed|eacces|network/i.test(message);
+}
+
 export async function GET(request) {
     try {
         const { searchParams } = request.nextUrl;
@@ -87,12 +126,7 @@ export async function GET(request) {
 
         let query = supabaseAdmin
             .from('local_businesses')
-            .select(`
-                *,
-                union:locations!local_businesses_union_id_fkey(id,name_bn,name_en,slug),
-                ward:locations!local_businesses_ward_id_fkey(id,name_bn,name_en),
-                village:locations!local_businesses_village_id_fkey(id,name_bn,name_en)
-            `)
+            .select(manage && officer ? MANAGED_BUSINESS_FIELDS : PUBLIC_BUSINESS_FIELDS)
             .order('is_featured', { ascending: false })
             .order('is_verified', { ascending: false })
             .order('created_at', { ascending: false })
@@ -116,28 +150,49 @@ export async function GET(request) {
         const { data: businesses, error } = await query;
         if (error) throw error;
 
-        let adsQuery = supabaseAdmin
-            .from('business_ads')
-            .select('*,business:local_businesses(id,name,phone,category,logo_url)')
-            .eq('status', 'active')
-            .lte('starts_at', new Date().toISOString())
-            .or(`ends_at.is.null,ends_at.gte.${new Date().toISOString()}`)
-            .order('created_at', { ascending: false })
-            .limit(12);
-        if (unionId) adsQuery = adsQuery.eq('union_id', unionId);
+        let ads = [];
+        const canReadAds = !manage || !officer || ['super_admin', 'chairman'].includes(officer.role);
+        if (canReadAds) {
+            let adsQuery = supabaseAdmin
+                .from('business_ads')
+                .select(manage && officer ? MANAGED_AD_FIELDS : PUBLIC_AD_FIELDS)
+                .eq('status', 'active')
+                .lte('starts_at', new Date().toISOString())
+                .or(`ends_at.is.null,ends_at.gte.${new Date().toISOString()}`)
+                .order('created_at', { ascending: false })
+                .limit(12);
+            if (manage && officer?.role === 'chairman') adsQuery = adsQuery.eq('union_id', officer.access_scope_id);
+            if (unionId) adsQuery = adsQuery.eq('union_id', unionId);
 
-        const { data: ads, error: adsError } = await adsQuery;
-        if (adsError && adsError.code !== '42P01') throw adsError;
+            const { data: activeAds, error: adsError } = await adsQuery;
+            if (adsError && adsError.code !== '42P01') throw adsError;
+            ads = activeAds || [];
+        }
 
         return NextResponse.json({
             success: true,
             data: businesses || [],
-            ads: ads || [],
+            ads,
             canManage: Boolean(officer && ['super_admin', 'chairman', 'ward_member'].includes(officer.role))
         });
     } catch (error) {
         console.error('Business directory load failed:', error);
-        return NextResponse.json({ error: error.message || 'Business directory load failed' }, { status: 500 });
+        if (isDirectoryMigrationError(error)) {
+            return NextResponse.json({
+                success: false,
+                code: 'BUSINESS_DIRECTORY_MIGRATION_REQUIRED',
+                migration: 'database/61_local_business_directory_and_ads.sql',
+                error: 'Business directory migration is required'
+            }, { status: 503 });
+        }
+        if (isBackendUnavailableError(error)) {
+            return NextResponse.json({
+                success: false,
+                code: 'BUSINESS_DIRECTORY_BACKEND_UNAVAILABLE',
+                error: 'Business directory backend is unavailable'
+            }, { status: 503 });
+        }
+        return internalServerError('Business directory could not be loaded. Please try again.');
     }
 }
 
@@ -209,7 +264,7 @@ export async function POST(request) {
         return NextResponse.json({ success: true, data });
     } catch (error) {
         console.error('Business application failed:', error);
-        return NextResponse.json({ error: error.message || 'Business application failed' }, { status: 500 });
+        return internalServerError('Business application failed. Please try again.');
     }
 }
 
@@ -221,7 +276,7 @@ export async function PATCH(request) {
         const body = await request.json();
         const { data: business, error: loadError } = await supabaseAdmin
             .from('local_businesses')
-            .select('*')
+            .select('id,union_id,ward_id,name,description,phone,logo_url,cover_url,website_url,plan,status,is_featured')
             .eq('id', body.id)
             .maybeSingle();
         if (loadError) throw loadError;
@@ -294,13 +349,13 @@ export async function PATCH(request) {
             .from('local_businesses')
             .update(payload)
             .eq('id', body.id)
-            .select()
+            .select(MANAGED_BUSINESS_FIELDS)
             .single();
         if (error) throw error;
 
         return NextResponse.json({ success: true, data });
     } catch (error) {
         console.error('Business moderation failed:', error);
-        return NextResponse.json({ error: error.message || 'Business moderation failed' }, { status: 500 });
+        return internalServerError('Business moderation failed. Please try again.');
     }
 }

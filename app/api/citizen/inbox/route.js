@@ -6,6 +6,7 @@ import {
     verifyCitizenAccessToken,
     verifyCitizenOtp
 } from '@/lib/utils/citizen-otp';
+import { internalServerError } from '@/lib/utils/api-response';
 
 function normalizePhone(phone) {
     const digits = String(phone || '').replace(/[^0-9]/g, '');
@@ -17,11 +18,14 @@ export async function POST(request) {
     try {
         const { phone, otpCode, accessToken } = await request.json();
         const normalizedPhone = normalizePhone(phone);
-        if (!/^01[0-9]{9}$/.test(normalizedPhone) || !otpCode) {
-            return NextResponse.json({ error: 'Phone and OTP are required' }, { status: 400 });
+        if (!/^01[0-9]{9}$/.test(normalizedPhone) || (!otpCode && !accessToken)) {
+            return NextResponse.json({ error: 'Phone and OTP or saved session are required' }, { status: 400 });
         }
 
         const hasSession = verifyCitizenAccessToken(normalizedPhone, accessToken);
+        if (!hasSession && !otpCode) {
+            return NextResponse.json({ error: 'Saved session expired. Please verify with OTP again.' }, { status: 401 });
+        }
         const verified = hasSession || await verifyCitizenOtp(
             normalizedPhone,
             String(otpCode).trim(),
@@ -40,25 +44,25 @@ export async function POST(request) {
         ] = await Promise.all([
             supabaseAdmin
                 .from('service_requests')
-                .select('id,request_type,status,applicant_name,contact_phone,collection_date,feedback,certificate_no,created_at,sla_due_at,sla_breached_at,escalation_level')
+                .select('id,request_type,status,applicant_name,collection_date,feedback,certificate_no,created_at,updated_at,sla_due_at,sla_breached_at,escalation_level')
                 .eq('contact_phone', normalizedPhone)
                 .order('created_at', { ascending: false })
                 .limit(30),
             supabaseAdmin
                 .from('citizen_complaints')
-                .select('*')
+                .select('id,complaint_type,title,description,location_text,feedback,priority,status,created_at,updated_at')
                 .eq('phone', normalizedPhone)
                 .order('created_at', { ascending: false })
                 .limit(30),
             supabaseAdmin
                 .from('citizen_blood_requests')
-                .select('*')
+                .select('id,blood_group,patient_name,hospital_or_location,note,status,created_at,updated_at')
                 .eq('phone', normalizedPhone)
                 .order('created_at', { ascending: false })
                 .limit(20),
             supabaseAdmin
                 .from('citizen_reminders')
-                .select('*')
+                .select('id,reminder_type,title,body,message,status,created_at')
                 .eq('phone', normalizedPhone)
                 .order('created_at', { ascending: false })
                 .limit(20),
@@ -249,6 +253,6 @@ export async function POST(request) {
         });
     } catch (error) {
         console.error('Citizen inbox failed:', error);
-        return NextResponse.json({ error: error.message || 'Citizen inbox failed' }, { status: 500 });
+        return internalServerError('Citizen inbox could not be loaded. Please try again.');
     }
 }

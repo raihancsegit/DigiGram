@@ -1,5 +1,12 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/utils/supabase-admin';
+import { internalServerError } from '@/lib/utils/api-response';
+import {
+    readJsonObject,
+    validateMetadata,
+    validateOptionalNumber,
+    validateTextFields
+} from '@/lib/utils/request-validation';
 
 const VALID_TYPES = new Set(['document', 'benefit', 'health', 'problem', 'job', 'farmer', 'trust_feedback']);
 const VALID_PRIORITY = new Set(['low', 'normal', 'urgent', 'emergency']);
@@ -91,33 +98,66 @@ async function queueLifeSupportSms({ row, unionId, message, category }) {
 
 export async function POST(request) {
     try {
-        const body = await request.json();
+        const parsed = await readJsonObject(request);
+        if (parsed.error) {
+            return NextResponse.json({ error: parsed.error }, { status: parsed.status });
+        }
+        const body = parsed.data;
         const phone = normalizePhone(body.phone);
-        const caseType = VALID_TYPES.has(body.caseType) ? body.caseType : '';
-        if (!/^01[0-9]{9}$/.test(phone) || !caseType || !body.title) {
-            return NextResponse.json({ error: 'Phone, service type and title are required' }, { status: 400 });
+        const validation = validateTextFields(body, {
+            citizenName: { label: 'Citizen name', maxLength: 120 },
+            caseType: { label: 'Service type', required: true, allowed: VALID_TYPES },
+            category: { label: 'Category', maxLength: 120 },
+            title: { label: 'Title', required: true, maxLength: 160 },
+            description: { label: 'Description', maxLength: 3000 },
+            locationText: { label: 'Location', maxLength: 300 },
+            scopeType: { label: 'Scope type', maxLength: 16, allowed: new Set(['union', 'ward', 'village']) },
+            scopeId: { label: 'Scope ID', maxLength: 80 },
+            priority: { label: 'Priority', allowed: VALID_PRIORITY, defaultValue: 'normal' }
+        });
+        const latitude = validateOptionalNumber(body.latitude, { field: 'Latitude', minimum: -90, maximum: 90 });
+        const longitude = validateOptionalNumber(body.longitude, { field: 'Longitude', minimum: -180, maximum: 180 });
+        const metadata = validateMetadata(body.metaData);
+        if (!/^01[0-9]{9}$/.test(phone)) validation.errors.phone = ['A valid Bangladeshi mobile number is required'];
+        if (latitude.error) validation.errors.latitude = [latitude.error];
+        if (longitude.error) validation.errors.longitude = [longitude.error];
+        if (metadata.error) validation.errors.metaData = [metadata.error];
+        validation.valid = Object.keys(validation.errors).length === 0;
+        if (!validation.valid) {
+            return NextResponse.json({
+                error: 'Please correct the highlighted information',
+                errors: validation.errors
+            }, { status: 400 });
         }
 
-        const scopeType = body.scopeType || null;
-        const scopeId = body.scopeId || null;
-        const priority = VALID_PRIORITY.has(body.priority) ? body.priority : 'normal';
+        const {
+            citizenName,
+            caseType,
+            category,
+            title,
+            description,
+            locationText,
+            scopeType,
+            scopeId,
+            priority
+        } = validation.values;
 
         const { data, error } = await supabaseAdmin
             .from('citizen_life_support_cases')
             .insert([{
                 phone,
-                citizen_name: body.citizenName || null,
+                citizen_name: citizenName,
                 case_type: caseType,
-                category: body.category || null,
-                title: body.title,
-                description: body.description || null,
-                location_text: body.locationText || null,
-                latitude: body.latitude || null,
-                longitude: body.longitude || null,
+                category,
+                title,
+                description,
+                location_text: locationText,
+                latitude: latitude.value,
+                longitude: longitude.value,
                 assigned_scope_type: scopeType,
                 assigned_scope_id: scopeId,
                 priority,
-                meta_data: body.metaData || {}
+                meta_data: metadata.value
             }])
             .select()
             .single();
@@ -147,6 +187,6 @@ export async function POST(request) {
         return NextResponse.json({ success: true, data, sms });
     } catch (error) {
         console.error('Citizen life support submit failed:', error);
-        return NextResponse.json({ error: error.message || 'Life support submit failed' }, { status: 500 });
+        return internalServerError('Life support submission failed. Please try again.');
     }
 }

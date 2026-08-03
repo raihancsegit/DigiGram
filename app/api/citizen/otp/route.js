@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/utils/supabase-admin';
+import { internalServerError } from '@/lib/utils/api-response';
+import { consumeRateLimit, rateLimitHeaders } from '@/lib/utils/rate-limit';
 import crypto from 'node:crypto';
 
 const ALLOWED_PURPOSES = new Set([
@@ -28,6 +30,19 @@ export async function POST(request) {
         }
         if (!ALLOWED_PURPOSES.has(purpose)) {
             return NextResponse.json({ error: 'Unsupported OTP purpose' }, { status: 400 });
+        }
+        const ipLimit = await consumeRateLimit({
+            request,
+            scope: `citizen-otp:${purpose}`,
+            limit: 15,
+            windowSeconds: 10 * 60,
+            client: supabaseAdmin
+        });
+        if (!ipLimit.allowed) {
+            return NextResponse.json(
+                { error: 'Too many OTP requests. Please try again later.' },
+                { status: 429, headers: rateLimitHeaders(ipLimit) }
+            );
         }
 
         const recentCutoff = new Date(Date.now() - 10 * 60 * 1000).toISOString();
@@ -71,7 +86,10 @@ export async function POST(request) {
             debugCode: process.env.NODE_ENV === 'production' ? undefined : otpCode
         });
     } catch (error) {
-        console.error('Citizen OTP failed:', error);
-        return NextResponse.json({ error: error.message || 'OTP request failed' }, { status: 500 });
+        return internalServerError(
+            'OTP request failed. Please try again.',
+            error,
+            { route: '/api/citizen/otp', action: 'request-otp' }
+        );
     }
 }

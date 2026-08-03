@@ -192,7 +192,7 @@ export default function SiteFooter() {
                                         setFeedbackMessage('');
                                     }
                                 }}
-                                className={`bg-slate-900/60 border rounded-2xl px-5 py-3.5 text-sm font-bold placeholder-slate-500 focus:outline-none focus:ring-4 transition-all min-w-[280px] ${
+                                className={`w-full min-w-0 bg-slate-900/60 border rounded-2xl px-5 py-3.5 text-sm font-bold placeholder-slate-500 focus:outline-none focus:ring-4 transition-all sm:min-w-[280px] ${
                                     status === 'success'
                                         ? 'border-emerald-500/80 focus:ring-emerald-500/10 text-emerald-200'
                                         : status === 'warning'

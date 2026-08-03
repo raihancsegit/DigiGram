@@ -197,6 +197,112 @@ AS $$
                 to_regclass('public.demo_data_batches') IS NOT NULL
                     AND to_regclass('public.demo_data_records') IS NOT NULL,
                 'Tracks every generated demo row for one-click, real-data-safe cleanup.'
+            ),
+            (
+                '74',
+                'Household-based school enrollment',
+                'database/74_household_based_school_enrollment.sql',
+                EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = 'school_students'
+                      AND column_name = 'household_id'
+                ),
+                'Links school enrollment records to verified households and residents.'
+            ),
+            (
+                '75',
+                'School homework and attendance upgrade',
+                'database/75_school_homework_attendance_upgrade.sql',
+                to_regclass('public.school_homework_submissions') IS NOT NULL,
+                'Homework submission review and richer attendance states.'
+            ),
+            (
+                '76',
+                'Household certificate service upgrade',
+                'database/76_household_certificate_service_upgrade.sql',
+                to_regclass('public.service_fee_settings') IS NOT NULL
+                    AND to_regprocedure('public.get_household_locker_service_requests(text,text)') IS NOT NULL,
+                'Certificate fees and household locker service-request access.'
+            ),
+            (
+                '78',
+                'Distributed API rate limits',
+                'database/78_distributed_api_rate_limits.sql',
+                to_regclass('public.api_rate_limits') IS NOT NULL
+                    AND to_regprocedure('public.consume_api_rate_limit(text,integer,integer)') IS NOT NULL,
+                'Atomic shared rate limiting for multi-instance production deployments.'
+            ),
+            (
+                '79',
+                'School operations foundation',
+                'database/79_school_operations_foundation.sql',
+                to_regclass('public.school_academic_sessions') IS NOT NULL
+                    AND to_regclass('public.school_routine_periods') IS NOT NULL
+                    AND to_regclass('public.school_fee_invoices') IS NOT NULL
+                    AND to_regclass('public.school_fee_payments') IS NOT NULL
+                    AND to_regclass('public.school_staff_attendance') IS NOT NULL
+                    AND to_regclass('public.school_payroll_runs') IS NOT NULL
+                    AND to_regprocedure('public.record_school_fee_payment(uuid,numeric,text,text,text)') IS NOT NULL,
+                'Academic sessions, routines, student fees, receipts, staff attendance and payroll.'
+            ),
+            (
+                '80',
+                'School academic organization',
+                'database/80_school_academic_organization.sql',
+                EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = 'school_classes'
+                      AND column_name = 'group_name'
+                )
+                    AND to_regprocedure('public.activate_school_academic_session(uuid)') IS NOT NULL,
+                'Academic sessions, class groups, shifts, rooms and capacity.'
+            ),
+            (
+                '81',
+                'School student lifecycle',
+                'database/81_school_student_lifecycle.sql',
+                to_regclass('public.school_student_documents') IS NOT NULL
+                    AND to_regclass('public.school_student_transitions') IS NOT NULL
+                    AND to_regprocedure('public.transition_school_student(uuid,text,uuid,text,date)') IS NOT NULL,
+                'Student profiles, document metadata, promotion, transfer, completion and history.'
+            ),
+            (
+                '82',
+                'School finance and payroll',
+                'database/82_school_finance_and_payroll.sql',
+                to_regclass('public.school_staff_compensation') IS NOT NULL
+                    AND to_regclass('public.school_finance_entries') IS NOT NULL
+                    AND to_regprocedure('public.generate_school_payroll(uuid,date)') IS NOT NULL
+                    AND to_regprocedure('public.mark_school_payroll_paid(uuid)') IS NOT NULL,
+                'Income/expense ledger, salary setup, payroll generation and payment accounting.'
+            ),
+            (
+                '83',
+                'School pilot sign-off',
+                'database/83_school_pilot_signoff.sql',
+                to_regclass('public.school_pilot_signoffs') IS NOT NULL,
+                'Persistent institution pilot UAT checklist with verifier audit trail.'
+            ),
+            (
+                '84',
+                'School pilot approval',
+                'database/84_school_pilot_approval.sql',
+                to_regclass('public.school_pilot_approvals') IS NOT NULL,
+                'Final super-admin pilot approval after readiness and UAT completion.'
+            ),
+            (
+                '85',
+                'School pilot certificate',
+                'database/85_school_pilot_certificate.sql',
+                EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = 'school_pilot_approvals'
+                      AND column_name = 'certificate_no'
+                ),
+                'Publicly verifiable certificate number for approved pilots.'
             )
     ) AS checks(migration_id, title, sql_file, installed, detail)
     ORDER BY migration_id::INTEGER;

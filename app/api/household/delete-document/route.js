@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { recordDataAccess } from '@/lib/utils/data-access-log';
+import { internalServerError } from '@/lib/utils/api-response';
 
 export async function DELETE(request) {
     try {
@@ -71,6 +72,6 @@ export async function DELETE(request) {
         return NextResponse.json({ success: true });
     } catch (err) {
         console.error('Document Delete API error:', err);
-        return NextResponse.json({ error: err.message }, { status: 500 });
+        return internalServerError('Document deletion failed. Please try again.');
     }
 }

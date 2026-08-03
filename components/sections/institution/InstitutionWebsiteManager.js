@@ -17,6 +17,8 @@ import {
 import { institutionPortalService } from '@/lib/services/institutionPortalService';
 import { institutionService } from '@/lib/services/institutionService';
 import { authenticatedFetch } from '@/lib/utils/authenticated-fetch';
+import { getInstitutionProfile } from '@/lib/constants/institutionProfiles';
+import { getInstitutionWebsiteExperience } from '@/lib/constants/institutionWebsiteExperience';
 
 const DEFAULT_MENU = ['home', 'about', 'classes', 'teachers', 'facilities', 'admission', 'notices', 'contact'];
 const SCHOOL_CATEGORIES = ['school', 'primary_school', 'high_school', 'college', 'dakhil_madrasa', 'alim_madrasa', 'kindergarten'];
@@ -65,6 +67,26 @@ const defaults = {
 };
 
 const WEBSITE_PRESETS = [
+    {
+        id: 'primary_school',
+        label: 'Primary School',
+        theme: { template: 'modern', primary_color: '#0284c7', accent_color: '#10b981', layout_variant: 'split' },
+        content: {
+            hero_title: 'ভিত্তি শিক্ষা, নিয়মিত উপস্থিতি ও সুন্দর ভবিষ্যৎ',
+            hero_subtitle: 'প্রাক-প্রাথমিক থেকে পঞ্চম শ্রেণি পর্যন্ত শিশু ও অভিভাবকের বিশ্বস্ত বিদ্যালয়।',
+            stats: [
+                { value: '১–৫', label: 'শ্রেণি' },
+                { value: 'দৈনিক', label: 'উপস্থিতি' },
+                { value: 'নিয়মিত', label: 'অভিভাবক যোগাযোগ' },
+                { value: 'সবার জন্য', label: 'ভিত্তি শিক্ষা' }
+            ],
+            class_sections: [
+                { title: 'প্রাক-প্রাথমিক', description: 'আনন্দময় পরিবেশে স্কুল প্রস্তুতি', badge: 'শুরু' },
+                { title: '১ম–২য় শ্রেণি', description: 'বাংলা, ইংরেজি ও গণিতের শক্ত ভিত্তি', badge: 'ভিত্তি' },
+                { title: '৩য়–৫ম শ্রেণি', description: 'জ্ঞান, শৃঙ্খলা ও পরবর্তী ধাপের প্রস্তুতি', badge: 'অগ্রগতি' }
+            ]
+        }
+    },
     {
         id: 'high_school',
         label: 'High School',
@@ -351,6 +373,8 @@ function WebsiteLivePreview({ institution, content, theme, mode }) {
 
 export default function InstitutionWebsiteManager({ institution, initialPage, onInstitutionUpdate }) {
     const design = getInstitutionDesignProfile(institution?.category);
+    const profile = getInstitutionProfile(institution?.category);
+    const experience = getInstitutionWebsiteExperience(institution?.category);
     const schoolMode = SCHOOL_CATEGORIES.includes(institution?.category)
         || ['school', 'college', 'madrasa', 'madrassa'].includes(institution?.type);
     const editablePage = initialPage?.draft_content && Object.keys(initialPage.draft_content).length
@@ -360,8 +384,8 @@ export default function InstitutionWebsiteManager({ institution, initialPage, on
         ? initialPage.draft_theme
         : institution?.theme;
     const [content, setContent] = useState({
-        hero_title: editablePage?.hero_title || '',
-        hero_subtitle: editablePage?.hero_subtitle || '',
+        hero_title: editablePage?.hero_title || experience.heroTitle,
+        hero_subtitle: editablePage?.hero_subtitle || experience.heroSubtitle,
         about_text: editablePage?.about_text || '',
         principal_message: editablePage?.principal_message || '',
         admission_text: editablePage?.admission_text || '',
@@ -375,12 +399,15 @@ export default function InstitutionWebsiteManager({ institution, initialPage, on
         logo_url: editablePage?.logo_url || '',
         banner_image_url: editablePage?.banner_image_url || '',
         notice_ticker: listValue(editablePage?.notice_ticker, defaults.ticker),
-        stats: listValue(editablePage?.stats, defaults.stats),
+        stats: listValue(editablePage?.stats, experience.stats || defaults.stats),
         about_highlights: listValue(editablePage?.about_highlights, defaults.highlights),
-        class_sections: listValue(editablePage?.class_sections, defaults.classes),
+        class_sections: listValue(editablePage?.class_sections, experience.classes || defaults.classes),
         public_teachers: listValue(editablePage?.public_teachers, defaults.teachers),
-        facilities: listValue(editablePage?.facilities, defaults.facilities),
-        admission_features: listValue(editablePage?.admission_features, defaults.admissionFeatures),
+        facilities: listValue(editablePage?.facilities, experience.facilities || defaults.facilities),
+        admission_features: listValue(
+            editablePage?.admission_features,
+            (experience.admission || []).map((title) => ({ title, description: 'ভর্তির সময় প্রয়োজন হবে।' }))
+        ),
         footer_links: editablePage?.footer_links || {
             site_name: institution?.name || '',
             footer_description: '',
@@ -394,10 +421,10 @@ export default function InstitutionWebsiteManager({ institution, initialPage, on
     });
     const [theme, setTheme] = useState({
         preset: editableTheme?.preset || institution?.category || 'high_school',
-        template: editableTheme?.template || 'classic',
+        template: editableTheme?.template || experience.template || 'classic',
         primary_color: editableTheme?.primary_color || design.primaryColor,
         accent_color: editableTheme?.accent_color || '#f59e0b',
-        layout_variant: editableTheme?.layout_variant || 'split',
+        layout_variant: editableTheme?.layout_variant || experience.layout || 'split',
         font_family: editableTheme?.font_family || design.fontFamily,
         menu_items: editableTheme?.menu_items || DEFAULT_MENU
     });
@@ -437,18 +464,27 @@ export default function InstitutionWebsiteManager({ institution, initialPage, on
         { label: 'Branding', ok: Boolean(content.logo_url && content.banner_image_url), hint: content.logo_url && content.banner_image_url ? 'Logo and banner ready' : 'Add logo and banner' },
         { label: 'Contact', ok: Boolean(content.contact_phone || content.contact_email), hint: content.contact_phone || content.contact_email ? 'Guardian can contact office' : 'Add phone or email' }
     ];
+    const recommendedPresetId = ['dakhil_madrasa', 'alim_madrasa'].includes(institution?.category)
+        ? 'madrasa'
+        : institution?.category === 'school'
+            ? 'high_school'
+            : institution?.category;
+    const availableWebsitePresets = [...WEBSITE_PRESETS].sort((a, b) => (
+        Number(b.id === recommendedPresetId) - Number(a.id === recommendedPresetId)
+    ));
     const menuOptions = useMemo(() => schoolMode
         ? [
             { value: 'home', label: 'হোম' },
             { value: 'about', label: 'আমাদের সম্পর্কে' },
-            { value: 'classes', label: 'শ্রেণি' },
-            { value: 'teachers', label: 'শিক্ষকমণ্ডলী' },
+            { value: 'classes', label: profile.portal?.websiteMenu?.classes || profile.portal?.classLabel || 'শ্রেণি' },
+            { value: 'teachers', label: profile.portal?.websiteMenu?.teachers || profile.staffLabel || 'শিক্ষকমণ্ডলী' },
+            { value: 'guardian', label: profile.portal?.websiteMenu?.guardian || 'অভিভাবক আপডেট' },
             { value: 'facilities', label: 'সুযোগ-সুবিধা' },
             { value: 'admission', label: 'ভর্তি' },
             { value: 'notices', label: 'নোটিশ' },
             { value: 'contact', label: 'যোগাযোগ' }
         ]
-        : INSTITUTION_MENU_OPTIONS, [schoolMode]);
+        : INSTITUTION_MENU_OPTIONS, [profile, schoolMode]);
 
     useEffect(() => {
         if (activeCmsTab === 'media') {
@@ -841,14 +877,14 @@ export default function InstitutionWebsiteManager({ institution, initialPage, on
                 <div className="mb-5 rounded-3xl border border-slate-200 bg-slate-50 p-4">
                     <p className="mb-3 text-xs font-black uppercase tracking-[0.18em] text-slate-400">One-click website preset</p>
                     <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-                        {WEBSITE_PRESETS.map((preset) => (
+                        {availableWebsitePresets.map((preset) => (
                             <button
                                 key={preset.id}
                                 type="button"
                                 onClick={() => applyWebsitePreset(preset)}
                                 className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left font-black text-slate-700 transition hover:border-slate-500 hover:shadow-sm"
                             >
-                                <span className="block">{preset.label}</span>
+                                <span className="block">{preset.label}{preset.id === recommendedPresetId ? ' · প্রস্তাবিত' : ''}</span>
                                 <span className="mt-1 block text-xs font-bold text-slate-400">Template + color + content</span>
                             </button>
                         ))}

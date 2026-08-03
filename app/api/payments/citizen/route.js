@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/utils/supabase-admin';
+import { internalServerError } from '@/lib/utils/api-response';
+import { consumeRateLimit, rateLimitHeaders } from '@/lib/utils/rate-limit';
 import {
     createCitizenAccessToken,
     normalizeCitizenPhone,
@@ -63,7 +65,7 @@ async function loadOverview(phone) {
 
     const { data: transactions, error: transactionError } = await supabaseAdmin
         .from('payment_transactions')
-        .select('*')
+        .select('id,payment_no,amount,description,status,created_at')
         .eq('payer_phone', phone)
         .order('created_at', { ascending: false })
         .limit(30);
@@ -97,6 +99,20 @@ export async function POST(request) {
         const auth = await requireCitizen(request);
         if (auth.response) return auth.response;
         const { body, phone } = auth;
+        const paymentLimit = await consumeRateLimit({
+            request,
+            scope: `citizen-payment:${body.action || 'unknown'}`,
+            identity: phone,
+            limit: body.action === 'submit' ? 8 : 30,
+            windowSeconds: 60,
+            client: supabaseAdmin
+        });
+        if (!paymentLimit.allowed) {
+            return NextResponse.json(
+                { error: 'Too many payment requests. Please try again shortly.' },
+                { status: 429, headers: rateLimitHeaders(paymentLimit) }
+            );
+        }
 
         if (body.action === 'overview') {
             return NextResponse.json({
@@ -184,13 +200,12 @@ export async function POST(request) {
                 reference_id: referenceId,
                 description
             }])
-            .select()
+            .select('id,payment_no,amount,description,status,created_at')
             .single();
         if (error) throw error;
 
         return NextResponse.json({ success: true, data, accessToken: auth.accessToken });
     } catch (error) {
-        console.error('Citizen payment failed:', error);
         if (isMissingPaymentSchema(error)) {
             return NextResponse.json({
                 error: 'Payment database setup বাকি',
@@ -198,6 +213,10 @@ export async function POST(request) {
                 migration: 'database/64_unified_payment_center.sql'
             }, { status: 503 });
         }
-        return NextResponse.json({ error: error.message || 'Payment request failed' }, { status: 500 });
+        return internalServerError(
+            'Payment request failed. Please try again.',
+            error,
+            { route: '/api/payments/citizen', action: 'citizen-payment' }
+        );
     }
 }

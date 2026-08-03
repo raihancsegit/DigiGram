@@ -1,6 +1,23 @@
 /** @type {import('next').NextConfig} */
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const remotePatterns = [];
+remotePatterns.push(
+  {
+    protocol: 'https',
+    hostname: 'images.unsplash.com',
+    pathname: '/**',
+  },
+  {
+    protocol: 'https',
+    hostname: '**.supabase.co',
+    pathname: '/storage/v1/object/**',
+  },
+  {
+    protocol: 'https',
+    hostname: 'qliving.com',
+    pathname: '/**',
+  }
+);
 if (supabaseUrl) {
   try {
     const url = new URL(supabaseUrl);
@@ -16,6 +33,12 @@ if (supabaseUrl) {
 }
 
 const nextConfig = {
+  experimental: {
+    inlineCss: true,
+    staticGenerationRetryCount: 2,
+    staticGenerationMaxConcurrency: 4,
+    staticGenerationMinPagesPerWorker: 200,
+  },
   images: {
     remotePatterns,
     formats: ['image/avif', 'image/webp'],

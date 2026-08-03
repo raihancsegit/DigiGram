@@ -1,7 +1,7 @@
 import StaticDocPage from '@/components/templates/StaticDocPage';
 
 export const metadata = {
-    title: 'এরিয়া ফিল্টার | DigiGram',
+    title: 'এরিয়া ফিল্টার',
     description: '৬-স্তর লোকেশন: বিভাগ থেকে গ্রাম পর্যন্ত।',
 };
 

@@ -12,6 +12,7 @@ import {
 import { login, performLogout } from '@/lib/store/features/authSlice';
 import { authService } from '@/lib/services/authService';
 import ModalPortal from '@/components/common/ModalPortal';
+import { getPortalRouteForRole } from '@/lib/utils/portalRoutes';
 
 export default function PortalLoginModal({ 
     isOpen, 
@@ -118,13 +119,7 @@ export default function PortalLoginModal({
                 avatar_url: profile.avatar_url
             }));
 
-            // Redirect based on role
-            if (profile.role === 'chairman') router.push('/chairman/dashboard');
-            else if (profile.role === 'ward_member') router.push('/ward-member/dashboard');
-            else if (profile.role === 'super_admin') router.push('/admin');
-            else if (profile.role === 'volunteer') router.push('/volunteer/dashboard');
-            else if (profile.role === 'market_manager') router.push('/market-manager');
-            else router.push('/');
+            router.push(getPortalRouteForRole(profile.role));
 
             onClose();
         } catch (err) {
@@ -189,6 +184,13 @@ export default function PortalLoginModal({
                                     </div>
                                 </div>
                             </div>
+                            <button
+                                type="button"
+                                onClick={() => router.push(getPortalRouteForRole(existingProfile.role))}
+                                className="w-full flex items-center justify-center gap-2 p-4 rounded-xl bg-teal-600 text-white font-black text-xs shadow-lg shadow-teal-100 hover:bg-teal-700 transition-all active:scale-95"
+                            >
+                                নিজের ড্যাশবোর্ডে যান
+                            </button>
                             <button
                                 type="button"
                                 onClick={handleExistingLogout}

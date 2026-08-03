@@ -12,7 +12,7 @@ import {
 import { householdService } from '@/lib/services/householdService';
 import { adminService } from '@/lib/services/adminService';
 import { smsService } from '@/lib/services/smsService';
-import { toBnDigits } from '@/lib/utils/format';
+import { toBnDigits, toEnDigits } from '@/lib/utils/format';
 import { parseBulkHouseholdNotebookText } from '@/lib/utils/householdNotebookParser';
 import HouseholdEntryForm from './HouseholdEntryForm';
 import HouseholdLockerManager from './HouseholdLockerManager';
@@ -22,6 +22,44 @@ import { canCreateHouseholdInScope, canManageHousehold } from '@/lib/utils/house
 
 const inputStyles = "w-full px-5 py-4 rounded-[20px] bg-slate-50 border border-slate-100 focus:bg-white focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 outline-none transition-all font-bold text-slate-700 text-sm";
 const labelStyles = "text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1 mb-1.5 block";
+
+function normalizeHouseholdSearchText(value) {
+    const text = String(value ?? '');
+    if (!text.trim()) return '';
+    return toEnDigits(text)
+        .normalize('NFKC')
+        .toLowerCase()
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function householdMatchesSearch(household, query) {
+    const normalizedQuery = normalizeHouseholdSearchText(query);
+    if (!normalizedQuery) return true;
+    const compactQuery = normalizedQuery.replace(/[^\p{L}\p{N}]+/gu, '');
+    const fields = [
+        household.owner_name,
+        household.house_no,
+        household.phone,
+        household.id,
+        `holding ${household.house_no || ''}`,
+        `হোল্ডিং ${household.house_no || ''}`,
+        ...(household.residents || []).flatMap((resident) => [
+            resident.name,
+            resident.bn_name,
+            resident.nid,
+            resident.birth_reg_no,
+            resident.phone,
+            resident.id
+        ])
+    ];
+
+    return fields.some((field) => {
+        const normalizedField = normalizeHouseholdSearchText(field);
+        const compactField = normalizedField.replace(/[^\p{L}\p{N}]+/gu, '');
+        return normalizedField.includes(normalizedQuery) || (compactQuery && compactField.includes(compactQuery));
+    });
+}
 
 export default function WardHouseholdManager({ wardId, assignedVillage = null, volunteerMode = false, initialHouseholdMode = 'all' }) {
     const { user } = useSelector((state) => state.auth);
@@ -972,20 +1010,7 @@ export default function WardHouseholdManager({ wardId, assignedVillage = null, v
 
                             <div className="space-y-6">
                                 {(() => {
-                                    const filtered = households.filter(h => {
-                                        const query = searchQuery.toLowerCase();
-                                        const matchesOwner = h.owner_name?.toLowerCase().includes(query);
-                                        const matchesHouse = h.house_no?.toLowerCase().includes(query);
-                                        const matchesPhone = h.phone?.toLowerCase().includes(query);
-                                        const matchesResidents = h.residents?.some(r => 
-                                            r.name?.toLowerCase().includes(query) || 
-                                            r.nid?.toLowerCase().includes(query) ||
-                                            r.birth_reg_no?.toLowerCase().includes(query) ||
-                                            r.phone?.toLowerCase().includes(query) ||
-                                            r.id?.toString().toLowerCase().includes(query)
-                                        );
-                                        return matchesOwner || matchesHouse || matchesPhone || matchesResidents;
-                                    });
+                                    const filtered = households.filter((household) => householdMatchesSearch(household, searchQuery));
                                     const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE) || 1;
                                     const currentHouses = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 

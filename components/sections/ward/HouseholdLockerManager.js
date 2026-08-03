@@ -253,10 +253,41 @@ export default function HouseholdLockerManager({ household, onUpdate, onClose })
         handleApplicantChange(resident.name);
     };
 
+    const startQuickServiceApplication = (requestType) => {
+        setActiveTab('services');
+        setShowServiceForm(true);
+        setIsPreviewMode(false);
+        setServiceForm(prev => ({ ...prev, request_type: requestType }));
+
+        const preferredResident = requestType === 'birth_registration'
+            ? residents.find((resident) => !resident.birth_reg_no) || residents[0]
+            : residents.find((resident) => resident.relation_with_head === 'Head') || residents[0];
+
+        if (preferredResident?.name) {
+            handleApplicantChange(preferredResident.name);
+        }
+
+        setTimeout(() => {
+            document.getElementById('service-form-top')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 50);
+    };
+
     const handleServiceSubmit = async (e) => {
         e.preventDefault();
         if (!serviceForm.applicant_name) {
             toast.error("অনুগ্রহ করে আবেদনকারী নির্বাচন করুন।");
+            return;
+        }
+        if (serviceForm.request_type === 'birth_registration' && !serviceForm.applicant_dob) {
+            toast.error("জন্ম নিবন্ধনের জন্য জন্ম তারিখ দিন।");
+            return;
+        }
+        if (serviceForm.request_type === 'death_certificate' && (!serviceForm.death_date || !serviceForm.place_of_death?.trim())) {
+            toast.error("মৃত্যু সনদের জন্য মৃত্যুর তারিখ ও স্থান দিন।");
+            return;
+        }
+        if (!serviceForm.contact_phone?.trim()) {
+            toast.error("আবেদন ট্র্যাক করার জন্য মোবাইল নম্বর দিন।");
             return;
         }
         const applicant = residents.find(r => r.name === serviceForm.applicant_name);
@@ -852,6 +883,14 @@ export default function HouseholdLockerManager({ household, onUpdate, onClose })
         !selectedApplicant.dob && 'জন্ম তারিখ',
         !selectedApplicant.blood_group && 'রক্তের গ্রুপ'
     ].filter(Boolean) : [];
+    const isBirthService = serviceForm.request_type === 'birth_registration';
+    const isDeathService = serviceForm.request_type === 'death_certificate';
+    const isFocusedCertificateService = isBirthService || isDeathService;
+    const focusedServiceSteps = isBirthService
+        ? ['সদস্য নির্বাচন', 'জন্ম তারিখ', 'মোবাইল নম্বর']
+        : isDeathService
+            ? ['সদস্য নির্বাচন', 'মৃত্যুর তারিখ', 'মৃত্যুর স্থান']
+            : ['সেবা নির্বাচন', 'আবেদনকারী', 'যোগাযোগ'];
 
     return (
         <div className="flex h-full min-h-0 w-full max-w-full flex-col overflow-hidden bg-white">
@@ -969,13 +1008,62 @@ export default function HouseholdLockerManager({ household, onUpdate, onClose })
                                 <h3 className="text-lg font-black text-slate-800 sm:text-xl">সেবা আবেদনসমূহ</h3>
                                 <button onClick={() => setShowServiceForm(!showServiceForm)} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 text-[10px] font-black uppercase tracking-widest text-white shadow-lg hover:bg-teal-600 sm:w-auto sm:px-6"><Plus size={16} /> নতুন আবেদন</button>
                             </div>
+                            <div className="grid gap-3 md:grid-cols-2">
+                                {[
+                                    {
+                                        key: 'birth_registration',
+                                        title: 'জন্ম নিবন্ধন',
+                                        desc: 'সদস্য বাছাই করে জন্ম তারিখ, পিতা-মাতা ও মোবাইল দিয়ে আবেদন।',
+                                        tone: 'border-teal-100 bg-teal-50 text-teal-700'
+                                    },
+                                    {
+                                        key: 'death_certificate',
+                                        title: 'মৃত্যু সনদ',
+                                        desc: 'মৃত ব্যক্তির নাম, মৃত্যুর তারিখ ও স্থান দিয়ে দ্রুত আবেদন।',
+                                        tone: 'border-rose-100 bg-rose-50 text-rose-700'
+                                    }
+                                ].map((item) => (
+                                    <button
+                                        key={item.key}
+                                        type="button"
+                                        onClick={() => startQuickServiceApplication(item.key)}
+                                        className={`group rounded-3xl border p-5 text-left transition hover:-translate-y-0.5 hover:shadow-lg ${item.tone}`}
+                                    >
+                                        <p className="text-[10px] font-black uppercase tracking-widest">Quick apply</p>
+                                        <h4 className="mt-2 text-xl font-black text-slate-900">{item.title}</h4>
+                                        <p className="mt-2 text-xs font-bold leading-5 text-slate-600">{item.desc}</p>
+                                        <span className="mt-4 inline-flex items-center gap-2 rounded-full bg-white px-3 py-2 text-xs font-black text-slate-800 ring-1 ring-current/10">
+                                            আবেদন শুরু করুন <ArrowRight size={14} />
+                                        </span>
+                                    </button>
+                                ))}
+                            </div>
                             {showServiceForm && (
                                 <form onSubmit={handleServiceSubmit} className="relative space-y-5 overflow-hidden rounded-3xl border-2 border-teal-100 bg-white p-4 shadow-2xl sm:space-y-6 sm:p-8 sm:rounded-[32px] sm:border-4">
                                     <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none"><Sparkles size={100} /></div>
                                     {!isPreviewMode ? (
                                         <>
+                                            <div className="relative z-10 rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                                                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                                    <div>
+                                                        <p className="text-xs font-black uppercase tracking-widest text-teal-700">
+                                                            {isFocusedCertificateService ? 'Easy certificate apply' : 'Service application'}
+                                                        </p>
+                                                        <h4 className="mt-1 text-lg font-black text-slate-900">
+                                                            {isBirthService ? 'জন্ম নিবন্ধনের সহজ আবেদন' : isDeathService ? 'মৃত্যু সনদের সহজ আবেদন' : 'নতুন সেবা আবেদন'}
+                                                        </h4>
+                                                    </div>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {focusedServiceSteps.map((stepName) => (
+                                                            <span key={stepName} className="rounded-full bg-white px-3 py-1.5 text-[10px] font-black text-slate-600 ring-1 ring-slate-200">
+                                                                {stepName}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
                                             <div className="relative z-10 grid grid-cols-1 gap-4 md:grid-cols-2 sm:gap-6">
-                                                <div><label className={labelStyles}>সেবার ধরণ</label><select value={serviceForm.request_type} onChange={e => setServiceForm({...serviceForm, request_type: e.target.value})} className={inputStyles}>{Object.entries(SERVICE_TYPES).map(([k,v]) => <option key={k} value={k}>{v}</option>)}</select></div>
+                                                <div><label className={labelStyles}>সেবার ধরণ</label><select value={serviceForm.request_type} onChange={e => { setIsPreviewMode(false); setServiceForm({...serviceForm, request_type: e.target.value}); }} className={inputStyles}>{Object.entries(SERVICE_TYPES).map(([k,v]) => <option key={k} value={k}>{v}</option>)}</select></div>
                                                 <div><label className={labelStyles}>আবেদনকারী</label><select value={serviceForm.applicant_name} onChange={e => handleApplicantChange(e.target.value)} className={inputStyles}><option value="">সদস্য নির্বাচন করুন</option>{residents.map(r => <option key={r.id} value={r.name}>{r.name}</option>)}</select></div>
                                                 {selectedApplicant && (
                                                     <div className="md:col-span-2 rounded-2xl border border-slate-200 bg-slate-50 p-4">
@@ -998,20 +1086,37 @@ export default function HouseholdLockerManager({ household, onUpdate, onClose })
                                                         </div>
                                                     </div>
                                                 )}
-                                                
-                                                <div><label className={labelStyles}>আবেদনকারীর NID</label><input value={serviceForm.applicant_nid || ''} onChange={e => setServiceForm({...serviceForm, applicant_nid: e.target.value})} className={inputStyles} placeholder="NID নম্বর" /></div>
-                                                <div><label className={labelStyles}>জন্ম নিবন্ধন নম্বর</label><input value={serviceForm.applicant_birth_reg || ''} onChange={e => setServiceForm({...serviceForm, applicant_birth_reg: e.target.value})} className={inputStyles} placeholder="১৭ ডিজিট" /></div>
-                                                
-                                                <div><label className={labelStyles}>জন্ম তারিখ</label><input type="date" value={serviceForm.applicant_dob || ''} onChange={e => setServiceForm({...serviceForm, applicant_dob: e.target.value})} className={inputStyles} /></div>
-                                                <div><label className={labelStyles}>লিঙ্গ</label><select value={serviceForm.applicant_gender || 'Male'} onChange={e => setServiceForm({...serviceForm, applicant_gender: e.target.value})} className={inputStyles}><option value="Male">পুরুষ</option><option value="Female">নারী</option></select></div>
+                                                {(isBirthService || !isFocusedCertificateService) && (
+                                                    <>
+                                                        <div><label className={labelStyles}>জন্ম তারিখ</label><input type="date" value={serviceForm.applicant_dob || ''} onChange={e => setServiceForm({...serviceForm, applicant_dob: e.target.value})} className={inputStyles} /></div>
+                                                        <div><label className={labelStyles}>লিঙ্গ</label><select value={serviceForm.applicant_gender || 'Male'} onChange={e => setServiceForm({...serviceForm, applicant_gender: e.target.value})} className={inputStyles}><option value="Male">পুরুষ</option><option value="Female">নারী</option></select></div>
+                                                        <div><label className={labelStyles}>জন্ম নিবন্ধন নম্বর (থাকলে)</label><input value={serviceForm.applicant_birth_reg || ''} onChange={e => setServiceForm({...serviceForm, applicant_birth_reg: e.target.value})} className={inputStyles} placeholder="১৭ ডিজিট" /></div>
+                                                    </>
+                                                )}
 
-                                                <div><label className={labelStyles}>পিতার নাম</label><input value={serviceForm.father_name || ''} readOnly className={inputStyles + " bg-slate-100 cursor-not-allowed"} /></div>
-                                                <div><label className={labelStyles}>পিতার NID</label><input value={serviceForm.father_nid || ''} onChange={e => setServiceForm({...serviceForm, father_nid: e.target.value})} className={inputStyles} placeholder="পিতার NID" /></div>
-                                                
-                                                <div><label className={labelStyles}>মাতার নাম</label><input value={serviceForm.mother_name || ''} readOnly className={inputStyles + " bg-slate-100 cursor-not-allowed"} /></div>
-                                                <div><label className={labelStyles}>মাতার NID</label><input value={serviceForm.mother_nid || ''} onChange={e => setServiceForm({...serviceForm, mother_nid: e.target.value})} className={inputStyles} placeholder="মাতার NID" /></div>
-                                                
-                                                <div><label className={labelStyles}>রক্তের গ্রুপ</label><select value={serviceForm.blood_group || ''} onChange={e => setServiceForm({...serviceForm, blood_group: e.target.value})} className={inputStyles}><option value="">নির্বাচন করুন</option><option value="A+">A+</option><option value="A-">A-</option><option value="B+">B+</option><option value="B-">B-</option><option value="AB+">AB+</option><option value="AB-">AB-</option><option value="O+">O+</option><option value="O-">O-</option></select></div>
+                                                {(isDeathService || !isFocusedCertificateService) && (
+                                                    <div><label className={labelStyles}>আবেদনকারীর NID (থাকলে)</label><input value={serviceForm.applicant_nid || ''} onChange={e => setServiceForm({...serviceForm, applicant_nid: e.target.value})} className={inputStyles} placeholder="NID নম্বর" /></div>
+                                                )}
+
+                                                {isBirthService && (
+                                                    <>
+                                                        <div><label className={labelStyles}>পিতার নাম</label><input value={serviceForm.father_name || ''} readOnly className={inputStyles + " bg-slate-100 cursor-not-allowed"} /></div>
+                                                        <div><label className={labelStyles}>মাতার নাম</label><input value={serviceForm.mother_name || ''} readOnly className={inputStyles + " bg-slate-100 cursor-not-allowed"} /></div>
+                                                        <div><label className={labelStyles}>পিতার NID (অপশনাল)</label><input value={serviceForm.father_nid || ''} onChange={e => setServiceForm({...serviceForm, father_nid: e.target.value})} className={inputStyles} placeholder="পিতার NID" /></div>
+                                                        <div><label className={labelStyles}>মাতার NID (অপশনাল)</label><input value={serviceForm.mother_nid || ''} onChange={e => setServiceForm({...serviceForm, mother_nid: e.target.value})} className={inputStyles} placeholder="মাতার NID" /></div>
+                                                    </>
+                                                )}
+
+                                                {!isFocusedCertificateService && (
+                                                    <>
+                                                        <div><label className={labelStyles}>পিতার নাম</label><input value={serviceForm.father_name || ''} readOnly className={inputStyles + " bg-slate-100 cursor-not-allowed"} /></div>
+                                                        <div><label className={labelStyles}>পিতার NID</label><input value={serviceForm.father_nid || ''} onChange={e => setServiceForm({...serviceForm, father_nid: e.target.value})} className={inputStyles} placeholder="পিতার NID" /></div>
+                                                        <div><label className={labelStyles}>মাতার নাম</label><input value={serviceForm.mother_name || ''} readOnly className={inputStyles + " bg-slate-100 cursor-not-allowed"} /></div>
+                                                        <div><label className={labelStyles}>মাতার NID</label><input value={serviceForm.mother_nid || ''} onChange={e => setServiceForm({...serviceForm, mother_nid: e.target.value})} className={inputStyles} placeholder="মাতার NID" /></div>
+                                                        <div><label className={labelStyles}>রক্তের গ্রুপ</label><select value={serviceForm.blood_group || ''} onChange={e => setServiceForm({...serviceForm, blood_group: e.target.value})} className={inputStyles}><option value="">নির্বাচন করুন</option><option value="A+">A+</option><option value="A-">A-</option><option value="B+">B+</option><option value="B-">B-</option><option value="AB+">AB+</option><option value="AB-">AB-</option><option value="O+">O+</option><option value="O-">O-</option></select></div>
+                                                    </>
+                                                )}
+
                                                 <div><label className={labelStyles}>মোবাইল নম্বর</label><input value={serviceForm.contact_phone || ''} onChange={e => setServiceForm({...serviceForm, contact_phone: e.target.value})} className={inputStyles} placeholder="017XXXXXXXX" /></div>
                                                 <div className="md:col-span-2"><label className={labelStyles}>ঠিকানা</label><input value={serviceForm.applicant_address || ''} onChange={e => setServiceForm({...serviceForm, applicant_address: e.target.value})} className={inputStyles} placeholder="ঠিকানা" /></div>
                                                 {serviceForm.request_type === 'death_certificate' && (

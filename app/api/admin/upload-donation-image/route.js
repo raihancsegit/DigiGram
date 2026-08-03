@@ -1,6 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { requireRequestProfile } from '@/lib/utils/server-auth';
+import { internalServerError } from '@/lib/utils/api-response';
+import { createSafeUploadName, validateUploadedFile } from '@/lib/utils/upload-security';
 
 export async function POST(request) {
     try {
@@ -12,6 +14,13 @@ export async function POST(request) {
 
         if (!file) {
             return NextResponse.json({ error: 'Missing file' }, { status: 400 });
+        }
+        const validatedFile = await validateUploadedFile(file, {
+            kind: 'image',
+            maxBytes: 5 * 1024 * 1024
+        });
+        if (validatedFile.error) {
+            return NextResponse.json({ error: validatedFile.error }, { status: 400 });
         }
 
         const supabaseAdmin = createClient(
@@ -34,18 +43,18 @@ export async function POST(request) {
             if (createError) console.error('Bucket creation error:', createError);
         }
 
-        const fileExt = file.name.split('.').pop();
-        const fileName = `donations/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+        const fileName = `donations/${createSafeUploadName(validatedFile.extension)}`;
 
         const { data, error: uploadError } = await supabaseAdmin.storage
             .from(bucketName)
             .upload(fileName, file, {
                 upsert: true,
-                contentType: file.type
+                contentType: validatedFile.mimeType
             });
 
         if (uploadError) {
-            return NextResponse.json({ error: uploadError.message }, { status: 500 });
+            console.error('Donation storage upload error:', uploadError);
+            return internalServerError('Donation image upload failed. Please try again.');
         }
 
         const { data: { publicUrl } } = supabaseAdmin.storage
@@ -55,6 +64,6 @@ export async function POST(request) {
         return NextResponse.json({ success: true, publicUrl });
     } catch (err) {
         console.error('Upload API error:', err);
-        return NextResponse.json({ error: err.message }, { status: 500 });
+        return internalServerError('Donation image upload failed. Please try again.');
     }
 }

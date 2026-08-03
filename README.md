@@ -30,6 +30,8 @@ npm test
 npm run quality:audit
 npm run build
 npm run security:audit
+npm run database:audit
+npm run env:audit
 npm run audit
 ```
 
@@ -44,6 +46,16 @@ Important launch migrations include:
 - `database/63_role_rls_security_audit.sql`
 - `database/66_migration_registry.sql`
 - `database/73_demo_data_registry.sql`
+- `database/78_distributed_api_rate_limits.sql`
+- `database/79_school_operations_foundation.sql`
+- `database/80_school_academic_organization.sql`
+- `database/81_school_student_lifecycle.sql`
+- `database/82_school_finance_and_payroll.sql`
+
+After all numbered feature migrations, rerun `66_migration_registry.sql`, then rerun
+`63_role_rls_security_audit.sql` as the final RLS hardening step. Do not run
+`update_schema.sql` or `household_documents.sql` in a new deployment; they are
+legacy compatibility files.
 
 ## Main Product Areas
 
@@ -51,6 +63,7 @@ Important launch migrations include:
 - Admin portal: locations, members, services, SMS, maintenance, governance, data quality
 - Ward and chairman portals: household workflows, service operations, local management
 - Institution portal: school website, admin, teacher, student, guardian update flows
+- Institution operations: sessions, routines, attendance, student lifecycle, fees, accounts, payroll, reports
 - Market and business modules: directory, price alerts, demands, complaints
 - SMS platform: wallet, campaign, delivery monitoring, failover webhook
 - Public service modules: fuel, land guard, vehicle guard, blood, e-clinic, donation, lost and found
@@ -64,7 +77,7 @@ Last local verification performed on 2026-07-06:
 - `npm run lint`: passed with warnings only
 - `npm run build`: passed
 - `npm run security:audit`: 57/57 passed
-- `npm run audit`: 49/49 passed, with database-backed discovery skipped when external Supabase access is unavailable
+- `npm run audit`: 53/53 passed, with database-backed discovery skipped when external Supabase access is unavailable
 
 ## Launch Checklist
 

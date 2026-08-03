@@ -1,7 +1,7 @@
 'use client';
 
-import { motion, AnimatePresence } from 'framer-motion';
-import { ShieldCheck } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Loader2, ShieldCheck } from 'lucide-react';
 
 export default function GlobalLoading({ isVisible }) {
     if (!isVisible) return null;
@@ -12,59 +12,32 @@ export default function GlobalLoading({ isVisible }) {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 z-[9999] bg-white/80 backdrop-blur-md flex flex-col items-center justify-center"
+                className="pointer-events-none fixed inset-0 z-[9999]"
             >
+                <motion.div
+                    initial={{ width: '0%' }}
+                    animate={{ width: '82%' }}
+                    transition={{ duration: 1.2, ease: 'easeOut' }}
+                    className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-teal-400 via-cyan-400 to-indigo-500 shadow-[0_0_10px_rgba(20,184,166,0.45)]"
+                />
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="absolute inset-0 bg-slate-50/95 backdrop-blur-[2px]"
+                />
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.96, y: 10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    transition={{ duration: 0.22, ease: 'easeOut' }}
+                    className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center rounded-[28px] border border-slate-200 bg-white/95 px-8 py-7 text-center shadow-2xl shadow-slate-300/60 backdrop-blur"
+                >
                     <div className="relative">
-                        {/* Rotating Outer Ring */}
-                        <motion.div 
-                            animate={{ rotate: 360 }}
-                            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                            className="w-20 h-20 rounded-full border-4 border-slate-100 border-t-teal-500 shadow-xl"
-                        />
-                        
-                        {/* Center Icon */}
-                        <div className="absolute inset-0 flex items-center justify-center">
-                            <motion.div
-                                animate={{ scale: [1, 1.2, 1] }}
-                                transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-                            >
-                                <ShieldCheck className="text-teal-600" size={32} />
-                            </motion.div>
-                        </div>
+                        <Loader2 size={58} className="animate-spin text-teal-600" />
+                        <ShieldCheck size={24} className="absolute inset-0 m-auto text-slate-950" />
                     </div>
-                    
-                    <motion.div 
-                        initial={{ y: 10, opacity: 0 }}
-                        animate={{ y: 0, opacity: 1 }}
-                        className="mt-8 text-center"
-                    >
-                        <h2 className="text-lg font-black text-slate-800 tracking-tight">লোড হচ্ছে...</h2>
-                        <div className="flex items-center gap-1 mt-2">
-                            <motion.span 
-                                animate={{ opacity: [0.2, 1, 0.2] }}
-                                transition={{ duration: 1.5, repeat: Infinity, delay: 0 }}
-                                className="w-1.5 h-1.5 rounded-full bg-teal-500" 
-                            />
-                            <motion.span 
-                                animate={{ opacity: [0.2, 1, 0.2] }}
-                                transition={{ duration: 1.5, repeat: Infinity, delay: 0.3 }}
-                                className="w-1.5 h-1.5 rounded-full bg-teal-500" 
-                            />
-                            <motion.span 
-                                animate={{ opacity: [0.2, 1, 0.2] }}
-                                transition={{ duration: 1.5, repeat: Infinity, delay: 0.6 }}
-                                className="w-1.5 h-1.5 rounded-full bg-teal-500" 
-                            />
-                        </div>
-                    </motion.div>
-
-                    {/* Top Progress Bar */}
-                    <motion.div 
-                        initial={{ width: "0%" }}
-                        animate={{ width: "100%" }}
-                        transition={{ duration: 15, ease: "easeOut" }}
-                        className="fixed top-0 left-0 h-1 bg-gradient-to-r from-teal-400 to-indigo-500 shadow-[0_0_10px_rgba(20,184,166,0.5)]"
-                    />
+                    <p className="mt-4 whitespace-nowrap text-sm font-black text-slate-900">লোড হচ্ছে...</p>
+                    <p className="mt-1 whitespace-nowrap text-xs font-bold text-slate-500">পোর্টাল প্রস্তুত হচ্ছে</p>
+                </motion.div>
             </motion.div>
         </AnimatePresence>
     );

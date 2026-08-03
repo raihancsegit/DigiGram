@@ -2,7 +2,7 @@
 
 import { Printer } from 'lucide-react';
 
-export default function StudentReportCard({ institution, student, exam, classInfo, summary }) {
+export default function StudentReportCard({ institution, student, exam, classInfo, summary, profile }) {
     if (!student || !exam || !summary) return null;
 
     return (
@@ -32,7 +32,7 @@ export default function StudentReportCard({ institution, student, exam, classInf
                 <div className="mt-5 grid gap-3 text-sm font-bold sm:grid-cols-2">
                     <p>শিক্ষার্থীর নাম: <span className="font-black">{student.student_name}</span></p>
                     <p>রোল: <span className="font-black">{student.roll_no || '-'}</span></p>
-                    <p>শ্রেণি: <span className="font-black">{classInfo?.name || '-'}</span></p>
+                    <p>{profile?.portal?.classLabel || 'শ্রেণি'}: <span className="font-black">{classInfo?.name || '-'}</span></p>
                     <p>অভিভাবক: <span className="font-black">{student.guardian_name || '-'}</span></p>
                 </div>
 
@@ -67,8 +67,8 @@ export default function StudentReportCard({ institution, student, exam, classInf
                 </div>
 
                 <div className="mt-8 flex justify-between pt-8 text-sm font-bold text-slate-600">
-                    <span>শ্রেণি শিক্ষক</span>
-                    <span>প্রধান শিক্ষক</span>
+                    <span>{profile?.staffLabel || 'শ্রেণি শিক্ষক'}</span>
+                    <span>{profile?.leadershipLabel || 'প্রধান শিক্ষক'}</span>
                 </div>
             </article>
         </section>

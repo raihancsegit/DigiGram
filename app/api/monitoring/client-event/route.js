@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { reportServerError } from '@/lib/utils/server-monitoring';
 
 const ALLOWED_TYPES = new Set(['client-error', 'web-vital']);
 const ALLOWED_VITALS = new Set(['CLS', 'FCP', 'INP', 'LCP', 'TTFB']);
@@ -57,7 +58,16 @@ export async function POST(request) {
                 line: Number(body.line || 0) || null,
                 column: Number(body.column || 0) || null,
             });
-            console.error('[client-error]', event);
+            await reportServerError(
+                new Error(event.message || 'Unhandled browser error'),
+                {
+                    source: 'client',
+                    route: event.path,
+                    script: event.source,
+                    line: event.line,
+                    column: event.column,
+                }
+            );
         }
 
         return new NextResponse(null, { status: 204 });

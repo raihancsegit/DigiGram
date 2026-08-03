@@ -1,6 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { recordDataAccess } from '@/lib/utils/data-access-log';
+import { internalServerError } from '@/lib/utils/api-response';
+import { consumeRateLimit, rateLimitHeaders } from '@/lib/utils/rate-limit';
+import {
+    createSafeUploadName,
+    sanitizeStorageSegment,
+    validateUploadedFile
+} from '@/lib/utils/upload-security';
 
 export async function POST(request) {
     try {
@@ -14,11 +21,30 @@ export async function POST(request) {
         if (!file || !householdLookup || !pin) {
             return NextResponse.json({ error: 'Missing file, household lookup, or locker PIN' }, { status: 400 });
         }
-
         const supabaseAdmin = createClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL,
             process.env.SUPABASE_SERVICE_ROLE_KEY
         );
+        const uploadLimit = await consumeRateLimit({
+            request,
+            scope: 'household-document-upload',
+            limit: 8,
+            windowSeconds: 10 * 60,
+            client: supabaseAdmin
+        });
+        if (!uploadLimit.allowed) {
+            return NextResponse.json(
+                { error: 'Too many upload attempts. Please try again later.' },
+                { status: 429, headers: rateLimitHeaders(uploadLimit) }
+            );
+        }
+        const validatedFile = await validateUploadedFile(file, {
+            kind: 'document',
+            maxBytes: 5 * 1024 * 1024
+        });
+        if (validatedFile.error) {
+            return NextResponse.json({ error: validatedFile.error }, { status: 400 });
+        }
 
         const { data: isValidPin, error: pinError } = await supabaseAdmin.rpc('verify_household_locker_pin', {
             lookup_value: householdLookup,
@@ -50,14 +76,14 @@ export async function POST(request) {
             });
         }
 
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${household.id}/${type}-${Date.now()}.${fileExt}`;
+        const safeType = sanitizeStorageSegment(type, 'document');
+        const fileName = `${household.id}/${safeType}-${createSafeUploadName(validatedFile.extension)}`;
 
         const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
             .from('household_documents')
             .upload(fileName, file, {
                 upsert: true,
-                contentType: file.type
+                contentType: validatedFile.mimeType
             });
 
         if (uploadError) throw uploadError;
@@ -91,7 +117,10 @@ export async function POST(request) {
 
         return NextResponse.json({ success: true, data: docData });
     } catch (err) {
-        console.error('Document Upload API error:', err);
-        return NextResponse.json({ error: err.message }, { status: 500 });
+        return internalServerError(
+            'Document upload failed. Please try again.',
+            err,
+            { route: '/api/household/upload-document', action: 'document-upload' }
+        );
     }
 }

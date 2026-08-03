@@ -1,13 +1,18 @@
 import { notFound } from 'next/navigation';
 import { findUnionBySlug } from '@/lib/constants/locations';
 import WardPortalClient from '@/components/sections/ward/WardPortalClient';
-import { getLocationBySlug, getWardsWithDetailsByUnion, getFullContextBySlug } from '@/lib/services/hierarchyService';
+import { getLocationBySlug, getWardsWithDetailsByUnion, getFullContextBySlug, getWardFullContext } from '@/lib/services/hierarchyService';
 
 export const dynamic = 'force-dynamic';
 
 export default async function WardPortalPage({ params }) {
     const resolvedParams = await params;
     const { unionSlug, wardId } = resolvedParams;
+
+    if (unionSlug?.startsWith('demo-union') && wardId?.startsWith('demo-ward')) {
+        const demoData = await getWardFullContext(wardId);
+        if (demoData?.ward) return <WardPortalClient ctx={demoData.ctx} ward={demoData.ward} />;
+    }
 
     const locationData = await getLocationBySlug(unionSlug);
     let ctx = null;

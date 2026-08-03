@@ -20,6 +20,7 @@ import { paths } from '@/lib/constants/paths';
 import NewsTicker from '@/components/layout/NewsTicker';
 import { SERVICE_CATEGORIES } from '@/lib/constants/serviceCategories';
 import NotificationBell from '@/components/ui/NotificationBell';
+import { getPortalRouteForRole } from '@/lib/utils/portalRoutes';
 
 export default function Header() {
     const pathname = usePathname();
@@ -334,10 +335,7 @@ export default function Header() {
                             {isAuthenticated && user ? (
                                 <>
                                     {(() => {
-                                        const dashLink = user.role === 'super_admin' ? '/admin' : 
-                                                       user.role === 'chairman' ? '/chairman/dashboard' : 
-                                                       user.role === 'ward_member' ? '/ward-member/dashboard' : 
-                                                       user.role === 'volunteer' ? '/volunteer/dashboard' : null;
+                                        const dashLink = getPortalRouteForRole(user.role);
                                         if (!dashLink) return null;
                                         return (
                                             <Link

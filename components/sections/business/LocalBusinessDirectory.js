@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     BadgeCheck, BriefcaseBusiness, Building2, Check, ChevronLeft, ChevronRight,
     Clock3, Crown, ExternalLink, Filter, Loader2, MapPin, Megaphone,
@@ -49,6 +49,38 @@ const INITIAL_FORM = {
     serviceArea: '', openingHours: '', priceNote: '', websiteUrl: '',
     facebookUrl: '', logoUrl: '', plan: 'free'
 };
+const PLAN_OPTIONS = [
+    {
+        key: 'free',
+        title: 'Free',
+        price: '৳০',
+        note: 'সাধারণ verified listing',
+        icon: BadgeCheck,
+        tone: 'border-slate-200 bg-white text-slate-700',
+        activeTone: 'border-teal-500 bg-teal-50 text-teal-800 ring-teal-500/15',
+        points: ['Directory listing', 'Officer verification', 'Phone contact']
+    },
+    {
+        key: 'featured',
+        title: 'Featured',
+        price: '৩০ দিন',
+        note: 'Directory-তে উপরের placement',
+        icon: Crown,
+        tone: 'border-amber-200 bg-amber-50/40 text-amber-800',
+        activeTone: 'border-amber-400 bg-amber-50 text-amber-900 ring-amber-500/20',
+        points: ['Top sorting', 'Featured badge', 'Better visibility']
+    },
+    {
+        key: 'premium',
+        title: 'Premium',
+        price: 'Ads ready',
+        note: 'Sponsored campaign request',
+        icon: Megaphone,
+        tone: 'border-indigo-200 bg-indigo-50/40 text-indigo-800',
+        activeTone: 'border-indigo-500 bg-indigo-50 text-indigo-900 ring-indigo-500/20',
+        points: ['Sponsored slot', 'Campaign tracking', 'Chairman approval']
+    }
+];
 
 function locationLabel(row) {
     return row?.name_bn || row?.name_en || 'নাম পাওয়া যায়নি';
@@ -56,6 +88,13 @@ function locationLabel(row) {
 
 function cleanPhone(value) {
     return String(value || '').replace(/[^0-9]/g, '');
+}
+
+function formatCtr(clicks, impressions) {
+    const safeClicks = Number(clicks || 0);
+    const safeImpressions = Number(impressions || 0);
+    if (!safeImpressions) return '0% CTR';
+    return `${((safeClicks / safeImpressions) * 100).toFixed(1)}% CTR`;
 }
 
 function Field({ label, value, onChange, type = 'text', ...props }) {
@@ -87,6 +126,51 @@ function SelectField({ label, value, onChange, options, placeholder, ...props })
                 {options.map(([key, text]) => <option key={key} value={key}>{text}</option>)}
             </select>
         </label>
+    );
+}
+
+function PlanSelector({ value, onChange }) {
+    return (
+        <div className="sm:col-span-2">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <span className="text-xs font-black text-slate-700">Listing plan</span>
+                <span className="text-[11px] font-bold text-slate-400">সব plan officer review-এর পর publish হবে</span>
+            </div>
+            <div className="grid gap-3 md:grid-cols-3">
+                {PLAN_OPTIONS.map((plan) => {
+                    const Icon = plan.icon;
+                    const selected = value === plan.key;
+                    return (
+                        <button
+                            key={plan.key}
+                            type="button"
+                            onClick={() => onChange(plan.key)}
+                            className={`min-h-40 rounded-2xl border p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md ${selected ? `${plan.activeTone} ring-4` : plan.tone}`}
+                            aria-pressed={selected}
+                        >
+                            <div className="flex items-start justify-between gap-3">
+                                <div>
+                                    <p className="text-sm font-black">{plan.title}</p>
+                                    <p className="mt-1 text-lg font-black text-slate-950">{plan.price}</p>
+                                </div>
+                                <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${selected ? 'bg-white' : 'bg-white/80'}`}>
+                                    <Icon size={19} />
+                                </span>
+                            </div>
+                            <p className="mt-3 text-xs font-bold leading-5 text-slate-500">{plan.note}</p>
+                            <div className="mt-3 space-y-1.5">
+                                {plan.points.map((point) => (
+                                    <p key={point} className="flex items-center gap-2 text-[11px] font-bold text-slate-500">
+                                        <Check size={13} className="shrink-0 text-teal-600" />
+                                        {point}
+                                    </p>
+                                ))}
+                            </div>
+                        </button>
+                    );
+                })}
+            </div>
+        </div>
     );
 }
 
@@ -228,11 +312,7 @@ function ApplicationModal({ open, onClose, locations, onSubmitted }) {
                         <Field label="মোবাইল নম্বর *" value={form.phone} onChange={(value) => update('phone', value)} inputMode="numeric" required />
                         <Field label="WhatsApp নম্বর" value={form.whatsapp} onChange={(value) => update('whatsapp', value)} inputMode="numeric" />
                         <SelectField label="সেবার ধরন" value={form.category} onChange={(value) => update('category', value)} options={CATEGORIES.filter(([key]) => key !== 'all')} />
-                        <SelectField label="Listing plan" value={form.plan} onChange={(value) => update('plan', value)} options={[
-                            ['free', 'Free - সাধারণ তালিকা'],
-                            ['featured', 'Featured - উপরে দেখাবে'],
-                            ['premium', 'Premium - বিজ্ঞাপন ও বেশি reach']
-                        ]} />
+                        <PlanSelector value={form.plan} onChange={(value) => update('plan', value)} />
                     </div>
                     <label className="block">
                         <span className="mb-2 block text-xs font-black text-slate-700">সেবা সম্পর্কে সংক্ষিপ্ত বিবরণ</span>
@@ -267,7 +347,7 @@ function ApplicationModal({ open, onClose, locations, onSubmitted }) {
     );
 }
 
-function OfficerQueue({ rows, onChanged }) {
+function OfficerQueue({ rows, ads, onChanged }) {
     const [busyId, setBusyId] = useState(null);
     const mutate = async (id, payload) => {
         setBusyId(id);
@@ -299,6 +379,28 @@ function OfficerQueue({ rows, onChanged }) {
                         <h2 className="text-xl font-black text-slate-900">Business verification queue</h2>
                     </div>
                 </div>
+                {ads.length > 0 && (
+                    <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                        <div className="mb-3 flex items-center gap-2">
+                            <Megaphone size={17} className="text-amber-700" />
+                            <h3 className="text-sm font-black text-amber-950">Active sponsored ads</h3>
+                        </div>
+                        <div className="grid gap-3 md:grid-cols-2">
+                            {ads.slice(0, 4).map((ad) => (
+                                <div key={ad.id} className="rounded-xl bg-white p-3 shadow-sm">
+                                    <p className="truncate text-sm font-black text-slate-900">{ad.title}</p>
+                                    <p className="mt-1 truncate text-xs font-bold text-slate-500">{ad.business?.name || ad.subtitle}</p>
+                                    <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-black text-slate-600">
+                                        <span className="rounded-full bg-slate-100 px-2 py-1">{Number(ad.impression_count || 0)} impressions</span>
+                                        <span className="rounded-full bg-slate-100 px-2 py-1">{Number(ad.click_count || 0)} clicks</span>
+                                        <span className="rounded-full bg-emerald-50 px-2 py-1 text-emerald-700">{formatCtr(ad.click_count, ad.impression_count)}</span>
+                                        <span className="rounded-full bg-amber-100 px-2 py-1 text-amber-800">{ad.placement}</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
                 {rows.length === 0 ? (
                     <p className="rounded-2xl bg-slate-50 p-5 text-sm font-bold text-slate-500">এই scope-এ কোনো আবেদন নেই।</p>
                 ) : (
@@ -339,6 +441,7 @@ export default function LocalBusinessDirectory() {
     const [locations, setLocations] = useState([]);
     const [rows, setRows] = useState([]);
     const [ads, setAds] = useState([]);
+    const [managementAds, setManagementAds] = useState([]);
     const [managementRows, setManagementRows] = useState([]);
     const [canManage, setCanManage] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -348,6 +451,7 @@ export default function LocalBusinessDirectory() {
     const [unionId, setUnionId] = useState('');
     const [page, setPage] = useState(1);
     const [modalOpen, setModalOpen] = useState(false);
+    const trackedAdImpressions = useRef(new Set());
     const unions = useMemo(() => locations.filter((item) => item.type === 'union'), [locations]);
 
     const loadLocations = useCallback(async () => {
@@ -392,6 +496,7 @@ export default function LocalBusinessDirectory() {
         if (response.ok && result.canManage) {
             setCanManage(true);
             setManagementRows(result.data || []);
+            setManagementAds(result.ads || []);
         }
     }, []);
 
@@ -417,6 +522,23 @@ export default function LocalBusinessDirectory() {
             keepalive: true
         }).catch(() => {});
     };
+    const trackAd = useCallback((ad, event) => {
+        if (!ad?.id) return;
+        fetch('/api/business-directory/track', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: ad.id, target: 'ad', event }),
+            keepalive: true
+        }).catch(() => {});
+    }, []);
+
+    useEffect(() => {
+        ads.slice(0, 2).forEach((ad) => {
+            if (!ad?.id || trackedAdImpressions.current.has(ad.id)) return;
+            trackedAdImpressions.current.add(ad.id);
+            trackAd(ad, 'impression');
+        });
+    }, [ads, trackAd]);
 
     return (
         <div className="min-h-screen bg-slate-50 pb-16">
@@ -460,7 +582,7 @@ export default function LocalBusinessDirectory() {
                 <section className="mx-auto max-w-7xl px-4 pt-6 sm:px-6">
                     <div className="grid gap-3 md:grid-cols-2">
                         {ads.slice(0, 2).map((ad) => (
-                            <a key={ad.id} href={ad.target_url || `tel:${ad.business?.phone}`} target={ad.target_url ? '_blank' : undefined} rel="noreferrer" className="flex items-center gap-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 hover:bg-amber-100">
+                            <a key={ad.id} href={ad.target_url || `tel:${ad.business?.phone}`} target={ad.target_url ? '_blank' : undefined} rel="noreferrer" onClick={() => trackAd(ad, 'click')} className="flex items-center gap-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 hover:bg-amber-100">
                                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-400 text-amber-950"><Megaphone size={20} /></div>
                                 <div className="min-w-0">
                                     <p className="text-[10px] font-black uppercase tracking-widest text-amber-700">Sponsored</p>
@@ -541,7 +663,7 @@ export default function LocalBusinessDirectory() {
                 </div>
             </section>
 
-            {canManage && <OfficerQueue rows={managementRows} onChanged={loadManagement} />}
+            {canManage && <OfficerQueue rows={managementRows} ads={managementAds} onChanged={loadManagement} />}
             <ApplicationModal open={modalOpen} onClose={() => setModalOpen(false)} locations={locations} onSubmitted={loadManagement} />
         </div>
     );

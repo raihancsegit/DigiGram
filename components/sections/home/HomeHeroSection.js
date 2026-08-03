@@ -1,6 +1,7 @@
 "use client"
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useSelector, useDispatch } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Sparkles, Send, ArrowRight, Mic, MicOff, ShieldCheck, MapPin, Globe, Home, Loader2, SearchX } from 'lucide-react';
@@ -10,17 +11,19 @@ import { openModal } from '@/lib/store/features/locationSlice';
 
 import { searchLocations } from '@/lib/services/hierarchyService';
 
+const HERO_SEARCH_WORDS = ["ব্লাড ডোনার", "বাজারদর", "জরুরি ডাক্তার", "ইউনিয়ন সেবা", "স্মার্ট স্কুল", "কৃষি তথ্য"];
+
 export default function HomeHeroSection() {
+    const router = useRouter();
     const dispatch = useDispatch();
     const { selected } = useSelector((s) => s.location);
-    const words = ["ব্লাড ডোনার", "বাজারদর", "জরুরি ডাক্তার", "ইউনিয়ন সেবা", "স্মার্ট স্কুল", "কৃষি তথ্য"];
     const [index, setIndex] = useState(0);
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
         setMounted(true);
         const timer = setInterval(() => {
-            setIndex((prevIndex) => (prevIndex + 1) % words.length);
+            setIndex((prevIndex) => (prevIndex + 1) % HERO_SEARCH_WORDS.length);
         }, 3000);
         return () => clearInterval(timer);
     }, []);
@@ -33,6 +36,32 @@ export default function HomeHeroSection() {
     const recognitionRef = useRef(null);
 
     const floatingCards = FEATURED_FOR_HERO;
+    const citizenActions = [
+        {
+            title: 'নিজ এলাকা',
+            text: selected.unionSlug ? `${selected.union} পোর্টাল` : 'Union/ward/gram নির্বাচন',
+            href: selected.unionSlug ? paths.unionPortal(selected.unionSlug) : '/area',
+            icon: MapPin
+        },
+        {
+            title: 'আবেদন',
+            text: 'সনদ, অভিযোগ, appointment',
+            href: '/citizen#apply',
+            icon: ShieldCheck
+        },
+        {
+            title: 'স্ট্যাটাস',
+            text: 'Tracking number দিয়ে দেখুন',
+            href: '/track',
+            icon: Search
+        },
+        {
+            title: 'Citizen Center',
+            text: 'সব নাগরিক কাজ এক জায়গায়',
+            href: '/citizen',
+            icon: Home
+        }
+    ];
 
     // Search Logic
     useEffect(() => {
@@ -147,6 +176,15 @@ export default function HomeHeroSection() {
         return '#';
     };
 
+    const handleSearchSubmit = () => {
+        const firstResult = searchResults[0];
+        if (firstResult) {
+            router.push(getResultPath(firstResult));
+        } else if (searchQuery.trim()) {
+            router.push(`/track?query=${encodeURIComponent(searchQuery.trim())}`);
+        }
+    };
+
     // Close results on click outside
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -232,13 +270,13 @@ export default function HomeHeroSection() {
                                 <span className="text-slate-400 text-sm font-bold">খুঁজুন:</span>
                                 <AnimatePresence mode="wait">
                                     <motion.span
-                                        key={words[index]}
+                                        key={HERO_SEARCH_WORDS[index]}
                                         initial={{ opacity: 0, x: 10 }}
                                         animate={{ opacity: 1, x: 0 }}
                                         exit={{ opacity: 0, x: -10 }}
                                         className="text-teal-400 font-black text-sm sm:text-lg min-w-[80px] sm:min-w-[100px]"
                                     >
-                                        {words[index]}
+                                        {HERO_SEARCH_WORDS[index]}
                                     </motion.span>
                                 </AnimatePresence>
                             </div>
@@ -255,6 +293,9 @@ export default function HomeHeroSection() {
                                     type="text"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') handleSearchSubmit();
+                                    }}
                                     placeholder="আপনার কি প্রয়োজন? (সেবা, নম্বর...)"
                                     className="flex-1 bg-transparent py-3 sm:py-4 text-white placeholder:text-slate-500 outline-none font-bold text-sm sm:text-lg"
                                 />
@@ -270,7 +311,7 @@ export default function HomeHeroSection() {
                                     >
                                         {isListening ? <MicOff size={20} /> : <Mic size={20} />}
                                     </button>
-                                    <button className="hidden sm:flex items-center gap-2 bg-white text-slate-900 px-8 py-4 rounded-[24px] font-black text-sm hover:bg-teal-400 hover:text-white transition-all shadow-lg active:scale-95">
+                                    <button type="button" onClick={handleSearchSubmit} className="hidden sm:flex items-center gap-2 bg-white text-slate-900 px-8 py-4 rounded-[24px] font-black text-sm hover:bg-teal-400 hover:text-white transition-all shadow-lg active:scale-95">
                                         খুঁজুন
                                         <Send size={18} />
                                     </button>
@@ -329,6 +370,24 @@ export default function HomeHeroSection() {
                                     </motion.div>
                                 )}
                             </AnimatePresence>
+                            <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+                                {citizenActions.map((action) => {
+                                    const Icon = action.icon;
+                                    return (
+                                        <Link
+                                            key={action.title}
+                                            href={action.href}
+                                            className="group rounded-[22px] border border-white/10 bg-white/[0.06] p-4 text-left backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-teal-300/40 hover:bg-white/[0.1]"
+                                        >
+                                            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-slate-950 shadow-lg">
+                                                <Icon size={18} />
+                                            </div>
+                                            <p className="text-sm font-black leading-tight text-white">{action.title}</p>
+                                            <p className="mt-1 text-[11px] font-bold leading-4 text-slate-400">{action.text}</p>
+                                        </Link>
+                                    );
+                                })}
+                            </div>
                         {/* Quick Services Grid for Mobile */}
                         <div className="mt-8 grid grid-cols-2 sm:grid-cols-3 gap-3 lg:hidden">
                             {floatingCards.slice(0, 4).map((card, i) => (

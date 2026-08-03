@@ -19,6 +19,7 @@ import {
     Wrench
 } from 'lucide-react';
 import LaunchHealthPanel from './LaunchHealthPanel';
+import SchoolPilotReadinessPanel from './SchoolPilotReadinessPanel';
 
 const envChecks = [
     { label: 'Supabase URL', ok: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL), key: 'NEXT_PUBLIC_SUPABASE_URL' },
@@ -152,6 +153,7 @@ export default function LaunchReadinessPage() {
             </section>
 
             <LaunchHealthPanel />
+            <SchoolPilotReadinessPanel />
 
             <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                 {readinessCards.map((card) => {

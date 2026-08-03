@@ -13,6 +13,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { performLogout } from '@/lib/store/features/authSlice';
 import NotificationBell from '@/components/ui/NotificationBell';
 import { menuStyles } from '@/components/common/menuStyles';
+import { canAccessAdminPath } from '@/lib/utils/portalRoutes';
 
 export default function AdminShell({ children }) {
     const [isSidebarOpen, setSidebarOpen] = useState(false);
@@ -60,6 +61,8 @@ export default function AdminShell({ children }) {
     const filteredMenu = menuItems.filter(item => {
         // Super admin has full access
         if (user?.role === 'super_admin') return true;
+
+        if (!canAccessAdminPath(user?.role, item.path)) return false;
         
         // If it's a general item with no permission key, allow it for all admins
         if (!item.permission) return true;

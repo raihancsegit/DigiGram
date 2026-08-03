@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/utils/supabase-admin';
 import { recordDataAccess } from '@/lib/utils/data-access-log';
+import { internalServerError } from '@/lib/utils/api-response';
 
 export async function GET(request) {
     try {
@@ -33,7 +34,7 @@ export async function GET(request) {
 
         const { data: docs, error: docsError } = await supabaseAdmin
             .from('household_documents')
-            .select('*')
+            .select('id,type,title,file_path,file_size,mime_type,created_at')
             .eq('household_id', household.id)
             .order('created_at', { ascending: false });
 
@@ -72,6 +73,6 @@ export async function GET(request) {
         return NextResponse.json({ success: true, data: signedDocs });
     } catch (err) {
         console.error('Household documents API error:', err);
-        return NextResponse.json({ error: err.message || 'Failed to load documents' }, { status: 500 });
+        return internalServerError('Failed to load documents. Please try again.');
     }
 }

@@ -25,6 +25,33 @@ import SmsAutoFollowUpRules from '@/components/sections/sms/SmsAutoFollowUpRules
 import SmsDeliveryReport from '@/components/sections/sms/SmsDeliveryReport';
 
 const gatewayPresets = {
+    bulksmsbd: {
+        name: 'BulkSMSBD',
+        provider: 'bulksmsbd',
+        senderId: '',
+        apiBaseUrl: 'https://bulksmsbd.net/api/smsapi',
+        apiKey: '',
+        timeoutMs: '15000',
+        priority: '10',
+        webhookEnabled: false,
+        isActive: false,
+        configText: JSON.stringify({
+            method: 'POST',
+            payload_mode: 'form',
+            api_key_env: 'BULKSMSBD_API_KEY',
+            api_key_key: 'api_key',
+            recipient_key: 'number',
+            recipient_format: 'bd_e164_digits',
+            message_key: 'message',
+            sender_key: 'senderid',
+            static_payload: { type: 'text' },
+            balance_url: 'https://bulksmsbd.net/api/getBalanceApi',
+            success_path: 'response_code',
+            success_values: [202, '202'],
+            treat_accepted_as_delivered: false,
+            note: 'Use an approved BulkSMSBD masking or non-masking Sender ID. Delivery webhook is disabled because this API returns submission status.'
+        }, null, 2)
+    },
     mock: {
         name: 'Mock SMS Gateway',
         provider: 'mock',
@@ -121,6 +148,7 @@ export default function AdminSmsPage() {
     const [gatewayTestPhones, setGatewayTestPhones] = useState({});
     const [testingGateway, setTestingGateway] = useState('');
     const [gatewayTestResults, setGatewayTestResults] = useState({});
+    const [gatewayBalances, setGatewayBalances] = useState({});
     const [adjustmentWallet, setAdjustmentWallet] = useState(null);
     const [adjustmentForm, setAdjustmentForm] = useState({ credits: '', note: '' });
     const [adjustmentStatus, setAdjustmentStatus] = useState('');
@@ -202,6 +230,16 @@ export default function AdminSmsPage() {
             }));
         } finally {
             setSaving(false);
+        }
+    }
+
+    async function checkGatewayBalance(gateway) {
+        setGatewayBalances((current) => ({ ...current, [gateway.id]: { loading: true } }));
+        try {
+            const data = await smsService.getGatewayBalance(gateway.id);
+            setGatewayBalances((current) => ({ ...current, [gateway.id]: { balance: data.balance } }));
+        } catch (error) {
+            setGatewayBalances((current) => ({ ...current, [gateway.id]: { error: error.message } }));
         }
     }
 
@@ -1070,6 +1108,22 @@ export default function AdminSmsPage() {
                                         <MiniMetric label="API key" value={gateway.has_api_key ? 'Configured' : 'Missing'} raw />
                                     </div>
                                     {gateway.last_error && <p className="mt-3 rounded-2xl bg-rose-50 p-3 text-xs font-bold text-rose-700">{gateway.last_error}</p>}
+                                    {gateway.provider === 'bulksmsbd' && (
+                                        <button
+                                            type="button"
+                                            onClick={() => checkGatewayBalance(gateway)}
+                                            disabled={gatewayBalances[gateway.id]?.loading}
+                                            className="mt-3 w-full rounded-xl border border-teal-200 bg-teal-50 px-3 py-2 text-xs font-black text-teal-700 disabled:opacity-50"
+                                        >
+                                            {gatewayBalances[gateway.id]?.loading
+                                                ? 'Balance checking...'
+                                                : gatewayBalances[gateway.id]?.error
+                                                    ? gatewayBalances[gateway.id].error
+                                                    : gatewayBalances[gateway.id]?.balance !== undefined
+                                                        ? `Provider balance: ${gatewayBalances[gateway.id].balance}`
+                                                        : 'Check provider balance'}
+                                        </button>
+                                    )}
                                     <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-3">
                                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Delivery webhook</p>
                                         <code className="mt-1 block break-all text-xs font-bold text-slate-600">/api/sms/webhook/{gateway.id}</code>
@@ -1126,7 +1180,7 @@ export default function AdminSmsPage() {
                             <Plus className="text-teal-600" />
                             <h2 className="text-xl font-black text-slate-800">{editingGatewayId ? 'Gateway সম্পাদনা' : 'নতুন Gateway'}</h2>
                         </div>
-                        <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                        <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-5">
                             {Object.entries(gatewayPresets).map(([key, preset]) => (
                                 <button
                                     key={key}
@@ -1156,7 +1210,7 @@ export default function AdminSmsPage() {
                                 placeholder="Gateway config JSON"
                             />
                             <p className="rounded-2xl bg-slate-50 p-3 text-xs font-bold leading-relaxed text-slate-500">
-                                Config JSON diye provider payload map korun. payload_mode: json, form, query. recipient_key, message_key, sender_key provider onujayi din.
+                                BulkSMSBD বাটন চাপলে প্রয়োজনীয় API mapping স্বয়ংক্রিয়ভাবে বসবে। শুধু API token ও অনুমোদিত Sender ID দিন; production secret চাইলে BULKSMSBD_API_KEY environment variable-এ রাখুন।
                             </p>
                             <label className="flex items-center gap-2 text-sm font-bold text-slate-600">
                                 <input type="checkbox" checked={gatewayForm.isActive} onChange={(event) => setGatewayForm({ ...gatewayForm, isActive: event.target.checked })} />

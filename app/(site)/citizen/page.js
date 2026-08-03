@@ -31,7 +31,6 @@ import {
 } from 'lucide-react';
 import { toBnDigits } from '@/lib/utils/format';
 import { searchLocations } from '@/lib/services/hierarchyService';
-import RelatedServiceLinks from '@/components/common/RelatedServiceLinks';
 import { menuStyles } from '@/components/common/menuStyles';
 
 const STATUS_LABELS = {
@@ -56,6 +55,21 @@ const PRIORITY_LABELS = {
     emergency: 'Emergency'
 };
 
+const CITIZEN_SESSION_STORAGE_KEY = 'digigram:citizen-session';
+
+function getSavedCitizenSession() {
+    if (typeof localStorage === 'undefined') return {};
+    try {
+        const saved = JSON.parse(localStorage.getItem(CITIZEN_SESSION_STORAGE_KEY) || '{}');
+        return /^01[0-9]{9}$/.test(saved.phone || '')
+            ? { phone: saved.phone, accessToken: saved.accessToken || '' }
+            : { accessToken: saved.accessToken || '' };
+    } catch {
+        localStorage.removeItem(CITIZEN_SESSION_STORAGE_KEY);
+        return {};
+    }
+}
+
 function formatDate(value) {
     if (!value) return '';
     return toBnDigits(new Date(value).toLocaleDateString('bn-BD'));
@@ -75,11 +89,12 @@ async function postJson(url, payload) {
 export default function CitizenCenterPage() {
     const router = useRouter();
     const { selected } = useSelector((state) => state.location);
-    const [phone, setPhone] = useState('');
+    const savedCitizenSession = useMemo(getSavedCitizenSession, []);
+    const [phone, setPhone] = useState(savedCitizenSession.phone || '');
     const [otpCode, setOtpCode] = useState('');
-    const [trackLookup, setTrackLookup] = useState({ id: '', phone: '', type: '' });
+    const [trackLookup, setTrackLookup] = useState({ id: '', phone: savedCitizenSession.phone || '', type: '' });
     const [householdLookup, setHouseholdLookup] = useState('');
-    const [accessToken, setAccessToken] = useState('');
+    const [accessToken, setAccessToken] = useState(savedCitizenSession.accessToken || '');
     const [debugCode, setDebugCode] = useState('');
     const [loading, setLoading] = useState(false);
     const [inbox, setInbox] = useState(null);
@@ -93,6 +108,22 @@ export default function CitizenCenterPage() {
     const [selectedScope, setSelectedScope] = useState({ scopeType: '', scopeId: '', label: '' });
     const [notice, setNotice] = useState('');
     const [lastAction, setLastAction] = useState(null);
+
+    useEffect(() => {
+        try {
+            if (!phone && !accessToken) {
+                localStorage.removeItem(CITIZEN_SESSION_STORAGE_KEY);
+                return;
+            }
+            localStorage.setItem(CITIZEN_SESSION_STORAGE_KEY, JSON.stringify({
+                phone,
+                accessToken,
+                savedAt: new Date().toISOString()
+            }));
+        } catch {
+            // Storage can be unavailable in private or locked-down browser contexts.
+        }
+    }, [phone, accessToken]);
 
     useEffect(() => {
         if (selected?.wardId && selected?.ward) {
@@ -162,6 +193,16 @@ export default function CitizenCenterPage() {
         } finally {
             setLoading(false);
         }
+    }
+
+    function clearCitizenSession() {
+        localStorage.removeItem(CITIZEN_SESSION_STORAGE_KEY);
+        setAccessToken('');
+        setOtpCode('');
+        setInbox(null);
+        setDebugCode('');
+        setLastAction(null);
+        setNotice('Saved citizen session clear হয়েছে। আবার OTP দিয়ে inbox খুলুন।');
     }
 
     async function updateConsent(consentType, granted) {
@@ -328,11 +369,11 @@ export default function CitizenCenterPage() {
                 referenceId: result.data?.id,
                 phone,
                 status: result.data?.status || 'active',
-                message: `সম্ভাব্য donor ${toBnDigits(result.possibleDonors?.length || 0)} জন পাওয়া গেছে। দায়িত্বপ্রাপ্ত team follow-up করবে।`,
+                message: `সম্ভাব্য donor ${toBnDigits(result.possibleDonorCount || 0)} জন পাওয়া গেছে। দায়িত্বপ্রাপ্ত team follow-up করবে।`,
                 smsQueued: null,
                 nextTab: 'blood'
             });
-            setNotice(`Blood request জমা হয়েছে। সম্ভাব্য donor: ${toBnDigits(result.possibleDonors?.length || 0)} জন।`);
+            setNotice(`Blood request জমা হয়েছে। সম্ভাব্য donor: ${toBnDigits(result.possibleDonorCount || 0)} জন।`);
             if (otpCode) await loadInbox({ preventDefault() {} });
         } catch (error) {
             setNotice(error.message);
@@ -369,6 +410,34 @@ export default function CitizenCenterPage() {
         router.push(`/h/${encodeURIComponent(lookup)}`);
     }
 
+    function startCertificateHelp(kind) {
+        const config = kind === 'death'
+            ? {
+                category: 'মৃত্যু সনদ',
+                title: 'মৃত্যু সনদের আবেদন সহায়তা',
+                description: 'মৃত ব্যক্তির নাম, মৃত্যুর তারিখ, মৃত্যুর স্থান এবং আবেদনকারীর মোবাইল নম্বর দিন।'
+            }
+            : {
+                category: 'জন্ম নিবন্ধন',
+                title: 'জন্ম নিবন্ধনের আবেদন সহায়তা',
+                description: 'শিশু/সদস্যের নাম, জন্ম তারিখ, পিতা-মাতার নাম এবং আবেদনকারীর মোবাইল নম্বর দিন।'
+            };
+
+        setLifeSupport((current) => ({
+            ...current,
+            caseType: 'document',
+            category: config.category,
+            priority: 'normal',
+            title: config.title,
+            description: config.description
+        }));
+        setNotice(`${config.category} help form ready হয়েছে। নিচের form-এ নাম/লোকেশন দিয়ে submit করুন।`);
+
+        setTimeout(() => {
+            document.getElementById('life-support')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 50);
+    }
+
     return (
         <main className="min-h-screen bg-[#f5f8fb] px-4 pb-24 pt-5 text-slate-900 sm:px-6 sm:pb-10 lg:px-10">
             <div className="mx-auto max-w-6xl">
@@ -376,9 +445,9 @@ export default function CitizenCenterPage() {
                     <div className="grid gap-6 p-6 md:grid-cols-[1fr_0.8fr] md:p-9">
                         <div>
                             <p className="text-xs font-black uppercase tracking-[0.28em] text-teal-300">Citizen Center</p>
-                            <h1 className="mt-3 text-4xl font-black leading-tight sm:text-5xl">আপনার সব কাজ এক inbox-এ</h1>
+                            <h1 className="mt-3 text-4xl font-black leading-tight sm:text-5xl">৪টা কাজ, এক জায়গা</h1>
                             <p className="mt-4 max-w-2xl text-sm font-bold text-slate-300">
-                                আবেদন, complaint, blood emergency, reminder এবং household update শুধু মোবাইল নম্বর দিয়ে দেখুন।
+                                Status দেখুন, আবেদন করুন, office serial নিন, emergency help পাঠান। ব্যক্তিগত inbox খুলতে শুধু মোবাইল OTP লাগবে।
                             </p>
                         </div>
                         <div className="rounded-3xl bg-white/10 p-5 ring-1 ring-white/10">
@@ -393,13 +462,13 @@ export default function CitizenCenterPage() {
                     </div>
                 </section>
 
-                <section className="mt-5 rounded-[30px] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+                <section id="apply" className="mt-5 scroll-mt-24 rounded-[30px] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                     <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                         <div>
                             <p className="text-[10px] font-black uppercase tracking-[0.24em] text-teal-700">Fast gateway</p>
-                            <h2 className="text-2xl font-black text-slate-950">দ্রুত কাজ শুরু করুন</h2>
+                            <h2 className="text-2xl font-black text-slate-950">আপনি কী করতে চান?</h2>
                             <p className="mt-1 text-sm font-bold leading-6 text-slate-500">
-                                Status, payment, household profile আর নতুন request একই জায়গা থেকে খুলুন।
+                                সবচেয়ে বেশি দরকারি কাজগুলো আগে রাখা হয়েছে। বাকি history ও update নিচে OTP inbox-এ থাকবে।
                             </p>
                         </div>
                         <button
@@ -409,6 +478,31 @@ export default function CitizenCenterPage() {
                         >
                             <CreditCard size={17} />
                             Payment center
+                        </button>
+                    </div>
+
+                    <div className="mb-4 grid gap-3 md:grid-cols-2">
+                        <button
+                            type="button"
+                            onClick={() => startCertificateHelp('birth')}
+                            className="rounded-[26px] border border-teal-100 bg-teal-50 p-4 text-left transition hover:-translate-y-0.5 hover:shadow-lg"
+                        >
+                            <span className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-teal-700 ring-1 ring-teal-100">
+                                <IdCard size={22} />
+                            </span>
+                            <h3 className="text-lg font-black text-slate-950">জন্ম নিবন্ধন সহায়তা</h3>
+                            <p className="mt-1 text-xs font-bold leading-5 text-slate-600">সদস্যের জন্ম তারিখ ও পিতা-মাতার তথ্য দিয়ে দ্রুত request তৈরি করুন।</p>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => startCertificateHelp('death')}
+                            className="rounded-[26px] border border-rose-100 bg-rose-50 p-4 text-left transition hover:-translate-y-0.5 hover:shadow-lg"
+                        >
+                            <span className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-rose-700 ring-1 ring-rose-100">
+                                <FileText size={22} />
+                            </span>
+                            <h3 className="text-lg font-black text-slate-950">মৃত্যু সনদ সহায়তা</h3>
+                            <p className="mt-1 text-xs font-bold leading-5 text-slate-600">মৃত্যুর তারিখ, স্থান ও আবেদনকারীর তথ্য দিয়ে office follow-up request দিন।</p>
                         </button>
                     </div>
 
@@ -501,8 +595,9 @@ export default function CitizenCenterPage() {
                     </div>
                 </section>
 
-                <nav className="sticky top-3 z-20 mt-4 grid grid-cols-4 gap-2 rounded-3xl border border-slate-200 bg-white/95 p-2 shadow-lg shadow-slate-200/60 backdrop-blur md:hidden">
+                <nav className="sticky top-3 z-20 mt-4 grid grid-cols-5 gap-2 rounded-3xl border border-slate-200 bg-white/95 p-2 shadow-lg shadow-slate-200/60 backdrop-blur md:hidden">
                     {[
+                        ['#apply', FileText, 'Apply'],
                         ['#inbox', Phone, 'OTP'],
                         ['#appointment', CalendarCheck, 'Serial'],
                         ['#complaint', MessageSquareWarning, 'Complain'],
@@ -515,65 +610,7 @@ export default function CitizenCenterPage() {
                     ))}
                 </nav>
 
-                <section className="mt-4 grid gap-3 rounded-[28px] border border-teal-100 bg-white p-4 shadow-sm sm:grid-cols-2 lg:grid-cols-4">
-                    {[
-                        ['1', 'OTP inbox', 'Mobile number diye personal status, reminders, tax due and service updates dekhen.'],
-                        ['2', 'Office serial', 'Chairman/ward office-er kajer jonno appointment request pathan.'],
-                        ['3', 'Complaint', 'Road, light, water, certificate delay or local problem report korun.'],
-                        ['4', 'Emergency help', 'Blood, health, document, benefit or farmer support request korun.']
-                    ].map(([stepNo, title, text]) => (
-                        <div key={title} className="rounded-2xl bg-slate-50 p-4">
-                            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-teal-600 text-xs font-black text-white">{stepNo}</span>
-                            <h2 className="mt-3 text-sm font-black text-slate-950">{title}</h2>
-                            <p className="mt-1 text-xs font-bold leading-5 text-slate-500">{text}</p>
-                        </div>
-                    ))}
-                </section>
-
-                <section className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                    <QuickLinkCard
-                        href="#complaint"
-                        icon={MessageSquareWarning}
-                        title="Complaint দিন"
-                        text="এলাকা select করে সমস্যা জমা দিন।"
-                        tone="rose"
-                    />
-                    <QuickLinkCard
-                        href="#blood"
-                        icon={Droplet}
-                        title="Blood emergency"
-                        text="রক্ত দরকার হলে দ্রুত request করুন।"
-                        tone="red"
-                    />
-                    <QuickLinkCard
-                        href="/services/market"
-                        icon={ShoppingBag}
-                        title="বাজার দর"
-                        text="দাম alert ও demand board দেখুন।"
-                        tone="amber"
-                    />
-                    <QuickLinkCard
-                        href="/lost-found"
-                        icon={HelpCircle}
-                        title="হারানো-প্রাপ্তি"
-                        text="Report, claim ও verified return।"
-                        tone="indigo"
-                    />
-                </section>
-
-                <RelatedServiceLinks
-                    currentKey="citizen"
-                    preset="citizen"
-                    title="নাগরিক কাজের পাশে দরকারি link"
-                    subtitle="Complaint, blood, বাজার দর বা হারানো-প্রাপ্তি একই জায়গা থেকে খুলুন।"
-                    className="mt-5"
-                />
-
-                <CitizenDailyDashboard />
-
-                <CitizenServiceShortcuts />
-
-                <CitizenJourney />
+                <MainCitizenTasks />
 
                 <section id="inbox" className="mt-5 grid scroll-mt-24 gap-4 lg:grid-cols-[0.9fr_1.1fr]">
                     <div className="rounded-[30px] border border-slate-200 bg-white p-5 shadow-sm">
@@ -599,9 +636,17 @@ export default function CitizenCenterPage() {
                         <form onSubmit={loadInbox} className="mt-4 grid gap-3">
                             <input value={otpCode} onChange={(e) => setOtpCode(e.target.value)} placeholder="OTP code" className="rounded-2xl border border-slate-200 px-4 py-3 font-bold outline-none focus:border-teal-400" />
                             <button disabled={loading} className="rounded-2xl bg-slate-950 px-4 py-3 font-black text-white disabled:opacity-50">
-                                {loading ? <Loader2 className="mx-auto animate-spin" /> : 'Inbox দেখুন'}
+                                {loading ? <Loader2 className="mx-auto animate-spin" /> : accessToken && !otpCode ? 'Saved session দিয়ে Inbox দেখুন' : 'Inbox দেখুন'}
                             </button>
                         </form>
+                        {accessToken && (
+                            <div className="mt-3 flex flex-col gap-2 rounded-2xl border border-teal-100 bg-teal-50 p-3 text-sm font-bold text-teal-800 sm:flex-row sm:items-center sm:justify-between">
+                                <span>এই ডিভাইসে citizen session saved আছে। Refresh করলেও দ্রুত inbox খুলবে।</span>
+                                <button type="button" onClick={clearCitizenSession} className="rounded-xl bg-white px-3 py-2 text-xs font-black text-rose-600 shadow-sm">
+                                    Clear session
+                                </button>
+                            </div>
+                        )}
                         {debugCode && (
                             <p className="mt-3 rounded-2xl bg-amber-50 p-3 text-sm font-black text-amber-700">
                                 Dev OTP: {debugCode}
@@ -1063,6 +1108,71 @@ export default function CitizenCenterPage() {
 
 const inputClass = 'rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none focus:border-teal-400';
 
+function MainCitizenTasks() {
+    const tasks = [
+        {
+            title: 'Status দেখুন',
+            text: 'Tracking ID বা certificate ID দিয়ে application, complaint, serial status দেখুন।',
+            href: '#apply',
+            icon: Search,
+            tone: 'border-sky-100 bg-sky-50 text-sky-700'
+        },
+        {
+            title: 'আবেদন করুন',
+            text: 'জন্ম নিবন্ধন, মৃত্যু সনদ, document help বা benefit request পাঠান।',
+            href: '#life-support',
+            icon: FileText,
+            tone: 'border-teal-100 bg-teal-50 text-teal-700'
+        },
+        {
+            title: 'Office serial',
+            text: 'ইউনিয়ন/ওয়ার্ড অফিসে যাওয়ার আগে appointment request দিন।',
+            href: '#appointment',
+            icon: CalendarCheck,
+            tone: 'border-indigo-100 bg-indigo-50 text-indigo-700'
+        },
+        {
+            title: 'Emergency help',
+            text: 'Blood request, urgent complaint বা local problem দ্রুত পাঠান।',
+            href: '#blood',
+            icon: HeartPulse,
+            tone: 'border-rose-100 bg-rose-50 text-rose-700'
+        }
+    ];
+
+    return (
+        <section className="mt-5 rounded-[30px] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+            <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.24em] text-teal-600">Main purpose</p>
+                    <h2 className="text-2xl font-black text-slate-950">Citizen page mainly এই ৪ কাজের জন্য</h2>
+                </div>
+                <Link href="#inbox" className="inline-flex items-center gap-2 text-sm font-black text-teal-700 hover:text-slate-950">
+                    OTP inbox খুলুন <ArrowRight size={15} />
+                </Link>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                {tasks.map((task) => {
+                    const Icon = task.icon;
+                    return (
+                        <Link
+                            key={task.title}
+                            href={task.href}
+                            className="group rounded-[26px] border border-slate-100 bg-slate-50 p-4 transition hover:-translate-y-0.5 hover:bg-white hover:shadow-lg"
+                        >
+                            <span className={`mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border ${task.tone}`}>
+                                <Icon size={22} />
+                            </span>
+                            <h3 className="text-lg font-black text-slate-950">{task.title}</h3>
+                            <p className="mt-2 text-sm font-bold leading-6 text-slate-500">{task.text}</p>
+                        </Link>
+                    );
+                })}
+            </div>
+        </section>
+    );
+}
+
 function AppointmentForm({
     appointment,
     setAppointment,
@@ -1191,6 +1301,11 @@ function LifeSupportForm({
         farmer: 'ফসল রোগ, বাজার দর, সার/বীজ, কৃষি পরামর্শ',
         trust_feedback: 'Service feedback, দুর্নীতি/জটিলতা, suggestion'
     };
+    const documentChecklist = lifeSupport.category === 'জন্ম নিবন্ধন'
+        ? ['সদস্য/শিশুর নাম', 'জন্ম তারিখ', 'পিতা-মাতার নাম', 'মোবাইল নম্বর']
+        : lifeSupport.category === 'মৃত্যু সনদ'
+            ? ['মৃত ব্যক্তির নাম', 'মৃত্যুর তারিখ', 'মৃত্যুর স্থান', 'আবেদনকারীর মোবাইল']
+            : [];
 
     return (
         <form onSubmit={onSubmit} className="grid gap-3">
@@ -1233,6 +1348,18 @@ function LifeSupportForm({
                 placeholder={categoryHints[lifeSupport.caseType] || 'Category'}
                 className={inputClass}
             />
+            {documentChecklist.length > 0 && (
+                <div className="rounded-2xl border border-teal-100 bg-teal-50 p-3">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-teal-700">যা লাগবে</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                        {documentChecklist.map((item) => (
+                            <span key={item} className="rounded-full bg-white px-3 py-1 text-[10px] font-black text-slate-600 ring-1 ring-teal-100">
+                                {item}
+                            </span>
+                        ))}
+                    </div>
+                </div>
+            )}
             <input
                 required
                 value={lifeSupport.title}

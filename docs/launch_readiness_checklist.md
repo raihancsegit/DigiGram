@@ -4,10 +4,13 @@ Pilot launch, client demo, or Vercel production update-er age ei checklist follo
 
 ## 1. Database setup
 
-- Supabase SQL Editor-e latest migrations order moto run korun.
-- `database/66_migration_registry.sql` run kore migration tracker ready rakhun.
+- Supabase SQL Editor-e latest numbered feature migrations order moto run korun.
+- `database/77_demo_location_cleanup_and_bangla_fix.sql` production-e run korben na; eti demo database-only cleanup.
+- Latest feature migration-er por `database/66_migration_registry.sql` abar run kore migration tracker refresh korun.
 - `database/73_demo_data_registry.sql` run korle registry-backed demo data add/remove kaj korbe.
-- `database/63_role_rls_security_audit.sql` final security audit migration hishabe run korun.
+- Sob feature migration-er seshe `database/63_role_rls_security_audit.sql` abar final RLS hardening hishabe run korun.
+- School operations চালুর জন্য `79`, `80`, `81`, `82` migration এই order-e run korun; তারপর `66` registry refresh এবং `63` final RLS hardening run korun.
+- `database/update_schema.sql` ebong `database/household_documents.sql` legacy-only; new deployment-e run korben na.
 
 ## 2. Demo data test
 
@@ -78,6 +81,12 @@ Critical checks:
 5. Student portal theke assigned topic and quiz check korun.
 6. Guardian update flow verify korun.
 7. Website CMS theke template/theme publish korun.
+8. Academic session activate করে class group/shift ও weekly routine তৈরি করুন.
+9. Student profile, document, promotion এবং transfer/TC test করুন.
+10. Fee invoice তৈরি করে partial/full payment, receipt এবং dues verify করুন.
+11. Staff salary setup থেকে payroll generate ও paid করুন.
+12. Guardian verified view-তে routine, attendance, homework, result ও নিজের fee dues check করুন.
+13. Reports tab থেকে student, attendance, finance ও payroll CSV export করুন.
 
 ## 7. Mobile field test
 
@@ -113,8 +122,15 @@ npm test
 npm run lint
 npm run build
 npm run security:audit
+npm run database:audit
+npm run env:audit
+npm run mobile:citizen:audit
+npm run role:audit
 npm run audit
 ```
+
+Production release enforcement-er jonno `ENV_AUDIT_STRICT=1` diye `npm run env:audit`
+chalate hobe. Audit kono secret value print kore na.
 
 Production database access is required for the database-backed route checks in `npm run audit`. Verify every authenticated role manually with dedicated test accounts before launch.
 

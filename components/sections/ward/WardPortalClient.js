@@ -17,6 +17,7 @@ import { useRef } from 'react';
 import { applyLocationSnapshot } from '@/lib/store/features/locationSlice';
 import { paths } from '@/lib/constants/paths';
 import { searchLocations } from '@/lib/services/hierarchyService';
+import { supabase } from '@/lib/utils/supabase';
 import { layout } from '@/lib/theme';
 import PowerWatchSection from '../community/PowerWatchSection';
 import { parseBnInt, toBnDigits } from '@/lib/utils/format';
@@ -59,6 +60,7 @@ export default function WardPortalClient({ ctx, ward: initialWard }) {
     const { dynamicWardData } = useSelector((state) => state.wardData);
 
     const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+    const [liveWardOverride, setLiveWardOverride] = useState(null);
     const [villageListQuery, setVillageListQuery] = useState('');
     const [villageListPage, setVillageListPage] = useState(1);
     const [wardBloodQuery, setWardBloodQuery] = useState('');
@@ -102,6 +104,82 @@ export default function WardPortalClient({ ctx, ward: initialWard }) {
 
         return () => clearTimeout(delayDebounceFn);
     }, [searchQuery]);
+
+    useEffect(() => {
+        const wardSlug = initialWard?.slug || initialWard?.id;
+        if (!String(wardSlug || '').startsWith('demo-ward')) return undefined;
+
+        let active = true;
+        const loadSyncedDemoStats = async () => {
+            try {
+                const { data: wardLocation, error: wardError } = await supabase
+                    .from('locations')
+                    .select('*')
+                    .eq('slug', wardSlug)
+                    .eq('type', 'ward')
+                    .maybeSingle();
+
+                if (wardError || !wardLocation?.id) return;
+
+                const { data: villages, error: villageError } = await supabase
+                    .from('locations')
+                    .select('*')
+                    .eq('parent_id', wardLocation.id)
+                    .eq('type', 'village')
+                    .order('name_bn', { ascending: true });
+
+                if (villageError || !active) return;
+
+                const mappedVillages = (villages || []).map((village) => {
+                    const realStats = village.survey_status === 'verified' ? (village.real_stats || {}) : null;
+                    const stats = realStats || village.stats || {};
+
+                    return {
+                        id: village.id,
+                        slug: village.slug,
+                        name: village.name_bn || village.name_en,
+                        name_bn: village.name_bn,
+                        name_en: village.name_en,
+                        survey_status: village.survey_status,
+                        real_stats: village.real_stats,
+                        stats: village.stats,
+                        total_estimated_houses: village.total_estimated_houses,
+                        population: stats.total_members ?? stats.population ?? 0,
+                        voters: stats.voters ?? 0,
+                        maleVoters: stats.male_voters ?? stats.maleVoters ?? 0,
+                        femaleVoters: stats.female_voters ?? stats.femaleVoters ?? 0,
+                        schools: stats.schools ?? 0,
+                        mosques: stats.mosques ?? 0,
+                        madrassas: stats.madrassas ?? 0,
+                        orphanages: stats.orphanages ?? 0,
+                        blood_donors: stats.blood_donors ?? stats.bloodDonors ?? 0,
+                        blood_groups: stats.blood_groups ?? stats.bloodGroups ?? {},
+                        total_houses: stats.total_houses ?? stats.totalHouses ?? 0,
+                        birth_registered: stats.birth_registered ?? stats.birthRegistered ?? 0,
+                        voter_eligible: stats.voter_eligible ?? stats.voterEligible ?? 0
+                    };
+                });
+
+                if (active && mappedVillages.length > 0) {
+                    setLiveWardOverride({
+                        ...wardLocation,
+                        id: wardLocation.id,
+                        slug: wardLocation.slug,
+                        name: wardLocation.name_bn || wardLocation.name_en,
+                        villages: mappedVillages
+                    });
+                }
+            } catch (error) {
+                console.error('Demo ward synced stats load failed:', error);
+            }
+        };
+
+        loadSyncedDemoStats();
+
+        return () => {
+            active = false;
+        };
+    }, [initialWard?.id, initialWard?.slug]);
 
     const startVoiceSearch = async () => {
         if (typeof window === 'undefined') return;
@@ -155,7 +233,8 @@ export default function WardPortalClient({ ctx, ward: initialWard }) {
         const key = `${union.slug}-${initialWard.id}`;
         const dynamic = dynamicWardData[key];
         
-        const villagesSource = dynamic?.villages || initialWard.villages || [];
+        const sourceWard = liveWardOverride || initialWard;
+        const villagesSource = dynamic?.villages || sourceWard.villages || [];
         const normalizedVillages = villagesSource.map(v => {
             if (typeof v === 'string') return { name: v, population: '0', voters: '0', maleVoters: '0', femaleVoters: '0', schools: '0', mosques: '0', madrassas: '0', blood_donors: '0' };
             
@@ -166,37 +245,38 @@ export default function WardPortalClient({ ctx, ward: initialWard }) {
                 
                 return {
                     ...v,
-                    population: s.total_members || s.population || v.population || '0',
-                    voters: s.voters || v.voters || '0',
-                    maleVoters: s.male_voters || s.maleVoters || s.males || v.maleVoters || '0',
-                    femaleVoters: s.female_voters || s.femaleVoters || s.females || v.femaleVoters || '0',
-                    schools: s.schools || v.schools || '0',
-                    mosques: s.mosques || v.mosques || '0',
-                    madrassas: s.madrassas || v.madrassas || '0',
-                    blood_donors: s.blood_donors || s.bloodDonors || v.blood_donors || '0',
-                    blood_groups: s.blood_groups || s.bloodGroups || v.blood_groups || {},
-                    total_houses: s.total_houses || s.totalHouses || v.total_houses || v.total_estimated_houses || '0',
-                    birth_registered: s.birth_registered || s.birthRegistered || v.birth_registered || '0',
-                    voter_eligible: s.voter_eligible || s.voterEligible || v.voter_eligible || '0'
+                    population: s.total_members ?? s.population ?? v.population ?? '0',
+                    voters: s.voters ?? v.voters ?? '0',
+                    maleVoters: s.male_voters ?? s.maleVoters ?? s.males ?? v.maleVoters ?? '0',
+                    femaleVoters: s.female_voters ?? s.femaleVoters ?? s.females ?? v.femaleVoters ?? '0',
+                    schools: s.schools ?? v.schools ?? '0',
+                    mosques: s.mosques ?? v.mosques ?? '0',
+                    madrassas: s.madrassas ?? v.madrassas ?? '0',
+                    orphanages: s.orphanages ?? v.orphanages ?? '0',
+                    blood_donors: s.blood_donors ?? s.bloodDonors ?? v.blood_donors ?? '0',
+                    blood_groups: s.blood_groups ?? s.bloodGroups ?? v.blood_groups ?? {},
+                    total_houses: s.total_houses ?? s.totalHouses ?? v.total_houses ?? v.total_estimated_houses ?? '0',
+                    birth_registered: s.birth_registered ?? s.birthRegistered ?? v.birth_registered ?? '0',
+                    voter_eligible: s.voter_eligible ?? s.voterEligible ?? v.voter_eligible ?? '0'
                 };
         });
 
-        if (!dynamic) return { ...initialWard, villages: normalizedVillages };
+        if (!dynamic) return { ...sourceWard, villages: normalizedVillages };
 
         return {
-            ...initialWard,
+            ...sourceWard,
             member: {
-                ...initialWard.member,
-                name: dynamic.memberName || initialWard.member?.name,
-                phone: dynamic.memberPhone || initialWard.member?.phone,
-                avatar_url: dynamic.memberAvatar || initialWard.member?.avatar_url,
+                ...sourceWard.member,
+                name: dynamic.memberName || sourceWard.member?.name,
+                phone: dynamic.memberPhone || sourceWard.member?.phone,
+                avatar_url: dynamic.memberAvatar || sourceWard.member?.avatar_url,
             },
             villages: normalizedVillages,
             bloodDonors: dynamic.bloodDonors || [],
-            population: dynamic.population || initialWard.population,
-            voters: dynamic.voters || initialWard.voters,
+            population: dynamic.population || sourceWard.population,
+            voters: dynamic.voters || sourceWard.voters,
         };
-    }, [initialWard, union.slug, dynamicWardData]);
+    }, [initialWard, liveWardOverride, union.slug, dynamicWardData]);
 
     const isMyWard = isAuthenticated && 
         user?.role === 'ward_member' && 
@@ -566,8 +646,8 @@ export default function WardPortalClient({ ctx, ward: initialWard }) {
                                                 animate={{ opacity: 1, y: 0 }}
                                                 transition={{ delay: idx * 0.05 }}
                                             >
-                                                <div
-                                                    onClick={() => isObj && v.id && (window.location.href = paths.villagePortal(union.slug, ward.slug || ward.id, v.slug || v.id))}
+                                                <Link
+                                                    href={isObj && v.id ? paths.villagePortal(union.slug, ward.slug || ward.id, v.slug || v.id) : '#'}
                                                     className="block cursor-pointer border border-slate-200/60 rounded-[32px] overflow-hidden group hover:border-teal-400 hover:shadow-2xl hover:shadow-teal-900/5 transition-all duration-300 bg-white"
                                                 >
                                                     <div className="flex items-center justify-between p-6 bg-gradient-to-r from-slate-50 to-white relative overflow-hidden gap-4">
@@ -660,7 +740,7 @@ export default function WardPortalClient({ ctx, ward: initialWard }) {
                                                             </div>
                                                         </div>
                                                     </div>
-                                                </div>
+                                                </Link>
                                             </motion.div>
                                         );
                                     })}

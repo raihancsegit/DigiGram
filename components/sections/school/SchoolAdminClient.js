@@ -5,8 +5,11 @@ import {
     Bell,
     BookOpenCheck,
     CalendarCheck,
+    CalendarClock,
+    CircleDollarSign,
     ClipboardList,
     ExternalLink,
+    FileDown,
     GraduationCap,
     House,
     Loader2,
@@ -24,8 +27,13 @@ import { institutionPortalService } from '@/lib/services/institutionPortalServic
 import { institutionService } from '@/lib/services/institutionService';
 import { adminService } from '@/lib/services/adminService';
 import InstitutionWebsiteManager from '@/components/sections/institution/InstitutionWebsiteManager';
+import SchoolOperationsManager from '@/components/sections/school/SchoolOperationsManager';
+import StudentLifecycleManager from '@/components/sections/school/StudentLifecycleManager';
+import StudentReportCard from '@/components/sections/school/StudentReportCard';
+import SchoolReportsPanel from '@/components/sections/school/SchoolReportsPanel';
 import { buildAcademicClassPlan } from '@/lib/constants/academicStructure';
 import { getInstitutionProfile } from '@/lib/constants/institutionProfiles';
+import { getInstitutionDesignProfile } from '@/lib/constants/institutionDesignProfiles';
 import { buildExamResultSummaries, calculateGrade } from '@/lib/constants/grading';
 
 const PAGE_SIZE = 8;
@@ -78,7 +86,15 @@ export default function SchoolAdminClient({ schoolId }) {
     const [examEntries, setExamEntries] = useState([]);
     const [selectedClass, setSelectedClass] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [classForm, setClassForm] = useState({ name: '', academic_year: new Date().getFullYear(), section: '' });
+    const [classForm, setClassForm] = useState({
+        name: '',
+        academic_year: new Date().getFullYear(),
+        section: '',
+        group_name: '',
+        shift_name: '',
+        room_label: '',
+        capacity: ''
+    });
     const [studentForm, setStudentForm] = useState({
         student_name: '',
         roll_no: '',
@@ -112,6 +128,11 @@ export default function SchoolAdminClient({ schoolId }) {
     const [noticeForm, setNoticeForm] = useState({ title: '', body: '', audience: 'public', is_pinned: false });
     const [editingNoticeId, setEditingNoticeId] = useState('');
     const [admissionApplications, setAdmissionApplications] = useState([]);
+    const [lifecycleStudent, setLifecycleStudent] = useState(null);
+    const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
+    const [attendanceRows, setAttendanceRows] = useState([]);
+    const [staffAttendanceRows, setStaffAttendanceRows] = useState([]);
+    const [reportStudentId, setReportStudentId] = useState('');
     const [institution, setInstitution] = useState(null);
     const [activeTab, setActiveTab] = useState('dashboard');
     const [creatingDefaultClasses, setCreatingDefaultClasses] = useState(false);
@@ -201,17 +222,43 @@ export default function SchoolAdminClient({ schoolId }) {
         if (requestedTab) setActiveTab(requestedTab);
     }, []);
 
+    useEffect(() => {
+        if (activeTab !== 'attendance' || !selectedClass) return;
+        let cancelled = false;
+        Promise.allSettled([
+            schoolService.getClassAttendance(selectedClass.id, attendanceDate),
+            schoolService.getStaffAttendance(schoolId, attendanceDate)
+        ]).then(([studentResult, staffResult]) => {
+            if (cancelled) return;
+            setAttendanceRows(studentResult.status === 'fulfilled' ? studentResult.value : []);
+            setStaffAttendanceRows(staffResult.status === 'fulfilled' ? staffResult.value : []);
+        });
+        return () => { cancelled = true; };
+    }, [activeTab, attendanceDate, schoolId, selectedClass]);
+
     async function createClass(event) {
         event.preventDefault();
         const created = await schoolService.createClass({
             institution_id: schoolId,
             ...classForm,
-            academic_year: Number(classForm.academic_year)
+            academic_year: Number(classForm.academic_year),
+            capacity: classForm.capacity ? Number(classForm.capacity) : null,
+            group_name: classForm.group_name || null,
+            shift_name: classForm.shift_name || null,
+            room_label: classForm.room_label || null
         });
         setClasses((current) => [created, ...current]);
         setSelectedClass(created);
         setStudents([]);
-        setClassForm({ name: '', academic_year: new Date().getFullYear(), section: '' });
+        setClassForm({
+            name: '',
+            academic_year: new Date().getFullYear(),
+            section: '',
+            group_name: '',
+            shift_name: '',
+            room_label: '',
+            capacity: ''
+        });
     }
 
     async function createDefaultClasses() {
@@ -221,7 +268,10 @@ export default function SchoolAdminClient({ schoolId }) {
             await schoolService.createDefaultClasses(
                 schoolId,
                 academicYear,
-                institution?.operational_settings || {}
+                {
+                    ...getInstitutionProfile(institution?.category).academicSettings,
+                    ...(institution?.operational_settings || {})
+                }
             );
             const nextClasses = await schoolService.getClasses(schoolId);
             setClasses(nextClasses);
@@ -481,24 +531,42 @@ export default function SchoolAdminClient({ schoolId }) {
     }
 
     async function markAttendance(student, status) {
-        await schoolService.markAttendance({
+        const marked = await schoolService.markAttendance({
             institution_id: schoolId,
             class_id: selectedClass.id,
             student_id: student.id,
-            attendance_date: new Date().toISOString().split('T')[0],
+            attendance_date: attendanceDate,
             status
         });
-        if (status === 'absent' && student.guardian_phone) {
+        setAttendanceRows((current) => [
+            ...current.filter((item) => item.student_id !== student.id),
+            marked
+        ]);
+        const today = new Date().toISOString().split('T')[0];
+        if (status === 'absent' && attendanceDate === today && student.guardian_phone) {
             await smsService.queueMessage({
                 ownerType: 'institution',
                 ownerId: schoolId,
                 recipientPhone: student.guardian_phone,
-                message: `DigiGram School: ${student.student_name} আজ অনুপস্থিত ছিল।`,
+                message: `DigiGram School: ${student.student_name} আজ (${attendanceDate}) অনুপস্থিত ছিল।`,
                 category: 'school_absence',
                 sourceType: 'school_student',
                 sourceId: student.id
             });
         }
+    }
+
+    async function markStaffAttendance(member, status) {
+        const marked = await schoolService.markStaffAttendance({
+            institution_id: schoolId,
+            profile_id: member.profile_id,
+            attendance_date: attendanceDate,
+            status
+        });
+        setStaffAttendanceRows((current) => [
+            ...current.filter((item) => item.profile_id !== member.profile_id),
+            marked
+        ]);
     }
 
     async function createLesson(event) {
@@ -563,31 +631,41 @@ export default function SchoolAdminClient({ schoolId }) {
     }
 
     const profile = getInstitutionProfile(institution?.category);
+    const design = getInstitutionDesignProfile(institution?.category);
     const portalCopy = profile.portal;
     const tabs = [
         { id: 'dashboard', label: 'ড্যাশবোর্ড', icon: House },
         { id: 'attendance', label: 'উপস্থিতি', icon: ClipboardList },
         { id: 'students', label: portalCopy.studentLabel, icon: GraduationCap },
-        { id: 'teachers', label: 'শিক্ষক', icon: Users },
+        { id: 'teachers', label: profile.staffLabel || 'শিক্ষক', icon: Users },
         { id: 'classes', label: portalCopy.classLabel, icon: BookOpenCheck },
         { id: 'subjects', label: portalCopy.subjectLabel, icon: BookOpenCheck },
         { id: 'results', label: portalCopy.resultLabel, icon: GraduationCap },
+        { id: 'routine', label: 'ক্লাস রুটিন', icon: CalendarClock },
+        { id: 'fees', label: 'ফি ও হিসাব', icon: CircleDollarSign },
+        { id: 'reports', label: 'রিপোর্ট ও Export', icon: FileDown },
         { id: 'admissions', label: 'ভর্তি আবেদন', icon: CalendarCheck },
         { id: 'notices', label: 'নোটিশ', icon: Bell },
         { id: 'website', label: 'ওয়েবসাইট CMS', icon: Settings2 }
     ];
-    const adminSetupSteps = [
-        { title: '১. ক্লাস খুলুন', text: 'প্রথমে শ্রেণি/সেকশন তৈরি করুন, না হলে ভর্তি ও ফলাফল ঠিকভাবে বসবে না।', tab: 'classes' },
-        { title: '২. শিক্ষক যোগ করুন', text: 'শিক্ষকের login তৈরি করুন, পরে subject-এর সাথে শিক্ষক assign করুন।', tab: 'teachers' },
-        { title: '৩. বিষয় assign করুন', text: 'প্রতি ক্লাসে subject যোগ করে শিক্ষক বসালে teacher portal সহজ হবে।', tab: 'subjects' },
-        { title: '৪. ভর্তি নিন', text: 'Home search থেকে member select করুন, না থাকলে manual student add করুন।', tab: 'students' }
-    ];
-    const adminDailySteps = [
-        { title: 'উপস্থিতি', text: 'প্রতিদিন present/absent/late/leave mark করুন।', tab: 'attendance' },
-        { title: 'নোটিশ', text: 'পরীক্ষা, ছুটি বা জরুরি ঘোষণার জন্য notice publish করুন।', tab: 'notices' },
-        { title: 'ফলাফল', text: 'Exam তৈরি করে subject-wise marks দিয়ে publish করুন।', tab: 'results' },
-        { title: 'Website', text: 'Admission, gallery, principal message ও public info update করুন।', tab: 'website' }
-    ];
+    const setupTabs = ['classes', 'teachers', 'subjects', 'students'];
+    const adminSetupSteps = (portalCopy.setupSteps || []).map((text, index) => ({
+        title: `${index + 1}. ${text}`,
+        text: index === 0
+            ? `${portalCopy.classLabel} ও প্রয়োজনীয় শাখা/বিভাগ আগে প্রস্তুত করুন।`
+            : index === 1
+                ? `${profile.staffLabel || 'শিক্ষক'} যোগ করে দায়িত্ব বণ্টন করুন।`
+                : index === 2
+                    ? `${portalCopy.subjectLabel} অনুযায়ী পাঠদানের দায়িত্ব নির্ধারণ করুন।`
+                    : `পরিবারের তথ্য থেকে অথবা হাতে ${portalCopy.studentLabel} ভর্তি করুন।`,
+        tab: setupTabs[index]
+    }));
+    const dailyTabs = ['attendance', 'subjects', 'students', 'notices'];
+    const adminDailySteps = (portalCopy.dailyPriorities || []).map((title, index) => ({
+        title,
+        text: `${profile.campusLabel || 'প্রতিষ্ঠান'} পরিচালনার আজকের গুরুত্বপূর্ণ কাজ।`,
+        tab: dailyTabs[index]
+    }));
 
     const filteredClasses = classes.filter((item) => matchesSearch(item, listSearch.classes, ['name', 'section', 'academic_year']));
     const filteredStudents = students.filter((item) => matchesSearch(item, listSearch.students, ['student_name', 'roll_no', 'guardian_name', 'guardian_phone']));
@@ -599,6 +677,15 @@ export default function SchoolAdminClient({ schoolId }) {
     const filteredAdmissions = admissionApplications.filter((item) => matchesSearch(item, listSearch.admissions, ['student_name', 'desired_class', 'guardian_name', 'guardian_phone', 'status']));
     const totalStudents = students.length;
     const totalClasses = classes.length;
+    const attendanceStatusByStudent = new Map(attendanceRows.map((item) => [item.student_id, item.status]));
+    const attendanceSummary = attendanceRows.reduce((summary, item) => ({
+        ...summary,
+        [item.status]: (summary[item.status] || 0) + 1
+    }), {});
+    const staffAttendanceByProfile = new Map(staffAttendanceRows.map((item) => [item.profile_id, item.status]));
+    const selectedReportSummary = rankedResultSummaries.find((item) => item.student.id === reportStudentId)
+        || completeResultSummaries.find((item) => item.student.id === reportStudentId)
+        || null;
     const pagedClasses = paginateRows(filteredClasses, listPages.classes);
     const pagedStudents = paginateRows(filteredStudents, listPages.students);
     const pagedTeachers = paginateRows(filteredTeachers, listPages.teachers);
@@ -614,7 +701,10 @@ export default function SchoolAdminClient({ schoolId }) {
         setListSearch((current) => ({ ...current, [key]: value }));
         setListPage(key, 1);
     };
-    const academicPlan = buildAcademicClassPlan(institution?.operational_settings || {});
+    const academicPlan = buildAcademicClassPlan({
+        ...profile.academicSettings,
+        ...(institution?.operational_settings || {})
+    });
     const websiteHref = institution?.custom_domain
         ? `https://${institution.custom_domain}`
         : institution?.subdomain
@@ -640,31 +730,30 @@ export default function SchoolAdminClient({ schoolId }) {
     const demoPassword = seedResult?.login?.password || seedResult?.password || 'password123';
 
     return (
-        <div className="overflow-hidden bg-[#f4f2ee]">
+        <div
+            className="overflow-hidden bg-[#f4f2ee]"
+            style={{ '--institution-primary': design.primaryColor }}
+        >
             <div
-                className="min-h-[calc(100vh-8rem)]"
-                style={{
-                    display: 'grid',
-                    gridTemplateColumns: '240px minmax(0, 1fr)'
-                }}
+                className="grid min-h-[calc(100vh-8rem)] lg:grid-cols-[240px_minmax(0,1fr)]"
             >
-                <aside className="text-white" style={{ backgroundColor: '#0f4a27' }}>
-                    <div className="border-b border-white/10 p-5">
+                <aside className="text-white" style={{ backgroundColor: 'var(--institution-primary)' }}>
+                    <div className="border-b border-white/10 p-4 lg:p-5">
                         <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[#c8922a] text-xl font-black">
                             {institution?.name?.slice(0, 1)}
                         </div>
                         <h2 className="font-black">{institution?.name}</h2>
-                        <p className="mt-1 text-xs font-bold text-white/55">{institution?.village || 'School portal'}</p>
+                        <p className="mt-1 text-xs font-bold text-white/60">{profile.label} · {institution?.village || 'প্রতিষ্ঠান পোর্টাল'}</p>
                     </div>
                     <div className="p-3">
                         <p className="px-3 py-2 text-[11px] font-black uppercase tracking-[0.18em] text-white/35">প্রধান মেনু</p>
-                        <div className="space-y-1">
+                        <div className="flex gap-1 overflow-x-auto pb-1 lg:block lg:space-y-1">
                             {tabs.map(({ id, label, icon: Icon }) => (
                                 <button
                                     key={id}
                                     type="button"
                                     onClick={() => setActiveTab(id)}
-                                    className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-bold transition ${activeTab === id ? 'bg-white/12 text-white' : 'text-white/70 hover:bg-white/6 hover:text-white'}`}
+                                    className={`flex shrink-0 items-center gap-2 rounded-xl px-3 py-3 text-left text-sm font-bold transition lg:w-full lg:gap-3 ${activeTab === id ? 'bg-white/15 text-white' : 'text-white/75 hover:bg-white/10 hover:text-white'}`}
                                 >
                                     <Icon size={18} />
                                     {label}
@@ -677,7 +766,7 @@ export default function SchoolAdminClient({ schoolId }) {
                 <div className="min-w-0">
                     <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[#d6d3cb] bg-white px-5 py-4">
                         <div>
-                            <div className="mb-1 flex items-center gap-2 text-xs font-black uppercase tracking-[0.18em] text-[#1b6e3c]">
+                            <div className="mb-1 flex items-center gap-2 text-xs font-black uppercase tracking-[0.18em] text-[var(--institution-primary)]">
                                 <ShieldCheck size={14} />
                                 DigiGram powered portal
                             </div>
@@ -703,7 +792,7 @@ export default function SchoolAdminClient({ schoolId }) {
                                 </a>
                             )}
                             <button type="button" onClick={() => setActiveTab('notices')} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-black text-slate-700">নোটিশ</button>
-                            <button type="button" onClick={() => setActiveTab('students')} className="rounded-xl bg-[#1b6e3c] px-4 py-2 text-sm font-black text-white">+ নতুন ভর্তি</button>
+                            <button type="button" onClick={() => setActiveTab('students')} className="rounded-xl bg-[var(--institution-primary)] px-4 py-2 text-sm font-black text-white">+ নতুন ভর্তি</button>
                         </div>
                     </header>
 
@@ -1014,7 +1103,10 @@ export default function SchoolAdminClient({ schoolId }) {
                                                     setExamEntries([]);
                                                 }
                                             }} className={`rounded-xl px-4 py-3 text-sm font-black ${selectedClass?.id === item.id ? 'bg-[#1b6e3c] text-white' : 'bg-[#f4f2ee] text-slate-600'}`}>
-                                                {item.name} {item.section ? `- ${item.section}` : ''}
+                                                {item.name}
+                                                {item.section ? ` · ${item.section}` : ''}
+                                                {item.group_name ? ` · ${item.group_name}` : ''}
+                                                {item.shift_name ? ` · ${item.shift_name}` : ''}
                                             </button>
                                         ))}
                                     </div>
@@ -1025,11 +1117,47 @@ export default function SchoolAdminClient({ schoolId }) {
                                     <div className="grid gap-3 md:grid-cols-3">
                                         <input required value={classForm.name} onChange={(e) => setClassForm({ ...classForm, name: e.target.value })} placeholder="Class name" className="rounded-xl border border-slate-200 px-4 py-3" />
                                         <input required type="number" value={classForm.academic_year} onChange={(e) => setClassForm({ ...classForm, academic_year: e.target.value })} placeholder="Year" className="rounded-xl border border-slate-200 px-4 py-3" />
-                                        <input value={classForm.section} onChange={(e) => setClassForm({ ...classForm, section: e.target.value })} placeholder="Section" className="rounded-xl border border-slate-200 px-4 py-3" />
+                                        <input value={classForm.section} onChange={(e) => setClassForm({ ...classForm, section: e.target.value })} placeholder="শাখা/Section" className="rounded-xl border border-slate-200 px-4 py-3" />
+                                        <input value={classForm.group_name} onChange={(e) => setClassForm({ ...classForm, group_name: e.target.value })} placeholder="বিভাগ/Group" className="rounded-xl border border-slate-200 px-4 py-3" />
+                                        <input value={classForm.shift_name} onChange={(e) => setClassForm({ ...classForm, shift_name: e.target.value })} placeholder="Shift (সকাল/দিন)" className="rounded-xl border border-slate-200 px-4 py-3" />
+                                        <input value={classForm.room_label} onChange={(e) => setClassForm({ ...classForm, room_label: e.target.value })} placeholder="কক্ষ/Room" className="rounded-xl border border-slate-200 px-4 py-3" />
+                                        <input type="number" min="1" value={classForm.capacity} onChange={(e) => setClassForm({ ...classForm, capacity: e.target.value })} placeholder="আসন সংখ্যা" className="rounded-xl border border-slate-200 px-4 py-3" />
                                     </div>
                                     <button className="mt-4 rounded-xl bg-[#1b6e3c] px-4 py-3 font-black text-white">ক্লাস যোগ করুন</button>
                                 </form>
                             </>
+                        )}
+
+                        {activeTab === 'routine' && (
+                            <SchoolOperationsManager
+                                institutionId={schoolId}
+                                mode="routine"
+                                classes={classes}
+                                subjects={subjects}
+                                teachers={teachers}
+                                students={students}
+                                profile={profile}
+                            />
+                        )}
+
+                        {activeTab === 'fees' && (
+                            <SchoolOperationsManager
+                                institutionId={schoolId}
+                                mode="fees"
+                                classes={classes}
+                                subjects={subjects}
+                                teachers={teachers}
+                                students={students}
+                                profile={profile}
+                            />
+                        )}
+
+                        {activeTab === 'reports' && (
+                            <SchoolReportsPanel
+                                institutionId={schoolId}
+                                classes={classes}
+                                profile={profile}
+                            />
                         )}
 
                         {activeTab === 'students' && (
@@ -1161,11 +1289,29 @@ export default function SchoolAdminClient({ schoolId }) {
                                                 <div className="mt-4 rounded-xl bg-white px-4 py-3 text-xs font-bold leading-5 text-slate-500">
                                                     Guardian: {student.guardian_name || '-'} · Source: {student.enrollment_source || 'school record'}
                                                 </div>
+                                                <button type="button" onClick={() => setLifecycleStudent(student)} className="mt-3 rounded-xl bg-slate-900 px-4 py-2 text-sm font-black text-white">
+                                                    Profile · Promotion · TC
+                                                </button>
                                             </div>
                                         ))}
                                     </div>
                                     <Pagination page={listPages.students} totalItems={filteredStudents.length} onPageChange={(page) => setListPage('students', page)} />
                                 </section>
+                                {lifecycleStudent && (
+                                    <StudentLifecycleManager
+                                        student={lifecycleStudent}
+                                        institutionId={schoolId}
+                                        classes={classes}
+                                        profile={profile}
+                                        onClose={() => setLifecycleStudent(null)}
+                                        onUpdated={(updated) => {
+                                            setLifecycleStudent(updated);
+                                            setStudents((current) => current
+                                                .map((item) => item.id === updated.id ? updated : item)
+                                                .filter((item) => item.active && item.class_id === selectedClass?.id));
+                                        }}
+                                    />
+                                )}
                             </div>
                         )}
 
@@ -1435,6 +1581,7 @@ export default function SchoolAdminClient({ schoolId }) {
                                                             <th className="px-4 py-3">শতাংশ</th>
                                                             <th className="px-4 py-3">গ্রেড</th>
                                                             <th className="px-4 py-3">অবস্থা</th>
+                                                            <th className="px-4 py-3">রিপোর্ট</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
@@ -1455,11 +1602,16 @@ export default function SchoolAdminClient({ schoolId }) {
                                                                         {item.passed ? 'পাস' : 'ফেল'}
                                                                     </span>
                                                                 </td>
+                                                                <td className="px-4 py-3">
+                                                                    <button type="button" onClick={() => setReportStudentId(item.student.id)} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-black text-white">
+                                                                        রিপোর্ট কার্ড
+                                                                    </button>
+                                                                </td>
                                                             </tr>
                                                         ))}
                                                         {rankedResultSummaries.length === 0 && (
                                                             <tr>
-                                                                <td colSpan={7} className="px-4 py-6 text-sm font-bold text-slate-500">এখনও কোনো সম্পূর্ণ ফলাফল নেই।</td>
+                                                                <td colSpan={8} className="px-4 py-6 text-sm font-bold text-slate-500">এখনও কোনো সম্পূর্ণ ফলাফল নেই।</td>
                                                             </tr>
                                                         )}
                                                     </tbody>
@@ -1482,6 +1634,16 @@ export default function SchoolAdminClient({ schoolId }) {
                                                 </div>
                                             )}
                                         </section>
+                                        {selectedReportSummary && (
+                                            <StudentReportCard
+                                                institution={institution}
+                                                student={selectedReportSummary.student}
+                                                exam={selectedExam}
+                                                classInfo={selectedClass}
+                                                summary={selectedReportSummary}
+                                                profile={profile}
+                                            />
+                                        )}
                                     </>
                                 )}
                             </div>
@@ -1495,14 +1657,32 @@ export default function SchoolAdminClient({ schoolId }) {
                                     <p className="mt-2 text-sm font-bold leading-6 text-slate-600">Absent দিলে guardian SMS যাবে। Late, leave, excused ব্যবহার করলে রিপোর্ট বেশি পরিষ্কার হবে।</p>
                                 </section>
                                 <section className="rounded-2xl border border-[#d6d3cb] bg-white p-5">
-                                    <h2 className="mb-4 text-xl font-black">আজকের উপস্থিতি</h2>
+                                    <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+                                        <div>
+                                            <h2 className="text-xl font-black">{portalCopy.studentLabel} উপস্থিতি</h2>
+                                            <p className="mt-1 text-sm font-bold text-slate-500">তারিখ পরিবর্তন করে আগের attendance দেখা বা সংশোধন করা যাবে।</p>
+                                        </div>
+                                        <label>
+                                            <span className="mb-1 block text-xs font-black text-slate-500">তারিখ</span>
+                                            <input type="date" value={attendanceDate} onChange={(e) => setAttendanceDate(e.target.value)} className="rounded-xl border border-slate-200 px-4 py-3 font-bold" />
+                                        </label>
+                                    </div>
+                                    <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-5">
+                                        {[
+                                            ['উপস্থিত', attendanceSummary.present || 0, 'bg-emerald-50 text-emerald-700'],
+                                            ['অনুপস্থিত', attendanceSummary.absent || 0, 'bg-rose-50 text-rose-700'],
+                                            ['দেরি', attendanceSummary.late || 0, 'bg-amber-50 text-amber-700'],
+                                            ['ছুটি', attendanceSummary.leave || 0, 'bg-sky-50 text-sky-700'],
+                                            ['বাকি', Math.max(students.length - attendanceRows.length, 0), 'bg-slate-100 text-slate-600']
+                                        ].map(([label, value, tone]) => <div key={label} className={`rounded-xl p-3 ${tone}`}><p className="text-xs font-black">{label}</p><p className="mt-1 text-xl font-black">{value}</p></div>)}
+                                    </div>
                                     <input value={listSearch.attendance} onChange={(e) => setSearch('attendance', e.target.value)} placeholder="Student name/roll দিয়ে খুঁজুন" className="mb-4 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold" />
                                     <div className="space-y-3">
                                     {students.length === 0 ? <p className="text-sm font-bold text-slate-400">শিক্ষার্থী যোগ করলে এখানে attendance দেখা যাবে।</p> : pagedAttendanceStudents.map((student) => (
                                             <div key={student.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-[#f4f2ee] p-4">
                                                 <div>
                                                     <p className="font-black">{student.student_name}</p>
-                                                    <p className="text-xs font-bold text-slate-400">রোল {student.roll_no || '-'}</p>
+                                                    <p className="text-xs font-bold text-slate-400">রোল {student.roll_no || '-'} · {attendanceStatusByStudent.get(student.id) || 'mark করা হয়নি'}</p>
                                                 </div>
                                                 <div className="flex flex-wrap gap-2">
                                                     <button type="button" onClick={() => markAttendance(student, 'present')} className="rounded-lg bg-emerald-100 px-3 py-2 text-sm font-black text-emerald-700">উপস্থিত</button>
@@ -1517,6 +1697,33 @@ export default function SchoolAdminClient({ schoolId }) {
                                 <Pagination page={listPages.attendance} totalItems={filteredAttendanceStudents.length} onPageChange={(page) => setListPage('attendance', page)} />
                             </section>
                                 <section className="rounded-2xl border border-[#d6d3cb] bg-white p-5">
+                                    <h2 className="mb-1 text-xl font-black">{profile.staffLabel || 'শিক্ষক'} উপস্থিতি</h2>
+                                    <p className="mb-4 text-sm font-bold text-slate-500">একই তারিখে শিক্ষক ও staff attendance রাখুন।</p>
+                                    <div className="space-y-3">
+                                        {teachers.length === 0 && <p className="rounded-xl bg-slate-50 p-3 text-sm font-bold text-slate-400">কোনো শিক্ষক যোগ করা হয়নি।</p>}
+                                        {teachers.map((teacher) => (
+                                            <div key={teacher.profile_id || teacher.id} className="rounded-xl bg-slate-50 p-3">
+                                                <div className="flex flex-wrap items-center justify-between gap-3">
+                                                    <div>
+                                                        <p className="font-black text-slate-900">{teacher.display_name || teacher.title || 'শিক্ষক'}</p>
+                                                        <p className="text-xs font-bold text-slate-500">{staffAttendanceByProfile.get(teacher.profile_id) || 'mark করা হয়নি'}</p>
+                                                    </div>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {[
+                                                            ['present', 'উপস্থিত', 'bg-emerald-100 text-emerald-700'],
+                                                            ['absent', 'অনুপস্থিত', 'bg-rose-100 text-rose-700'],
+                                                            ['late', 'দেরি', 'bg-amber-100 text-amber-700'],
+                                                            ['leave', 'ছুটি', 'bg-sky-100 text-sky-700']
+                                                        ].map(([status, label, tone]) => (
+                                                            <button key={status} type="button" onClick={() => markStaffAttendance(teacher, status)} className={`rounded-lg px-3 py-2 text-xs font-black ${tone}`}>{label}</button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </section>
+                                <section className="rounded-2xl border border-[#d6d3cb] bg-white p-5 xl:col-span-2">
                                     <h2 className="mb-4 text-xl font-black">Lesson tracking</h2>
                                     <form onSubmit={createLesson} className="flex gap-3">
                                         <input required disabled={!selectedClass} value={lessonTitle} onChange={(e) => setLessonTitle(e.target.value)} placeholder="আজকের topic" className="min-w-0 flex-1 rounded-xl border border-slate-200 px-4 py-3" />

@@ -36,6 +36,7 @@ import CitizenLifeSupportManager from '@/components/sections/citizen/CitizenLife
 import { unionService } from '@/lib/services/unionService';
 import { menuStyles } from '@/components/common/menuStyles';
 import OfficerActionCenter from '@/components/common/OfficerActionCenter';
+import { getPortalRouteForRole } from '@/lib/utils/portalRoutes';
 
 export default function ChairmanDashboard() {
     const { user, isAuthenticated } = useSelector((state) => state.auth);
@@ -120,9 +121,15 @@ export default function ChairmanDashboard() {
                 let currentUser = user;
                 if (!isAuthenticated || !currentUser) {
                     const profile = await authService.getProfile(session.user.id);
-                    if (!profile || profile.role !== 'chairman') {
+                    if (!profile) {
                         if (active) setAuthChecked(true);
                         router.push('/login');
+                        return;
+                    }
+
+                    if (profile.role !== 'chairman') {
+                        if (active) setAuthChecked(true);
+                        router.push(getPortalRouteForRole(profile.role));
                         return;
                     }
 
@@ -140,7 +147,7 @@ export default function ChairmanDashboard() {
 
                 if (currentUser.role !== 'chairman') {
                     if (active) setAuthChecked(true);
-                    router.push('/login');
+                    router.push(getPortalRouteForRole(currentUser.role));
                     return;
                 }
 

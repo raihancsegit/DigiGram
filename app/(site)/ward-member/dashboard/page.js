@@ -29,6 +29,7 @@ import { paths } from '@/lib/constants/paths';
 import NotificationBell from '@/components/ui/NotificationBell';
 import { menuStyles } from '@/components/common/menuStyles';
 import OfficerActionCenter from '@/components/common/OfficerActionCenter';
+import { getPortalRouteForRole } from '@/lib/utils/portalRoutes';
 
 export default function WardMemberDashboard() {
     const { user, isAuthenticated } = useSelector((state) => state.auth);
@@ -104,9 +105,15 @@ export default function WardMemberDashboard() {
                 let currentUser = user;
                 if (!isAuthenticated || !currentUser) {
                     const profile = await authService.getProfile(session.user.id);
-                    if (!profile || profile.role !== 'ward_member') {
+                    if (!profile) {
                         if (active) setAuthChecked(true);
                         router.push('/login');
+                        return;
+                    }
+
+                    if (profile.role !== 'ward_member') {
+                        if (active) setAuthChecked(true);
+                        router.push(getPortalRouteForRole(profile.role));
                         return;
                     }
 
@@ -124,7 +131,7 @@ export default function WardMemberDashboard() {
 
                 if (currentUser.role !== 'ward_member') {
                     if (active) setAuthChecked(true);
-                    router.push('/login');
+                    router.push(getPortalRouteForRole(currentUser.role));
                     return;
                 }
 

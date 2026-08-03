@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/utils/supabase-admin';
 import { repairMojibakeText } from '@/lib/utils/textEncoding';
+import { buildDemoHouseholdDonors, buildDemoHouseholdsForVillage, buildDemoVillageStats } from '@/lib/utils/demoHouseholds';
+import { internalServerError } from '@/lib/utils/api-response';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,6 +10,12 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 function normalizeName(value) {
     return String(value || '').trim().toLowerCase();
+}
+
+function boundedInteger(value, fallback, minimum, maximum) {
+    const parsed = Number.parseInt(String(value || ''), 10);
+    if (!Number.isFinite(parsed)) return fallback;
+    return Math.min(Math.max(parsed, minimum), maximum);
 }
 
 function isMaleGender(value) {
@@ -108,9 +116,17 @@ async function findHouseholdVillageIds(locationVillage, wardId) {
         .map((village) => village.id);
 }
 
-async function loadHouseholds({ locationVillageId, householdVillageIds, fallbackVillageId }) {
+async function loadHouseholds({
+    locationVillageId,
+    householdVillageIds,
+    fallbackVillageId,
+    page,
+    limit
+}) {
     const select = 'id,house_no,owner_name,stats,ward_id,village_id,location_village_id,housing_type,electricity_meter,latrine_status,water_source,created_at';
     const queries = [];
+    const from = (page - 1) * limit;
+    const to = from + limit;
 
     if (locationVillageId) {
         queries.push(
@@ -119,6 +135,7 @@ async function loadHouseholds({ locationVillageId, householdVillageIds, fallback
                 .select(select)
                 .eq('location_village_id', locationVillageId)
                 .order('created_at', { ascending: false })
+                .range(from, to)
         );
     }
 
@@ -129,6 +146,7 @@ async function loadHouseholds({ locationVillageId, householdVillageIds, fallback
                 .select(select)
                 .in('village_id', householdVillageIds)
                 .order('created_at', { ascending: false })
+                .range(from, to)
         );
     }
 
@@ -139,6 +157,7 @@ async function loadHouseholds({ locationVillageId, householdVillageIds, fallback
                 .select(select)
                 .eq('village_id', fallbackVillageId)
                 .order('created_at', { ascending: false })
+                .range(from, to)
         );
     }
 
@@ -146,7 +165,12 @@ async function loadHouseholds({ locationVillageId, householdVillageIds, fallback
     const errors = results.map((result) => result.error).filter(Boolean);
     if (errors.length > 0) throw errors[0];
 
-    return mergeRows(results.flatMap((result) => result.data || []));
+    const merged = mergeRows(results.flatMap((result) => result.data || []))
+        .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+    return {
+        rows: merged.slice(0, limit),
+        hasMore: merged.length > limit || results.some((result) => (result.data || []).length > limit)
+    };
 }
 
 export async function GET(request) {
@@ -154,9 +178,44 @@ export async function GET(request) {
         const { searchParams } = new URL(request.url);
         const villageId = searchParams.get('villageId');
         const wardIdParam = searchParams.get('wardId');
+        const page = boundedInteger(searchParams.get('page'), 1, 1, 1000);
+        const limit = boundedInteger(searchParams.get('limit'), 100, 1, 200);
 
         if (!villageId && !wardIdParam) {
             return NextResponse.json({ error: 'Village or ward id is required' }, { status: 400 });
+        }
+
+        if (String(villageId || '').startsWith('demo-village')) {
+            const allDemoHouseholds = buildDemoHouseholdsForVillage(villageId);
+            const start = (page - 1) * limit;
+            const households = allDemoHouseholds.slice(start, start + limit).map((household) => ({
+                id: household.id,
+                house_no: household.house_no,
+                owner_name: household.owner_name,
+                housing_type: household.housing_type,
+                electricity_meter: Boolean(household.electricity_meter),
+                latrine_status: household.latrine_status,
+                water_source: household.water_source,
+                stats: household.stats
+            }));
+            const stats = buildDemoVillageStats(villageId);
+
+            return NextResponse.json({
+                success: true,
+                data: {
+                    households,
+                    donors: buildDemoHouseholdDonors(villageId),
+                    blood_groups: stats.blood_groups,
+                    total: households.length,
+                    demo: true,
+                    pagination: {
+                        page,
+                        limit,
+                        returned: households.length,
+                        hasMore: start + households.length < allDemoHouseholds.length
+                    }
+                }
+            });
         }
 
         if ((villageId && !UUID_RE.test(villageId)) || (wardIdParam && !UUID_RE.test(wardIdParam))) {
@@ -181,11 +240,14 @@ export async function GET(request) {
         }
 
         const householdVillageIds = await findHouseholdVillageIds(locationVillage, wardId);
-        const households = await loadHouseholds({
+        const householdResult = await loadHouseholds({
             locationVillageId: locationVillage?.id || null,
             householdVillageIds,
-            fallbackVillageId: locationVillage ? null : villageId
+            fallbackVillageId: locationVillage ? null : villageId,
+            page,
+            limit
         });
+        const households = householdResult.rows;
 
         const householdIds = households.map((household) => household.id).filter(Boolean);
         const { data: residents, error: residentError } = householdIds.length > 0
@@ -193,6 +255,7 @@ export async function GET(request) {
                 .from('residents')
                 .select('id,household_id,name,bn_name,dob,is_voter,gender,blood_group,birth_reg_no')
                 .in('household_id', householdIds)
+                .limit(Math.min(limit * 20, 4000))
             : { data: [], error: null };
 
         if (residentError) throw residentError;
@@ -246,11 +309,17 @@ export async function GET(request) {
                 households: safeHouseholds,
                 donors: cleanDonors,
                 blood_groups: buildBloodGroups(residents || []),
-                total: safeHouseholds.length
+                total: safeHouseholds.length,
+                pagination: {
+                    page,
+                    limit,
+                    returned: safeHouseholds.length,
+                    hasMore: householdResult.hasMore
+                }
             }
         });
     } catch (error) {
         console.error('Public households load failed:', error);
-        return NextResponse.json({ error: error.message || 'Household list load failed' }, { status: 500 });
+        return internalServerError('Household list could not be loaded. Please try again.');
     }
 }

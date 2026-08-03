@@ -5,8 +5,9 @@ import { useDispatch } from 'react-redux';
 import { useRouter } from 'next/navigation';
 import { login, performLogout } from '@/lib/store/features/authSlice';
 import { authService } from '@/lib/services/authService';
+import { getPortalRouteForRole } from '@/lib/utils/portalRoutes';
 import Link from 'next/link';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
     Globe, Users, Phone, ArrowRight,
     ShieldCheck, Smartphone, Sparkles, LogIn,
@@ -109,14 +110,7 @@ export default function LoginPage() {
                 last_name: profile.last_name
             }));
 
-            // Redirect based on role
-            if (profile.role === 'super_admin') router.push('/admin');
-            else if (profile.role === 'chairman') router.push('/chairman/dashboard');
-            else if (profile.role === 'ward_member') router.push('/ward-member/dashboard');
-            else if (profile.role === 'institution_admin') router.push('/admin/institution');
-            else if (profile.role === 'market_manager') router.push('/market-manager');
-            else if (profile.role === 'volunteer') router.push('/volunteer/dashboard');
-            else router.push('/');
+            router.push(getPortalRouteForRole(profile.role));
 
         } catch (err) {
             setError(err.message || 'লগইন করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।');
@@ -248,6 +242,12 @@ export default function LoginPage() {
                                 আপনি এখন {roleLabel(existingProfile.role)} হিসেবে লগইন আছেন। অন্য পোর্টালে লগইন করতে হলে আগে লগআউট করুন, তারপর আবার লগইন করুন।
                             </p>
                             <button
+                                onClick={() => router.push(getPortalRouteForRole(existingProfile.role))}
+                                className="w-full flex items-center justify-center gap-2 p-4 rounded-2xl bg-teal-600 text-white font-black text-xs uppercase tracking-widest hover:bg-teal-700 transition-all mb-3"
+                            >
+                                নিজের ড্যাশবোর্ডে যান
+                            </button>
+                            <button
                                 onClick={handleExistingLogout}
                                 disabled={loading}
                                 className="w-full flex items-center justify-center gap-2 p-4 rounded-2xl bg-slate-900 text-white font-black text-xs uppercase tracking-widest hover:bg-rose-600 transition-all disabled:opacity-60"
@@ -258,7 +258,7 @@ export default function LoginPage() {
                         </div>
                     ) : (
 
-                    <AnimatePresence mode="wait">
+                    <>
                         {loginType === 'citizen' ? (
                             <motion.div
                                 key="citizen"
@@ -351,7 +351,7 @@ export default function LoginPage() {
                                 </div>
                             </motion.form>
                         )}
-                    </AnimatePresence>
+                    </>
                     )}
 
                     <div className="mt-12 text-center">

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/utils/supabase-admin';
 import { requireRequestProfile } from '@/lib/utils/server-auth';
-import { sendSmsViaGateway } from '@/lib/services/smsProviderGateway';
+import { getSmsGatewayBalance, sendSmsViaGateway } from '@/lib/services/smsProviderGateway';
 
 function monthKey(dateValue) {
     const date = new Date(dateValue);
@@ -513,6 +513,19 @@ export async function POST(request) {
                     mocked: gateway.provider === 'mock'
                 }
             });
+        }
+
+        if (action === 'gateway_balance') {
+            if (!body.gatewayId) return NextResponse.json({ error: 'gatewayId is required' }, { status: 400 });
+            const { data: gateway, error: gatewayError } = await supabaseAdmin
+                .from('sms_gateways')
+                .select('*')
+                .eq('id', body.gatewayId)
+                .single();
+            if (gatewayError) throw gatewayError;
+            const result = await getSmsGatewayBalance(gateway);
+            if (!result.ok) return NextResponse.json({ error: result.error }, { status: 502 });
+            return NextResponse.json({ success: true, data: { balance: result.balance } });
         }
 
         if (action === 'quick_test_sms') {

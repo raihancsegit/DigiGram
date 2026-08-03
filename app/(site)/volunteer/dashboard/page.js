@@ -1,6 +1,7 @@
 "use client";
 
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
+import { useRouter } from 'next/navigation';
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { 
@@ -18,9 +19,12 @@ import { wardService } from '@/lib/services/wardService';
 import { toBnDigits } from '@/lib/utils/format';
 import { paths } from '@/lib/constants/paths';
 import NotificationBell from '@/components/ui/NotificationBell';
+import { performLogout } from '@/lib/store/features/authSlice';
 
 export default function VolunteerDashboard() {
     const { user } = useSelector((state) => state.auth);
+    const dispatch = useDispatch();
+    const router = useRouter();
     const [activeTab, setActiveTab] = useState('households');
     const [villageData, setVillageData] = useState(null);
     const [householdVillage, setHouseholdVillage] = useState(null);
@@ -28,7 +32,10 @@ export default function VolunteerDashboard() {
     const [newsList, setNewsList] = useState([]);
 
     const loadData = useCallback(async () => {
-        if (!user?.access_scope_id) return;
+        if (!user?.access_scope_id) {
+            setLoading(false);
+            return;
+        }
         setLoading(true);
         try {
             const context = await getVillageFullContext(user.access_scope_id);
@@ -77,7 +84,9 @@ export default function VolunteerDashboard() {
     }
 
     const village = villageData?.village;
-    const stats = village?.stats || {};
+    const stats = village?.survey_status === 'verified' && village?.real_stats
+        ? village.real_stats
+        : (village?.stats || {});
 
     return (
         <div className="bg-slate-50 min-h-screen pb-20">
@@ -136,9 +145,9 @@ export default function VolunteerDashboard() {
                                 </Link>
                             )}
                             <button 
-                                onClick={() => {
-                                    localStorage.clear();
-                                    window.location.href = '/login';
+                                onClick={async () => {
+                                    await dispatch(performLogout());
+                                    router.push('/login');
                                 }}
                                 className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-500 flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all shadow-lg"
                                 title="লগআউট"

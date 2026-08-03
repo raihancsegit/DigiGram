@@ -2,12 +2,18 @@ import { notFound } from 'next/navigation';
 import { findUnionBySlug } from '@/lib/constants/locations';
 import VillagePortalClient from '@/components/sections/village/VillagePortalClient';
 import { wardService } from '@/lib/services/wardService';
-import { getFullContextBySlug, getLiveStatsForVillageLocation, getWardsWithDetailsByUnion, getLocationBySlug, mergeLocationLiveStats } from '@/lib/services/hierarchyService';
+import { getVillageFullContext, getFullContextBySlug, getLiveStatsForVillageLocation, getWardsWithDetailsByUnion, getLocationBySlug, mergeLocationLiveStats } from '@/lib/services/hierarchyService';
 
 export const dynamic = 'force-dynamic';
 
 export default async function VillagePortalPage({ params }) {
     const { unionSlug, wardId, villageId } = await params;
+
+    if (villageId?.startsWith('demo-village')) {
+        const demoData = await getVillageFullContext(villageId);
+        if (!demoData?.village) notFound();
+        return <VillagePortalClient ctx={demoData.ctx} ward={demoData.ward} village={demoData.village} />;
+    }
     
     // Fetch dynamic context from DB first
     const locationData = await getLocationBySlug(unionSlug);

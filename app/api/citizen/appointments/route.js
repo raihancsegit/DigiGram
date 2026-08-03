@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/utils/supabase-admin';
+import { internalServerError } from '@/lib/utils/api-response';
+import { readJsonObject, validateTextFields } from '@/lib/utils/request-validation';
 
 const SUBMIT_MESSAGE = 'DigiGram: আপনার office serial/appointment request গ্রহণ করা হয়েছে। সময় নির্ধারণ হলে SMS/Inbox-এ update পাবেন।';
 const VALID_PRIORITY = new Set(['low', 'normal', 'urgent', 'emergency']);
@@ -95,28 +97,58 @@ async function queueAppointmentSms({ appointment, unionId, message, category }) 
 
 export async function POST(request) {
     try {
-        const body = await request.json();
+        const parsed = await readJsonObject(request);
+        if (parsed.error) {
+            return NextResponse.json({ error: parsed.error }, { status: parsed.status });
+        }
+        const body = parsed.data;
         const phone = normalizePhone(body.phone);
-        if (!/^01[0-9]{9}$/.test(phone) || !body.title) {
-            return NextResponse.json({ error: 'Phone and appointment title are required' }, { status: 400 });
+        const validation = validateTextFields(body, {
+            citizenName: { label: 'Citizen name', maxLength: 120 },
+            appointmentType: { label: 'Appointment type', maxLength: 64, defaultValue: 'office_visit', pattern: /^[a-z0-9_-]+$/i },
+            title: { label: 'Title', required: true, maxLength: 160 },
+            description: { label: 'Description', maxLength: 3000 },
+            locationText: { label: 'Location', maxLength: 300 },
+            scopeType: { label: 'Scope type', maxLength: 16, allowed: new Set(['union', 'ward', 'village']) },
+            scopeId: { label: 'Scope ID', maxLength: 80 },
+            preferredDate: { label: 'Preferred date', maxLength: 10, pattern: /^\d{4}-\d{2}-\d{2}$/ },
+            preferredTimeSlot: { label: 'Preferred time', allowed: VALID_SLOT, defaultValue: 'anytime' },
+            priority: { label: 'Priority', allowed: VALID_PRIORITY, defaultValue: 'normal' }
+        });
+        if (!/^01[0-9]{9}$/.test(phone)) {
+            validation.errors.phone = ['A valid Bangladeshi mobile number is required'];
+            validation.valid = false;
+        }
+        if (!validation.valid) {
+            return NextResponse.json({
+                error: 'Please correct the highlighted information',
+                errors: validation.errors
+            }, { status: 400 });
         }
 
-        const scopeType = body.scopeType || null;
-        const scopeId = body.scopeId || null;
-        const preferredDate = body.preferredDate || null;
-        const priority = VALID_PRIORITY.has(body.priority) ? body.priority : 'normal';
-        const preferredTimeSlot = VALID_SLOT.has(body.preferredTimeSlot) ? body.preferredTimeSlot : 'anytime';
+        const {
+            citizenName,
+            appointmentType,
+            title,
+            description,
+            locationText,
+            scopeType,
+            scopeId,
+            preferredDate,
+            preferredTimeSlot,
+            priority
+        } = validation.values;
         const serialNo = await nextSerialNo(scopeId, preferredDate);
 
         const { data, error } = await supabaseAdmin
             .from('citizen_appointments')
             .insert([{
                 phone,
-                citizen_name: body.citizenName || null,
-                appointment_type: body.appointmentType || 'office_visit',
-                title: body.title,
-                description: body.description || null,
-                location_text: body.locationText || null,
+                citizen_name: citizenName,
+                appointment_type: appointmentType,
+                title,
+                description,
+                location_text: locationText,
                 assigned_scope_type: scopeType,
                 assigned_scope_id: scopeId,
                 preferred_date: preferredDate,
@@ -152,6 +184,6 @@ export async function POST(request) {
         return NextResponse.json({ success: true, data, sms });
     } catch (error) {
         console.error('Citizen appointment failed:', error);
-        return NextResponse.json({ error: error.message || 'Appointment submit failed' }, { status: 500 });
+        return internalServerError('Appointment submission failed. Please try again.');
     }
 }
