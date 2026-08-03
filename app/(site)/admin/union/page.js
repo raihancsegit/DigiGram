@@ -13,6 +13,7 @@ import { adminService } from '@/lib/services/adminService';
 import Link from 'next/link';
 import WardHouseholdManager from '@/components/sections/ward/WardHouseholdManager';
 import ModalPortal from '@/components/common/ModalPortal';
+import UnionServiceSettingsModal from '@/components/sections/admin/UnionServiceSettingsModal';
 
 export default function UnionManagementPage() {
     // Hierarchy States
@@ -29,6 +30,7 @@ export default function UnionManagementPage() {
     const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [selectedUnion, setSelectedUnion] = useState(null);
+    const [serviceSettingsUnion, setServiceSettingsUnion] = useState(null);
     const [selectedWard, setSelectedWard] = useState(null);
     const [selectedItemForAction, setSelectedItemForAction] = useState(null);
     const [submitting, setSubmitting] = useState(false);
@@ -746,6 +748,13 @@ export default function UnionManagementPage() {
                                             )}
                                             
                                             {viewLevel === 'unions' && (
+                                                <button
+                                                    onClick={() => setServiceSettingsUnion(item)}
+                                                    className="rounded-xl border border-teal-200 bg-teal-50 px-3 py-2.5 text-[10px] font-black text-teal-700"
+                                                    title="সেবা, ফি, SMS ও সময় সেট করুন"
+                                                >সেবা ও ফি</button>
+                                            )}
+                                            {viewLevel === 'unions' && (
                                                 <Link 
                                                     href={`/u/${item.slug}`} 
                                                     target="_blank"
@@ -858,6 +867,7 @@ export default function UnionManagementPage() {
                     </div>
                 )}
             </div>
+            {serviceSettingsUnion && <UnionServiceSettingsModal union={serviceSettingsUnion} onClose={() => setServiceSettingsUnion(null)} />}
 
             {/* Dashboard Additions (Stats & Logs) */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-12">

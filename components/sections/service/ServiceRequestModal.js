@@ -130,7 +130,14 @@ export default function ServiceRequestModal({
     onCreated,
     onClose
 }) {
-    const config = SERVICE_CONFIG[serviceType] || SERVICE_CONFIG.utility_request;
+    const baseConfig = SERVICE_CONFIG[serviceType] || SERVICE_CONFIG.utility_request;
+    const [unionSetting, setUnionSetting] = useState(null);
+    const config = useMemo(() => unionSetting ? {
+        ...baseConfig,
+        title: unionSetting.title || baseConfig.title,
+        fee: Number(unionSetting.fee_amount) || 0,
+        note: unionSetting.instructions || unionSetting.description || baseConfig.note
+    } : baseConfig, [baseConfig, unionSetting]);
     const residentOptions = useMemo(
         () => (residents || []).map(normalizeResident).filter((resident) => resident.name || resident.id),
         [residents]
@@ -166,6 +173,14 @@ export default function ServiceRequestModal({
     useEffect(() => {
         setSelectedResidentId(initialResidentId || '');
     }, [initialResidentId]);
+
+    useEffect(() => {
+        if (!householdId) return;
+        fetch(`/api/public/household-services?householdId=${encodeURIComponent(householdId)}`)
+            .then((response) => response.ok ? response.json() : null)
+            .then((body) => setUnionSetting(body?.services?.find((item) => item.request_type === serviceType) || null))
+            .catch(() => setUnionSetting(null));
+    }, [householdId, serviceType]);
 
     useEffect(() => {
         const ownerName = householdProfile?.owner_name || '';
