@@ -7,6 +7,7 @@ const PUBLIC_ROUTES = [
     ['/track', 'weekly', 0.8],
     ['/pay', 'weekly', 0.8],
     ['/news', 'daily', 0.8],
+    ['/citizen/services', 'weekly', 0.9],
     ['/lost-found', 'daily', 0.8],
     ['/business', 'weekly', 0.8],
     ['/services/blood', 'daily', 0.8],

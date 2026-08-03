@@ -462,6 +462,18 @@ export default function CitizenCenterPage() {
                     </div>
                 </section>
 
+                <Link
+                    href="/citizen/services"
+                    className="mt-5 flex flex-col gap-4 rounded-[30px] border border-teal-200 bg-gradient-to-r from-teal-50 to-sky-50 p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg sm:flex-row sm:items-center sm:justify-between"
+                >
+                    <div>
+                        <p className="text-xs font-black text-teal-700">সব নাগরিক সেবা এক জায়গায়</p>
+                        <h2 className="mt-1 text-2xl font-black text-slate-950">১০টি প্রয়োজনীয় কাজের সহজ নির্দেশিকা</h2>
+                        <p className="mt-2 text-sm font-bold leading-6 text-slate-600">ভাতা, সনদ, অভিযোগ, জরুরি সহায়তা, document, কৃষি, কাজ, স্বাস্থ্য, শিক্ষা ও payment থেকে সঠিক কাজটি বাছাই করুন।</p>
+                    </div>
+                    <span className="inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white">সব সেবা দেখুন <ArrowRight size={17} /></span>
+                </Link>
+
                 <section id="apply" className="mt-5 scroll-mt-24 rounded-[30px] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                     <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                         <div>
