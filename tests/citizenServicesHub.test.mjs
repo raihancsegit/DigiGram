@@ -6,6 +6,8 @@ const catalog = fs.readFileSync('lib/constants/citizenServices.js', 'utf8');
 const hub = fs.readFileSync('components/citizen/CitizenServicesHub.js', 'utf8');
 const detail = fs.readFileSync('app/(site)/citizen/services/[serviceId]/page.js', 'utf8');
 const homeActions = fs.readFileSync('components/sections/home/HomeCitizenQuickActions.js', 'utf8');
+const homeServices = fs.readFileSync('components/sections/home/HomeCitizenServicesSection.js', 'utf8');
+const homePage = fs.readFileSync('app/(site)/page.js', 'utf8');
 
 const serviceIds = ['certificates', 'benefits', 'complaints', 'emergency', 'documents', 'farmers', 'jobs', 'health', 'education', 'fees'];
 
@@ -27,4 +29,8 @@ test('citizen hub supports search, grouping and direct service details', () => {
 
 test('home application action opens the unified citizen services hub', () => {
     assert.match(homeActions, /href: '\/citizen\/services'/);
+    assert.match(homePage, /<HomeCitizenServicesSection \/>/);
+    assert.match(homeServices, /CITIZEN_SERVICES\.map/);
+    assert.match(homeServices, /href=\{service\.primaryHref\}/);
+    assert.match(homeServices, /কী কী লাগবে দেখুন/);
 });

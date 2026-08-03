@@ -1,5 +1,6 @@
 export { default as HomeHeroSection } from './HomeHeroSection';
 export { default as HomeCitizenQuickActions } from './HomeCitizenQuickActions';
+export { default as HomeCitizenServicesSection } from './HomeCitizenServicesSection';
 export { default as BenefitApplicationSection } from './BenefitApplicationSection';
 export { default as HomeCitizenGateway } from './HomeCitizenGateway';
 export { default as ServicesSection } from './ServicesSection';
