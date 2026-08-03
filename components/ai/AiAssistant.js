@@ -1,179 +1,155 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { createPortal } from 'react-dom';
-import { MessageSquare, X, Send, Bot, Sparkles, User, Loader2, ChevronRight } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useEffect, useRef, useState } from 'react';
+import { Bot, Loader2, MessageSquare, Send, User, X } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { aiService } from '@/lib/services/aiService';
 
+const WELCOME_MESSAGE = {
+    role: 'assistant',
+    content: 'আসসালামু আলাইকুম! আমি ডিজিগ্রাম সহকারী। নাগরিক সেবা, ভাতা আবেদন, বাজারদর, শিক্ষা, স্বাস্থ্য বা সাধারণ যেকোনো প্রশ্ন করুন।',
+};
+
 export default function AiAssistant() {
+    const [mounted, setMounted] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
-    const [messages, setMessages] = useState([
-        { role: 'assistant', content: 'আসসালামু আলাইকুম! আমি ডিজিগ্রাম স্মার্ট অ্যাসিস্ট্যান্ট। আমি আপনাকে কিভাবে সাহায্য করতে পারি?' }
-    ]);
+    const [messages, setMessages] = useState([WELCOME_MESSAGE]);
     const [inputValue, setInputValue] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const messagesEndRef = useRef(null);
+    const inputRef = useRef(null);
 
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    };
-
+    useEffect(() => { setMounted(true); }, []);
     useEffect(() => {
-        if (isOpen) scrollToBottom();
+        if (!isOpen) return undefined;
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        const timer = window.setTimeout(() => inputRef.current?.focus(), 250);
+        const closeOnEscape = (event) => { if (event.key === 'Escape') setIsOpen(false); };
+        window.addEventListener('keydown', closeOnEscape);
+        return () => {
+            window.clearTimeout(timer);
+            window.removeEventListener('keydown', closeOnEscape);
+        };
     }, [messages, isOpen]);
 
-    const handleSendMessage = async (text) => {
-        const query = text || inputValue;
-        if (!query.trim() || isLoading) return;
+    async function handleSendMessage(text) {
+        const query = String(text || inputValue).trim();
+        if (!query || isLoading) return;
 
-        setMessages(prev => [...prev, { role: 'user', content: query }]);
+        const nextMessages = [...messages, { role: 'user', content: query }];
+        setMessages(nextMessages);
         setInputValue('');
         setIsLoading(true);
 
         try {
-            const response = await aiService.getAssistantResponse(query);
-            setMessages(prev => [...prev, { role: 'assistant', content: response }]);
-        } catch (error) {
-            setMessages(prev => [...prev, { role: 'assistant', content: 'দুঃখিত, আমি এই মুহূর্তে উত্তর দিতে পারছি না। অনুগ্রহ করে আবার চেষ্টা করুন।' }]);
+            const response = await aiService.getAssistantResponse(query, {
+                messages: nextMessages.slice(-6),
+            });
+            setMessages((current) => [...current, { role: 'assistant', content: response }]);
+        } catch {
+            setMessages((current) => [...current, {
+                role: 'assistant',
+                content: 'দুঃখিত, উত্তরটি এখন তৈরি করা যাচ্ছে না। প্রশ্নটি একটু অন্যভাবে লিখে আবার চেষ্টা করুন।',
+            }]);
         } finally {
             setIsLoading(false);
         }
-    };
+    }
 
-    const quickQuestions = aiService.getQuickQuestions();
-
-    // Use a portal to ensure the chatbot is always on top of everything (z-index 9999)
-    const [mounted, setMounted] = useState(false);
-    useEffect(() => setMounted(true), []);
+    function submitMessage(event) {
+        event.preventDefault();
+        handleSendMessage();
+    }
 
     if (!mounted) return null;
+    const quickQuestions = aiService.getQuickQuestions();
 
     return (
         <div className="dg-ai-assistant-root relative z-[9999]">
-            {/* FAB Button */}
-            <div className="fixed bottom-6 right-6 z-[9999]">
-                <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setIsOpen(!isOpen)}
-                    className={`w-16 h-16 rounded-full flex items-center justify-center shadow-2xl transition-all duration-500 ${
-                        isOpen ? 'bg-rose-500 rotate-90' : 'bg-gradient-to-br from-teal-500 to-sky-600'
-                    }`}
-                >
-                    {isOpen ? <X size={28} className="text-white" /> : <MessageSquare size={28} className="text-white" />}
-                    {!isOpen && (
-                        <span className="absolute -top-1 -right-1 flex h-4 w-4">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-4 w-4 bg-teal-500"></span>
-                        </span>
-                    )}
-                </motion.button>
-            </div>
+            {!isOpen && (
+                <div className="fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom))] right-4 z-[9999] sm:bottom-6 sm:right-6">
+                    <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => setIsOpen(true)}
+                        aria-label="ডিজিগ্রাম সহকারী খুলুন"
+                        className="relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-teal-500 to-sky-600 text-white shadow-2xl sm:h-16 sm:w-16"
+                    >
+                        <MessageSquare size={26} />
+                        <span className="absolute -right-0.5 -top-0.5 h-4 w-4 rounded-full border-2 border-white bg-emerald-400" />
+                    </motion.button>
+                </div>
+            )}
 
-            {/* Chat Window */}
             <AnimatePresence>
                 {isOpen && (
-                    <div className="fixed inset-0 sm:inset-auto sm:bottom-24 sm:right-6 z-[10000]">
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.8, y: 50, transformOrigin: 'bottom right' }}
+                    <div className="fixed inset-x-3 bottom-[calc(1rem+env(safe-area-inset-bottom))] top-[calc(4.75rem+env(safe-area-inset-top))] z-[10000] sm:inset-auto sm:bottom-24 sm:right-6 sm:top-auto">
+                        <motion.section
+                            role="dialog"
+                            aria-modal="true"
+                            aria-label="ডিজিগ্রাম সহকারী"
+                            initial={{ opacity: 0, scale: 0.96, y: 24 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.8, y: 50 }}
-                            className="w-full h-full sm:w-[400px] sm:h-[600px] bg-slate-900/98 sm:bg-slate-900/95 backdrop-blur-2xl sm:border sm:border-white/10 sm:rounded-[40px] shadow-2xl flex flex-col overflow-hidden"
+                            exit={{ opacity: 0, scale: 0.96, y: 24 }}
+                            className="flex h-full w-full flex-col overflow-hidden rounded-[28px] border border-white/10 bg-slate-900/98 shadow-2xl backdrop-blur-2xl sm:h-[min(560px,calc(100dvh-8rem))] sm:w-[390px] sm:rounded-[32px]"
                         >
-                            {/* Header */}
-                            <div className="p-4 sm:p-6 bg-gradient-to-br from-teal-600/20 to-sky-600/20 border-b border-white/5 flex items-center justify-between">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-teal-500 flex items-center justify-center shadow-lg shadow-teal-500/20">
-                                        <Bot size={20} className="text-white" />
-                                    </div>
+                            <header className="flex shrink-0 items-center justify-between border-b border-white/10 bg-gradient-to-br from-teal-600/20 to-sky-600/20 px-4 py-3.5 sm:px-5 sm:py-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-500 shadow-lg shadow-teal-500/20"><Bot size={20} className="text-white" /></div>
                                     <div>
-                                        <h3 className="font-black text-white text-base sm:text-lg flex items-center gap-2">
-                                            ডিজিগ্রাম সহকারী
-                                            <span className="flex h-2 w-2 rounded-full bg-emerald-400"></span>
-                                        </h3>
-                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">AI Assistant</p>
+                                        <h2 className="flex items-center gap-2 font-black text-white">ডিজিগ্রাম সহকারী <span className="h-2 w-2 rounded-full bg-emerald-400" /></h2>
+                                        <p className="text-[10px] font-bold text-slate-400">প্রশ্ন করুন—সহজ বাংলায় উত্তর পান</p>
                                     </div>
                                 </div>
-                                <button 
-                                    onClick={() => setIsOpen(false)}
-                                    className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-slate-400 hover:text-white transition-colors"
-                                >
-                                    <X size={20} />
-                                </button>
-                            </div>
+                                <button onClick={() => setIsOpen(false)} aria-label="সহকারী বন্ধ করুন" className="flex h-10 w-10 items-center justify-center rounded-full bg-white/5 text-slate-300 transition hover:bg-white/10 hover:text-white"><X size={20} /></button>
+                            </header>
 
-                            {/* Messages Area */}
-                            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 custom-scrollbar">
-                                {messages.map((m, idx) => (
-                                    <motion.div
-                                        initial={{ opacity: 0, x: m.role === 'user' ? 20 : -20 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        key={idx}
-                                        className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                                    >
-                                        <div className={`max-w-[90%] sm:max-w-[85%] flex gap-3 ${m.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                                            <div className={`flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center ${
-                                                m.role === 'user' ? 'bg-sky-500' : 'bg-teal-500/20'
-                                            }`}>
-                                                {m.role === 'user' ? <User size={16} className="text-white" /> : <Bot size={16} className="text-teal-400" />}
-                                            </div>
-                                            <div className={`p-4 rounded-[24px] text-sm leading-relaxed shadow-sm ${
-                                                m.role === 'user' 
-                                                ? 'bg-sky-500 text-white rounded-tr-none' 
-                                                : 'bg-white/5 border border-white/5 text-slate-200 rounded-tl-none'
-                                            }`}>
-                                                {m.content}
-                                            </div>
+                            <div aria-live="polite" className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 custom-scrollbar sm:px-5">
+                                {messages.map((message, index) => (
+                                    <motion.div initial={{ opacity: 0, x: message.role === 'user' ? 12 : -12 }} animate={{ opacity: 1, x: 0 }} key={`${message.role}-${index}`} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                        <div className={`flex max-w-[92%] gap-2.5 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}>
+                                            <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${message.role === 'user' ? 'bg-sky-500' : 'bg-teal-500/20'}`}>
+                                                {message.role === 'user' ? <User size={15} className="text-white" /> : <Bot size={15} className="text-teal-300" />}
+                                            </span>
+                                            <p className={`whitespace-pre-wrap rounded-3xl px-4 py-3 text-sm font-medium leading-6 shadow-sm ${message.role === 'user' ? 'rounded-tr-md bg-sky-500 text-white' : 'rounded-tl-md border border-white/5 bg-white/[0.06] text-slate-200'}`}>
+                                                {message.content}
+                                            </p>
                                         </div>
                                     </motion.div>
                                 ))}
-                                {isLoading && (
-                                    <div className="flex justify-start">
-                                        <div className="bg-white/5 border border-white/5 p-4 rounded-[24px] rounded-tl-none flex items-center gap-3">
-                                            <Loader2 size={16} className="animate-spin text-teal-400" />
-                                            <span className="text-xs text-slate-400 font-bold">অপেক্ষা করুন...</span>
-                                        </div>
-                                    </div>
-                                )}
+                                {isLoading && <div className="flex items-center gap-2 text-xs font-bold text-slate-400"><Loader2 size={16} className="animate-spin text-teal-400" /> উত্তর তৈরি হচ্ছে...</div>}
                                 <div ref={messagesEndRef} />
                             </div>
 
-                            {/* Quick Questions & Input */}
-                            <div className="p-4 sm:p-6 bg-white/5 border-t border-white/5">
+                            <footer className="shrink-0 border-t border-white/10 bg-slate-800/95 p-3 sm:p-4">
                                 {messages.length === 1 && (
-                                    <div className="mb-4 sm:mb-6 flex flex-nowrap overflow-x-auto gap-2 pb-2 custom-scrollbar">
-                                        {quickQuestions.map((q, i) => (
-                                            <button
-                                                key={i}
-                                                onClick={() => handleSendMessage(q)}
-                                                className="whitespace-nowrap text-[11px] px-4 py-2 rounded-full bg-white/5 border border-white/10 text-slate-400 hover:bg-teal-500 hover:text-white hover:border-teal-500 transition-all font-bold"
-                                            >
-                                                {q}
-                                            </button>
+                                    <div className="mb-3 flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
+                                        {quickQuestions.map((question) => (
+                                            <button key={question} onClick={() => handleSendMessage(question)} className="shrink-0 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-[11px] font-bold text-slate-300 transition hover:border-teal-400 hover:text-white">{question}</button>
                                         ))}
                                     </div>
                                 )}
-                                
-                                <div className="relative flex items-center gap-2">
-                                    <input
-                                        type="text"
+                                <form onSubmit={submitMessage} className="flex items-end gap-2">
+                                    <textarea
+                                        ref={inputRef}
+                                        rows={1}
+                                        maxLength={1000}
                                         value={inputValue}
-                                        onChange={(e) => setInputValue(e.target.value)}
-                                        onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                                        onChange={(event) => setInputValue(event.target.value)}
+                                        onKeyDown={(event) => {
+                                            if (event.key === 'Enter' && !event.shiftKey) {
+                                                event.preventDefault();
+                                                submitMessage(event);
+                                            }
+                                        }}
                                         placeholder="আপনার প্রশ্ন লিখুন..."
-                                        className="flex-1 bg-slate-950/50 border border-white/10 rounded-2xl sm:rounded-[20px] px-5 py-4 text-sm text-white placeholder:text-slate-600 outline-none focus:border-teal-500/50 transition-all font-medium h-12 sm:h-14"
+                                        className="max-h-28 min-h-12 flex-1 resize-none rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm font-medium text-white outline-none placeholder:text-slate-500 focus:border-teal-500/60"
                                     />
-                                    <button
-                                        onClick={() => handleSendMessage()}
-                                        disabled={isLoading}
-                                        className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-teal-500 flex items-center justify-center text-white hover:bg-teal-400 transition-all active:scale-90 shadow-lg shadow-teal-500/20"
-                                    >
-                                        <Send size={20} />
-                                    </button>
-                                </div>
-                            </div>
-                        </motion.div>
+                                    <button type="submit" disabled={!inputValue.trim() || isLoading} aria-label="প্রশ্ন পাঠান" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-teal-500 text-white shadow-lg transition hover:bg-teal-400 disabled:cursor-not-allowed disabled:opacity-40"><Send size={19} /></button>
+                                </form>
+                                <p className="mt-2 text-center text-[9px] font-bold text-slate-500">গুরুত্বপূর্ণ সিদ্ধান্তে সরকারি/বিশেষজ্ঞ তথ্য যাচাই করুন</p>
+                            </footer>
+                        </motion.section>
                     </div>
                 )}
             </AnimatePresence>
