@@ -33,6 +33,7 @@ import StudentReportCard from '@/components/sections/school/StudentReportCard';
 import SchoolReportsPanel from '@/components/sections/school/SchoolReportsPanel';
 import { buildAcademicClassPlan } from '@/lib/constants/academicStructure';
 import { getInstitutionProfile } from '@/lib/constants/institutionProfiles';
+import { getInstitutionWebsiteHref } from '@/lib/utils/institutionWebsiteUrl';
 import { getInstitutionDesignProfile } from '@/lib/constants/institutionDesignProfiles';
 import { buildExamResultSummaries, calculateGrade } from '@/lib/constants/grading';
 
@@ -705,11 +706,7 @@ export default function SchoolAdminClient({ schoolId }) {
         ...profile.academicSettings,
         ...(institution?.operational_settings || {})
     });
-    const websiteHref = institution?.custom_domain
-        ? `https://${institution.custom_domain}`
-        : institution?.subdomain
-            ? `http://${institution.subdomain}.localhost:3000`
-            : null;
+    const websiteHref = institution ? getInstitutionWebsiteHref(institution) : null;
     const teacherPortalHref = `/school/${schoolId}/teacher`;
     const studentPortalHref = `/school/${schoolId}/student`;
     const demoSeedTag = slugEmail(`${institution?.subdomain || institution?.name || schoolId}-${schoolId.slice(0, 6)}`);

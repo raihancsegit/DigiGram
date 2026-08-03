@@ -5,10 +5,16 @@ import test from 'node:test';
 const adminPage = fs.readFileSync('app/(site)/admin/institutions/page.js', 'utf8');
 const demoRoute = fs.readFileSync('app/api/admin/demo-data/route.js', 'utf8');
 const unionPage = fs.readFileSync('app/(site)/admin/union/page.js', 'utf8');
+const schoolAdmin = fs.readFileSync('components/sections/school/SchoolAdminClient.js', 'utf8');
+const schoolPortal = fs.readFileSync('components/sections/school/SchoolPortalShell.js', 'utf8');
+const websiteManager = fs.readFileSync('components/sections/institution/InstitutionWebsiteManager.js', 'utf8');
 
 test('institution website buttons use the deployed tenant route instead of localhost', () => {
     assert.doesNotMatch(adminPage, /inst\.subdomain\}\.localhost:3000/);
-    assert.match(adminPage, /`\/institution\/\$\{inst\.id\}`/);
+    assert.match(adminPage, /getInstitutionWebsiteHref\(inst\)/);
+    for (const source of [adminPage, schoolAdmin, schoolPortal, websiteManager]) {
+        assert.doesNotMatch(source, /http:\/\/\$\{institution\?*\.subdomain\}\.localhost:3000/);
+    }
 });
 
 test('local institution demos include website content and a public notice', () => {

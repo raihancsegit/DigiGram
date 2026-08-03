@@ -13,6 +13,7 @@ import { getInstitutionProfile } from '@/lib/constants/institutionProfiles';
 import { buildExamResultSummaries } from '@/lib/constants/grading';
 import StudentReportCard from '@/components/sections/school/StudentReportCard';
 import { menuStyles } from '@/components/common/menuStyles';
+import { getInstitutionWebsiteHref } from '@/lib/utils/institutionWebsiteUrl';
 
 const ROLE_COPY = {
     admin: {
@@ -859,7 +860,7 @@ export default function SchoolPortalShell({ schoolId, role }) {
                     </nav>
                     <div className="mt-auto p-4">
                         <Link
-                            href={`/${institution?.subdomain || ''}`}
+                            href={getInstitutionWebsiteHref(institution)}
                             className={`flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-black transition ${isStudentPortal ? 'bg-slate-100 text-slate-700 hover:bg-orange-50 hover:text-orange-700' : 'bg-white/10 text-white hover:bg-white/15'}`}
                         >
                             Website দেখুন <ExternalLink size={16} />
@@ -876,7 +877,7 @@ export default function SchoolPortalShell({ schoolId, role }) {
                                 <p className="mt-1 text-sm font-bold text-slate-500">{copy.intro}</p>
                             </div>
                             <div className="flex flex-wrap items-center gap-2">
-                                <Link href={`/${institution?.subdomain || ''}`} className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700">
+                                <Link href={getInstitutionWebsiteHref(institution)} className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700">
                                     পাবলিক সাইট
                                 </Link>
                                 {role !== 'student' && (
@@ -1015,7 +1016,7 @@ export default function SchoolPortalShell({ schoolId, role }) {
                                 <span className="rounded-2xl bg-slate-100 px-4 py-4 font-black text-slate-700">Homework status</span>
                             </>
                         )}
-                        <a href={`http://${institution?.subdomain}.localhost:3000`} className="rounded-2xl bg-slate-100 px-4 py-4 font-black text-slate-700">Website</a>
+                        <a href={getInstitutionWebsiteHref(institution)} className="rounded-2xl bg-slate-100 px-4 py-4 font-black text-slate-700">Website</a>
                     </div>
                 </section>
                 <section className="rounded-[28px] border border-slate-200 bg-white p-6">

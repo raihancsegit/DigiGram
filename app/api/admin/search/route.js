@@ -155,7 +155,7 @@ export async function GET(request) {
                     title: row.name || 'Institution',
                     subtitle: [row.type, row.category, row.subdomain].filter(Boolean).join(' · '),
                     meta: row.phone || '',
-                    href: row.subdomain ? `https://${row.subdomain}.localhost:3000` : '/admin/institutions'
+                    href: row.id ? `/institution/${row.id}` : '/admin/institutions'
                 })
             ),
             safeSearch(

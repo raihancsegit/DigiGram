@@ -19,6 +19,7 @@ import { institutionService } from '@/lib/services/institutionService';
 import { authenticatedFetch } from '@/lib/utils/authenticated-fetch';
 import { getInstitutionProfile } from '@/lib/constants/institutionProfiles';
 import { getInstitutionWebsiteExperience } from '@/lib/constants/institutionWebsiteExperience';
+import { getInstitutionWebsiteHref } from '@/lib/utils/institutionWebsiteUrl';
 
 const DEFAULT_MENU = ['home', 'about', 'classes', 'teachers', 'facilities', 'admission', 'notices', 'contact'];
 const SCHOOL_CATEGORIES = ['school', 'primary_school', 'high_school', 'college', 'dakhil_madrasa', 'alim_madrasa', 'kindergarten'];
@@ -453,11 +454,7 @@ export default function InstitutionWebsiteManager({ institution, initialPage, on
     const draftFingerprint = useMemo(() => snapshotFingerprint(content, theme), [content, theme]);
     const hasUnsavedChanges = draftFingerprint !== savedDraftFingerprint;
     const hasUnpublishedChanges = draftFingerprint !== publishedFingerprint;
-    const websiteHref = institution?.custom_domain
-        ? `https://${institution.custom_domain}`
-        : institution?.subdomain
-            ? `http://${institution.subdomain}.localhost:3000`
-            : null;
+    const websiteHref = institution ? getInstitutionWebsiteHref(institution) : null;
     const websiteHealth = [
         { label: 'Website URL', ok: Boolean(websiteHref), hint: websiteHref ? 'Domain/subdomain ready' : 'Subdomain or custom domain missing' },
         { label: 'Published', ok: Boolean(publishedAt), hint: publishedAt ? new Date(publishedAt).toLocaleString() : 'Publish once before sharing' },

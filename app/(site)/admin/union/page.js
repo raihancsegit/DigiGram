@@ -660,7 +660,7 @@ export default function UnionManagementPage() {
                                             <div>
                                                 <p className="text-sm font-black text-slate-800">{item.name_bn}</p>
                                                 <p className="text-xs font-bold text-slate-400 lowercase tracking-tight">
-                                                    {viewLevel === 'unions' ? `${item.slug}.localhost:3000` : item.type}
+                                                    {viewLevel === 'unions' ? `/u/${item.slug}` : item.type}
                                                 </p>
                                             </div>
                                         </div>
