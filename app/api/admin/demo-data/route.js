@@ -293,8 +293,9 @@ async function seedLocalInstitutions(batchId, scope, suffix) {
         }
     ];
 
+    let created = 0;
     for (const row of rows) {
-        await insertTracked(batchId, 'institutions', {
+        const institution = await insertTracked(batchId, 'institutions', {
             ...row,
             location_id: scope.union.id,
             village_location_id: row.type === 'college' ? scope.secondVillageLocation.id : scope.villageLocation.id,
@@ -302,9 +303,31 @@ async function seedLocalInstitutions(batchId, scope, suffix) {
             portal_features: row.type === 'mosque' ? ['donations', 'accounts', 'announcements'] : ['website', 'notice', 'admission'],
             operational_settings: { demo: true }
         }, 300, `Demo ${row.type}`);
+        created += 1;
+
+        await insertTracked(batchId, 'institution_pages', {
+            institution_id: institution.id,
+            hero_title: row.name,
+            hero_subtitle: row.type === 'mosque'
+                ? 'নামাজের সময়, ঘোষণা, অনুদান ও গ্রামের ধর্মীয় সেবা এক জায়গায়।'
+                : 'ভর্তি, নোটিশ, শিক্ষক, ক্লাস ও শিক্ষার্থীর তথ্য এক জায়গায়।',
+            about_text: `${row.name} এর পূর্ণ ডেমো ওয়েবসাইট। এখানে প্রকাশিত তথ্য ও অনলাইন সেবা পরীক্ষা করা যাবে।`,
+            contact_phone: DEMO_PHONE,
+            contact_email: `demo.${row.type}@example.com`,
+            address: row.type === 'college' ? 'ডেমো গ্রাম খ, ডেমো ইউনিয়ন' : 'ডেমো গ্রাম ক, ডেমো ইউনিয়ন'
+        }, 650, `${row.name} website`);
+        created += 1;
+
+        await insertTracked(batchId, 'institution_notices', {
+            institution_id: institution.id,
+            title: row.type === 'mosque' ? 'ডেমো: জুমার নামাজ ও সাপ্তাহিক ঘোষণা' : 'ডেমো: ভর্তি ও নতুন শিক্ষাবর্ষের নোটিশ',
+            body: 'এই নোটিশটি public website-এর demo content যাচাই করার জন্য প্রকাশিত।',
+            audience: 'public'
+        }, 750, `${row.name} notice`);
+        created += 1;
     }
 
-    return rows.length;
+    return created;
 }
 
 async function seedAll(profile) {

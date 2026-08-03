@@ -622,23 +622,23 @@ export default function UnionManagementPage() {
             {/* Hierarchical Table/List */}
             <div className="bg-white rounded-[32px] border border-slate-200 overflow-hidden shadow-xl shadow-slate-200/20">
                 <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
+                    <table className="w-full min-w-[900px] table-fixed text-left border-collapse">
                         <thead>
                             <tr className="bg-slate-50/50 border-b border-slate-100">
-                                <th className="px-8 py-5 text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                                <th className="w-[29%] px-5 py-5 text-[10px] font-black uppercase text-slate-400 tracking-widest">
                                     {viewLevel === 'districts' ? 'জেলার নাম' : 
                                      viewLevel === 'upazilas' ? 'উপজেলার নাম' :
                                      viewLevel === 'unions' ? 'ইউনিয়ন পরিচিতি' : 
                                      viewLevel === 'wards' ? 'ওয়ার্ড পরিচিতি' : 'গ্রামের নাম'}
                                 </th>
-                                <th className="px-8 py-5 text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                                <th className="w-[24%] px-5 py-5 text-[10px] font-black uppercase text-slate-400 tracking-widest">
                                     {viewLevel === 'districts' ? 'অবস্থান (বিভাগ)' : 
                                      viewLevel === 'upazilas' ? 'জেলা' :
                                      viewLevel === 'unions' ? 'অবস্থান (উপজেলা)' : 
                                      viewLevel === 'wards' ? 'দায়িত্বপ্রাপ্ত মেম্বার' : 'জনসংখ্যা ও ভোটার'}
                                 </th>
-                                <th className="px-8 py-5 text-[10px] font-black uppercase text-slate-400 tracking-widest">স্ট্যাটাস / ইনফো</th>
-                                <th className="px-8 py-5 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right pr-12">অ্যাকশন</th>
+                                <th className="w-[14%] px-5 py-5 text-[10px] font-black uppercase text-slate-400 tracking-widest">স্ট্যাটাস / ইনফো</th>
+                                <th className="w-[33%] px-5 py-5 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right">অ্যাকশন</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50">
@@ -652,7 +652,7 @@ export default function UnionManagementPage() {
                                     transition={{ delay: idx * 0.05 }}
                                     className="hover:bg-slate-50 transition-colors group"
                                 >
-                                    <td className="px-8 py-6">
+                                    <td className="px-5 py-6">
                                         <div className="flex items-center gap-4">
                                             <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-teal-50 group-hover:text-teal-600 transition-all">
                                                 {viewLevel === 'unions' ? <Globe size={20} /> : <MapPin size={20} />}
@@ -665,7 +665,7 @@ export default function UnionManagementPage() {
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="px-8 py-6">
+                                    <td className="px-5 py-6">
                                         {viewLevel === 'unions' ? (() => {
                                             const manager = allUsers.find(u => u.access_scope_id === item.id && u.role === 'chairman');
                                             return manager ? (
@@ -725,14 +725,14 @@ export default function UnionManagementPage() {
                                             </div>
                                         )}
                                     </td>
-                                    <td className="px-8 py-6">
+                                    <td className="px-5 py-6">
                                         <div className="flex items-center gap-2">
                                             <div className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
                                             <span className="text-xs font-black text-teal-600 uppercase tracking-widest">Active</span>
                                         </div>
                                     </td>
-                                    <td className="px-8 py-6 text-right pr-12">
-                                        <div className="flex items-center justify-end gap-2">
+                                    <td className="px-5 py-6 text-right">
+                                        <div className="flex flex-wrap items-center justify-end gap-2">
                                             {viewLevel !== 'villages' && (
                                                 <button 
                                                     onClick={() => drillDown(item)}
@@ -750,7 +750,7 @@ export default function UnionManagementPage() {
                                             {viewLevel === 'unions' && (
                                                 <button
                                                     onClick={() => setServiceSettingsUnion(item)}
-                                                    className="rounded-xl border border-teal-200 bg-teal-50 px-3 py-2.5 text-[10px] font-black text-teal-700"
+                                                    className="inline-flex min-h-10 shrink-0 items-center whitespace-nowrap rounded-xl border border-teal-200 bg-teal-50 px-3 text-[11px] font-black text-teal-700 hover:bg-teal-100"
                                                     title="সেবা, ফি, SMS ও সময় সেট করুন"
                                                 >সেবা ও ফি</button>
                                             )}

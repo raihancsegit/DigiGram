@@ -90,7 +90,7 @@ export default function InstitutionManagementPage() {
                 operational_settings: {}
             });
             loadData();
-            alert(`প্রতিষ্ঠান তৈরি হয়েছে। Website: http://${created.subdomain}.localhost:3000`);
+            alert(`প্রতিষ্ঠান তৈরি হয়েছে। Website: ${window.location.origin}/${created.subdomain}`);
         } catch (err) {
             alert('সংরক্ষণ করতে সমস্যা হয়েছে।');
         }
@@ -136,7 +136,7 @@ export default function InstitutionManagementPage() {
                 alert('প্রতিষ্ঠান আপডেট হয়েছে।');
             } else {
                 const created = await institutionService.addInstitution(formData);
-                alert(`প্রতিষ্ঠান তৈরি হয়েছে। Website: http://${created.subdomain}.localhost:3000`);
+                alert(`প্রতিষ্ঠান তৈরি হয়েছে। Website: ${window.location.origin}/${created.subdomain}`);
             }
 
             setShowAddModal(false);
@@ -355,7 +355,7 @@ export default function InstitutionManagementPage() {
                                             </div>
                                             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                                                 <a 
-                                                    href={inst.custom_domain ? `https://${inst.custom_domain}` : `http://${inst.subdomain}.localhost:3000`} 
+                                                    href={inst.custom_domain ? `https://${inst.custom_domain}` : `/${encodeURIComponent(inst.subdomain)}`}
                                                     target="_blank"
                                                     className="flex min-w-0 items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-xs font-black text-white shadow-lg shadow-slate-900/10 transition-all hover:bg-teal-600 active:scale-95"
                                                 >
@@ -411,7 +411,7 @@ export default function InstitutionManagementPage() {
                                         </span>
                                     </td>
                                     <td className="px-8 py-6">
-                                        <span className="text-sm font-bold text-slate-400">{inst.subdomain}.localhost:3000</span>
+                                        <span className="text-sm font-bold text-slate-400">/{inst.subdomain}</span>
                                     </td>
                                     <td className="px-8 py-6 text-right space-x-2">
                                         <button onClick={() => toggleWebsiteStatus(inst)} className={`p-2 transition-colors ${inst.website_status === 'paused' ? 'text-amber-500 hover:text-amber-700' : 'text-emerald-500 hover:text-emerald-700'}`}><Power size={18} /></button>
