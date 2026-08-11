@@ -5,7 +5,6 @@ import {
     ArrowRight,
     Bell,
     BookOpen,
-    CalendarDays,
     ClipboardList,
     GraduationCap,
     Trophy,
@@ -58,7 +57,6 @@ export default function InstitutionReferenceHome({
     const variant = VARIANTS[key];
     const isLightHero = key === 'kindergarten' || key === 'madrasa';
     const image = slide?.image_url || page?.banner_image_url || gallery?.[0]?.image_url;
-    const leadTeacher = teachers?.[0];
     const heroTitle = page?.hero_title || slide?.title || variant.heading;
     const heroSubtitle = slide?.subtitle || page?.hero_subtitle;
 

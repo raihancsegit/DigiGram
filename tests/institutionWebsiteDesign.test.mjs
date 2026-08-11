@@ -4,6 +4,7 @@ import fs from 'node:fs';
 
 const experienceSource = fs.readFileSync('lib/constants/institutionWebsiteExperience.js', 'utf8');
 const rendererSource = fs.readFileSync('components/sections/institution/SchoolTenantWebsite.js', 'utf8');
+const referenceHomeSource = fs.readFileSync('components/sections/institution/InstitutionReferenceHome.js', 'utf8');
 const managerSource = fs.readFileSync('components/sections/institution/InstitutionWebsiteManager.js', 'utf8');
 const portalServiceSource = fs.readFileSync('lib/services/institutionPortalService.js', 'utf8');
 
@@ -174,4 +175,9 @@ test('CMS and renderer treat explicitly saved empty arrays as intentional conten
 
     assert.doesNotMatch(rendererSource, /Array\.isArray\(value\) && value\.length \? value : fallback/);
     assert.doesNotMatch(managerSource, /Array\.isArray\(value\) && value\.length \? value : fallback/);
+});
+
+test('reference homepage does not read removed or undeclared content props', () => {
+    assert.doesNotMatch(referenceHomeSource, /teachers\?\./);
+    assert.doesNotMatch(referenceHomeSource, /facilities\?\./);
 });
