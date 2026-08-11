@@ -1,0 +1,23 @@
+.innerPages {
+    --inner-radius: 14px;
+    --inner-soft: #f3f8fa;
+}
+
+.innerPages[data-inner-category='college'] { --inner-radius: 8px; --inner-soft: #f7f4e9; }
+.innerPages[data-inner-category='kindergarten'] { --inner-radius: 28px; --inner-soft: #fff4e8; }
+.innerPages[data-inner-category='madrasa'] { --inner-radius: 12px; --inner-soft: #f3f7ef; }
+
+.innerPages > section { padding-top: 5.5rem; padding-bottom: 5.5rem; }
+.innerPages article,
+.innerPages form,
+.innerPages details { border-radius: var(--inner-radius) !important; }
+.innerPages article { transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease; }
+.innerPages article:hover { transform: translateY(-3px); box-shadow: 0 18px 45px rgb(15 23 42 / 10%); }
+.innerPages h2 { letter-spacing: -0.025em; }
+.innerPages[data-inner-category='college'] h2,
+.innerPages[data-inner-category='madrasa'] h2 { font-family: Georgia, 'Noto Serif Bengali', serif; }
+.innerPages[data-inner-category='kindergarten'] article { border-width: 2px; }
+
+@media (max-width: 640px) {
+    .innerPages > section { padding-top: 3.75rem; padding-bottom: 3.75rem; }
+}

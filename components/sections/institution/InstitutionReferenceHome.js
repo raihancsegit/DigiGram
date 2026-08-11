@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import { useState } from 'react';
 import {
     ArrowRight,
     Bell,
@@ -56,7 +57,9 @@ export default function InstitutionReferenceHome({
     const key = categoryKey(institution.category);
     const variant = VARIANTS[key];
     const isLightHero = key === 'kindergarten' || key === 'madrasa';
-    const image = slide?.image_url || page?.banner_image_url || gallery?.[0]?.image_url;
+    const [failedImageUrls, setFailedImageUrls] = useState([]);
+    const image = [slide?.image_url, page?.banner_image_url, ...gallery.map((item) => item?.image_url)]
+        .find((url, index, rows) => url && rows.indexOf(url) === index && !failedImageUrls.includes(url));
     const heroTitle = page?.hero_title || slide?.title || variant.heading;
     const heroSubtitle = slide?.subtitle || page?.hero_subtitle;
 
@@ -80,7 +83,7 @@ export default function InstitutionReferenceHome({
                         </div>
                     </div>
                     <div className={`relative min-h-[330px] overflow-hidden lg:min-h-full ${variant.shape}`}>
-                        {image ? <Image src={image} alt={`${institution.name} campus`} fill preload sizes="(max-width: 1024px) 100vw, 58vw" quality={72} className="object-cover" /> : <div className="absolute inset-0 bg-slate-300" />}
+                        {image ? <Image src={image} alt={`${institution.name} campus`} fill preload sizes="(max-width: 1024px) 100vw, 58vw" quality={72} className="object-cover" onError={() => setFailedImageUrls((urls) => urls.includes(image) ? urls : [...urls, image])} /> : <div className={`absolute inset-0 ${key === 'college' ? 'bg-gradient-to-br from-[#283765] to-[#101a42]' : key === 'kindergarten' ? 'bg-gradient-to-br from-rose-100 via-orange-100 to-sky-200' : key === 'madrasa' ? 'bg-gradient-to-br from-emerald-100 via-amber-50 to-emerald-300' : 'bg-gradient-to-br from-cyan-700 to-[#063b57]'}`} />}
                         <div className={`absolute inset-0 ${isLightHero ? 'bg-gradient-to-r from-black/10 to-transparent' : 'bg-gradient-to-r from-black/20 to-transparent'}`} />
                         {key === 'kindergarten' && <div className="absolute inset-y-0 left-0 w-24 -translate-x-12 rounded-[50%] bg-[#fff5e8]" />}
                     </div>

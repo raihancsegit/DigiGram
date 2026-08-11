@@ -27,6 +27,8 @@ import {
 import { getInstitutionProfile } from '@/lib/constants/institutionProfiles';
 import { getInstitutionWebsiteExperience } from '@/lib/constants/institutionWebsiteExperience';
 import InstitutionReferenceHome from '@/components/sections/institution/InstitutionReferenceHome';
+import InstitutionPageHero from '@/components/sections/institution/InstitutionPageHero';
+import styles from '@/components/sections/institution/InstitutionWebsite.module.css';
 import {
     SCHOOL_WEBSITE_DEMO_CONTENT,
     SCHOOL_WEBSITE_EXTRA_SECTIONS,
@@ -500,7 +502,12 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
             ? 'মাদ্রাসা'
             : institution.category === 'kindergarten'
                 ? 'কিন্ডারগার্টেন'
-            : 'বিদ্যালয়';
+                : 'বিদ্যালয়';
+    const institutionCategoryKey = institution.category === 'college'
+        ? 'college'
+        : ['dakhil_madrasa', 'alim_madrasa'].includes(institution.category)
+            ? 'madrasa'
+            : institution.category === 'kindergarten' ? 'kindergarten' : 'school';
     const audienceCopy = institution.category === 'college'
         ? { eyebrow: 'উচ্চশিক্ষার প্রস্তুতি', title: 'বিভাগ, ভর্তি ও ফলাফলের নির্ভরযোগ্য তথ্যকেন্দ্র' }
         : ['dakhil_madrasa', 'alim_madrasa'].includes(institution.category)
@@ -1274,31 +1281,9 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
             </div>
             )}
 
-            {activePage !== 'home' && (
-                <section className="relative isolate min-h-[310px] overflow-hidden border-b border-slate-900 bg-slate-950 text-white">
-                    {pageHeroImage && <Image src={pageHeroImage} alt="" fill sizes="100vw" quality={55} className="-z-20 object-cover" />}
-                    <div className="absolute inset-0 -z-10 bg-gradient-to-r from-slate-950 via-slate-950/90 to-[var(--school-primary)]/55" />
-                    <div className="absolute inset-0 -z-10 opacity-20 [background-image:radial-gradient(circle_at_80%_20%,white_0,transparent_24%)]" />
-                    <div className="mx-auto flex min-h-[310px] max-w-7xl flex-col justify-center px-4 py-12">
-                        <button type="button" onClick={() => navigatePage('home')} className="mb-6 w-fit text-sm font-black text-white/65 transition hover:text-white">
-                            ← হোমে ফিরুন
-                        </button>
-                        <p className="text-xs font-black uppercase tracking-[0.24em] text-amber-300">{institutionKind} · {siteName}</p>
-                        <div className="mt-3 flex flex-wrap items-end justify-between gap-6">
-                            <div>
-                                <h2 className="text-4xl font-black leading-tight text-white md:text-5xl">{activeMenuItem?.label || activeMeta.title}</h2>
-                                <p className="mt-4 max-w-2xl text-base font-bold leading-8 text-white/72">{activeMeta.subtitle}</p>
-                            </div>
-                            <div className="flex flex-wrap gap-2">
-                                <button type="button" onClick={() => navigatePage('notices')} className="rounded-full border border-white/25 bg-white/10 px-4 py-2 text-xs font-black text-white backdrop-blur transition hover:bg-white/20">সর্বশেষ নোটিশ</button>
-                                <button type="button" onClick={() => navigatePage('admission')} className="rounded-full bg-amber-400 px-4 py-2 text-xs font-black text-slate-950 shadow-lg">ভর্তি তথ্য</button>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-            )}
+            {activePage !== 'home' && <InstitutionPageHero category={institution.category} siteName={siteName} kind={institutionKind} title={activeMenuItem?.label || activeMeta.title} subtitle={activeMeta.subtitle} image={pageHeroImage} fallbackImages={galleryItems.map((item) => item?.image_url).filter(Boolean)} onNavigate={navigatePage} />}
 
-            <main>
+            <main className={styles.innerPages} data-inner-category={institutionCategoryKey}>
                 {activePage === 'about' && (
                 <section className={`${altSectionClass} py-16`}>
                     <div className="mx-auto grid max-w-7xl gap-8 px-4 lg:grid-cols-[0.8fr_1fr] lg:items-center">

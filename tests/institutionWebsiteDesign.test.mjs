@@ -3,10 +3,13 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 const experienceSource = fs.readFileSync('lib/constants/institutionWebsiteExperience.js', 'utf8');
+const defaultsSource = fs.readFileSync('lib/constants/schoolWebsiteDefaults.js', 'utf8');
 const rendererSource = fs.readFileSync('components/sections/institution/SchoolTenantWebsite.js', 'utf8');
 const referenceHomeSource = fs.readFileSync('components/sections/institution/InstitutionReferenceHome.js', 'utf8');
+const pageHeroSource = fs.readFileSync('components/sections/institution/InstitutionPageHero.js', 'utf8');
 const managerSource = fs.readFileSync('components/sections/institution/InstitutionWebsiteManager.js', 'utf8');
 const portalServiceSource = fs.readFileSync('lib/services/institutionPortalService.js', 'utf8');
+const nextConfigSource = fs.readFileSync('next.config.mjs', 'utf8');
 
 function importSource(source) {
     return import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
@@ -20,6 +23,27 @@ async function loadPortalService(supabase) {
     );
     assert.doesNotMatch(instrumented, /^import /m);
     return importSource(`${instrumented}\n// test-load-${Date.now()}-${Math.random()}`);
+}
+
+async function loadSchoolDefaults(getInstitutionWebsiteExperience) {
+    globalThis.__institutionWebsiteExperienceGetter = getInstitutionWebsiteExperience;
+    const instrumented = defaultsSource.replace(
+        "import { getInstitutionWebsiteExperience } from '@/lib/constants/institutionWebsiteExperience';",
+        'const getInstitutionWebsiteExperience = globalThis.__institutionWebsiteExperienceGetter;'
+    );
+    assert.doesNotMatch(instrumented, /^import /m);
+    return importSource(`${instrumented}\n// test-load-${Date.now()}-${Math.random()}`);
+}
+
+function assertValidDefaultImage(imageUrl) {
+    const url = new URL(imageUrl);
+    assert.equal(url.protocol, 'https:');
+    assert.equal(url.hostname, 'images.unsplash.com');
+    assert.match(url.pathname, /^\/photo-[a-z0-9-]+$/);
+    assert.equal(url.searchParams.get('auto'), 'format');
+    assert.equal(url.searchParams.get('fit'), 'crop');
+    assert.ok(Number(url.searchParams.get('w')) >= 500);
+    assert.ok(Number(url.searchParams.get('q')) >= 60);
 }
 
 test('school, college, kindergarten and madrasa ship distinct complete home experiences', async () => {
@@ -180,4 +204,90 @@ test('CMS and renderer treat explicitly saved empty arrays as intentional conten
 test('reference homepage does not read removed or undeclared content props', () => {
     assert.doesNotMatch(referenceHomeSource, /teachers\?\./);
     assert.doesNotMatch(referenceHomeSource, /facilities\?\./);
+});
+
+test('inner pages share category-aware hero and template design primitives', () => {
+    for (const page of ['about', 'classes', 'teachers', 'guardian', 'facilities', 'gallery', 'admission', 'notices', 'contact']) {
+        assert.match(rendererSource, new RegExp(`${page}: \\{ title:`), `${page} needs inner-page metadata`);
+        assert.match(rendererSource, new RegExp(`activePage === ['"]${page}['"]`), `${page} needs its own rendered page`);
+    }
+
+    assert.match(rendererSource, /const institutionKind = institution\.category === ['"]college['"]/);
+    assert.match(rendererSource, /\['dakhil_madrasa', 'alim_madrasa'\]\.includes\(institution\.category\)/);
+    assert.match(rendererSource, /institution\.category === ['"]kindergarten['"]/);
+    assert.match(rendererSource, /activePage !== ['"]home['"] && <InstitutionPageHero/);
+    assert.match(rendererSource, /category=\{institution\.category\}/);
+    assert.match(rendererSource, /kind=\{institutionKind\}/);
+    assert.match(rendererSource, /title=\{activeMenuItem\?\.label \|\| activeMeta\.title\}/);
+    assert.match(rendererSource, /subtitle=\{activeMeta\.subtitle\}/);
+    assert.match(rendererSource, /image=\{pageHeroImage\}/);
+
+    for (const category of ['school', 'college', 'kindergarten', 'madrasa']) {
+        assert.match(pageHeroSource, new RegExp(`${category}: \\{ shell:`));
+        assert.match(pageHeroSource, new RegExp(`data-page-hero=\\{key\\}`));
+    }
+    assert.match(pageHeroSource, /function categoryKey\(category\)/);
+    assert.match(pageHeroSource, /\['dakhil_madrasa', 'alim_madrasa'\]\.includes\(category\)/);
+    assert.match(pageHeroSource, /const light = key === ['"]kindergarten['"] \|\| key === ['"]madrasa['"]/);
+    assert.match(pageHeroSource, /onNavigate\(['"]admission['"]\)/);
+    assert.match(pageHeroSource, /onNavigate\(['"]notices['"]\)/);
+
+    for (const primitive of [
+        'template.shellClass',
+        'template.headerClass',
+        'template.cardClass',
+        'panelClass',
+        'softPanelClass',
+        'altSectionClass',
+        'plainSectionClass',
+        'sectionLeadClass'
+    ]) {
+        assert.match(rendererSource, new RegExp(primitive.replace('.', '\\.')));
+    }
+});
+
+test('freshly provisioned category pages receive valid distinct default images', async () => {
+    const { getInstitutionWebsiteExperience } = await importSource(experienceSource);
+    const { buildSchoolWebsiteDemoPage } = await loadSchoolDefaults(getInstitutionWebsiteExperience);
+    const categories = ['high_school', 'college', 'kindergarten', 'dakhil_madrasa'];
+    const pages = categories.map((category) => buildSchoolWebsiteDemoPage({
+        id: `${category}-1`,
+        name: `${category} demo`,
+        category,
+        village: 'Demo village'
+    }, category));
+
+    assert.equal(new Set(pages.map((page) => page.banner_image_url)).size, categories.length);
+    for (const page of pages) {
+        assertValidDefaultImage(page.banner_image_url);
+        assert.equal(page.banner_image_url, page.footer_links.extra_sections.slider[0].image_url);
+        for (const imageUrl of [
+            ...page.footer_links.extra_sections.slider.map((item) => item.image_url),
+            ...page.footer_links.extra_sections.gallery.map((item) => item.image_url),
+            ...page.public_teachers.map((item) => item.image_url)
+        ]) {
+            assertValidDefaultImage(imageUrl);
+        }
+    }
+
+    assert.match(nextConfigSource, /hostname: ['"]images\.unsplash\.com['"]/);
+    assert.match(nextConfigSource, /qualities: \[60, 75, 85\]/);
+});
+
+test('existing websites resolve saved imagery first and remain usable without any image', () => {
+    assert.match(
+        rendererSource,
+        /const pageHeroImage = page\?\.banner_image_url \|\| sliderItems\[0\]\?\.image_url \|\| galleryItems\[0\]\?\.image_url \|\| ['"]['"];/
+    );
+    assert.match(rendererSource, /\{page\?\.logo_url \? \(/);
+    assert.match(rendererSource, /<Image src=\{page\.logo_url\}/);
+    assert.match(rendererSource, /image=\{pageHeroImage\}/);
+    assert.match(rendererSource, /style=\{!pageHeroImage \? brandGradient : undefined\}/);
+    assert.match(pageHeroSource, /const \[failedImageUrls, setFailedImageUrls\] = useState\(\[\]\)/);
+    assert.match(pageHeroSource, /const displayImage = \[image, \.\.\.fallbackImages\]/);
+    assert.match(pageHeroSource, /displayImage && <Image src=\{displayImage\}/);
+    assert.match(pageHeroSource, /onError=\{\(\) => setFailedImageUrls/);
+    assert.match(pageHeroSource, /!displayImage && <div/);
+    assert.match(nextConfigSource, /hostname: ['"]\*\*\.supabase\.co['"]/);
+    assert.match(nextConfigSource, /pathname: ['"]\/storage\/v1\/object\/\*\*['"]/);
 });
