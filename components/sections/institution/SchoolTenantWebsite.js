@@ -13,10 +13,12 @@ import {
     LibraryBig,
     Mail,
     MapPin,
+    Menu,
     Megaphone,
     Phone,
     School,
-    Users
+    Users,
+    X
 } from 'lucide-react';
 import {
     getInstitutionDesignProfile,
@@ -75,13 +77,6 @@ const HOME_SECTION_OPTIONS = [
 ];
 const DEFAULT_HOME_SECTION_SETTINGS = SCHOOL_WEBSITE_HOME_SECTION_SETTINGS;
 const DEFAULT_EXTRA_SECTIONS = SCHOOL_WEBSITE_EXTRA_SECTIONS;
-const DEFAULT_SLIDER_IMAGES = [
-    'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=1800&q=80',
-    'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=1800&q=80',
-    'https://images.unsplash.com/photo-1498243691581-b145c3f54a5a?auto=format&fit=crop&w=1800&q=80',
-    'https://images.unsplash.com/photo-1523580846011-d3a5bc25702b?auto=format&fit=crop&w=1800&q=80'
-];
-
 function cssFont(fontFamily) {
     const banglaFallback = '"Noto Sans Bengali", "Hind Siliguri", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
     if (fontFamily === 'noto_sans_bengali') return banglaFallback;
@@ -90,11 +85,16 @@ function cssFont(fontFamily) {
 }
 
 function safeArray(value, fallback = []) {
-    return Array.isArray(value) && value.length ? value : fallback;
+    return Array.isArray(value) ? value : fallback;
 }
 
-function minimumArray(value, fallback = [], minimumLength = 1) {
-    return Array.isArray(value) && value.length >= minimumLength ? value : fallback;
+function itemText(item) {
+    if (typeof item === 'string' || typeof item === 'number') return String(item);
+    return item?.title || item?.label || item?.name || '';
+}
+
+function minimumArray(value, fallback = []) {
+    return Array.isArray(value) ? value : fallback;
 }
 
 function formatMoney(value) {
@@ -105,9 +105,26 @@ function formatMoney(value) {
     }).format(Number(value || 0));
 }
 
+function formatDate(value) {
+    if (!value) return 'সাম্প্রতিক';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return 'সাম্প্রতিক';
+    return new Intl.DateTimeFormat('bn-BD', { day: 'numeric', month: 'short', year: 'numeric' }).format(date);
+}
+
+function inferWebsitePage(label = '') {
+    const value = String(label).toLowerCase();
+    if (value.includes('ভর্তি') || value.includes('admission')) return 'admission';
+    if (value.includes('নোটিশ') || value.includes('notice')) return 'notices';
+    if (value.includes('শিক্ষক') || value.includes('teacher')) return 'teachers';
+    if (value.includes('শ্রেণি') || value.includes('বিভাগ') || value.includes('academic')) return 'classes';
+    if (value.includes('ফলাফল') || value.includes('result') || value.includes('অভিভাবক')) return 'guardian';
+    if (value.includes('যোগাযোগ') || value.includes('contact')) return 'contact';
+    return 'about';
+}
+
 const PAGE_SIZE = 6;
 const HERO_IMAGE_SIZES = '100vw';
-const CARD_IMAGE_SIZES = '(max-width: 1024px) 100vw, 420px';
 const CONTENT_IMAGE_SIZES = '(max-width: 1024px) 100vw, 50vw';
 
 function clampPage(page, totalItems, pageSize = PAGE_SIZE) {
@@ -166,7 +183,7 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
     const inputClass = isDarkTemplate
         ? 'border-white/10 bg-white/[0.04] text-white placeholder:text-white/35 focus:border-cyan-300'
         : 'border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:border-emerald-400';
-    const enabledMenuItems = Array.from(new Set([...DEFAULT_MENU, ...theme.menu_items]));
+    const enabledMenuItems = Array.isArray(theme.menu_items) ? theme.menu_items : DEFAULT_MENU;
     const websiteMenu = profile.portal?.websiteMenu || {};
     const menuItems = SCHOOL_MENU_OPTIONS
         .filter((item) => enabledMenuItems.includes(item.value))
@@ -223,16 +240,14 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
         safeArray(extraSections.slider, []).filter((item) => item?.title || item?.image_url),
         minimumArray(fallbackSlider, DEFAULT_EXTRA_SECTIONS.slider, 1),
         1
-    ).map((item, index) => ({
-        ...item,
-        image_url: item.image_url || DEFAULT_SLIDER_IMAGES[index % DEFAULT_SLIDER_IMAGES.length]
-    }));
+    );
     const homeSectionSettings = {
         ...DEFAULT_HOME_SECTION_SETTINGS,
         ...(extraSections.home_sections || {})
     };
     const [activePage, setActivePage] = useState('home');
     const [activeSlide, setActiveSlide] = useState(0);
+    const [mobileNavOpen, setMobileNavOpen] = useState(false);
     const [guardianUpdates, setGuardianUpdates] = useState({ classes: [] });
     const [guardianLoading, setGuardianLoading] = useState(false);
     const [selectedGuardianClassId, setSelectedGuardianClassId] = useState('');
@@ -350,7 +365,10 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
                 });
                 const result = await response.json();
                 if (!response.ok) throw new Error(result.error || 'Guardian updates failed');
-                const nextUpdates = result.data || { classes: [] };
+                const nextUpdates = {
+                    ...(result.data || {}),
+                    classes: Array.isArray(result.data?.classes) ? result.data.classes : []
+                };
                 setGuardianUpdates(nextUpdates);
                 setSelectedGuardianClassId((current) => current || nextUpdates.classes?.[0]?.id || '');
             } catch (error) {
@@ -364,6 +382,7 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
 
     function navigatePage(nextPage) {
         setActivePage(nextPage);
+        setMobileNavOpen(false);
         const url = new URL(window.location.href);
         if (nextPage === 'home') {
             url.searchParams.delete('page');
@@ -392,7 +411,12 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
             });
             const result = await response.json();
             if (!response.ok) throw new Error(result.error || 'Student verify failed');
-            setGuardianStudent(result.data);
+            setGuardianStudent({
+                ...(result.data || {}),
+                lessons: Array.isArray(result.data?.lessons) ? result.data.lessons : [],
+                attendance: Array.isArray(result.data?.attendance) ? result.data.attendance : [],
+                results: Array.isArray(result.data?.results) ? result.data.results : []
+            });
         } catch (error) {
             setGuardianCheckError(error.message || 'Student verify failed');
         } finally {
@@ -413,7 +437,7 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
             });
             const result = await response.json();
             if (!response.ok) throw new Error(result.error || 'Admission submission failed');
-            setAdmissionMessage('Application received. The institution office will review it and contact the guardian.');
+            setAdmissionMessage('আবেদন গ্রহণ করা হয়েছে। প্রতিষ্ঠান যাচাই করে অভিভাবকের সাথে যোগাযোগ করবে।');
             setAdmissionForm({
                 student_name: '',
                 student_name_en: '',
@@ -428,7 +452,7 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
                 notes: ''
             });
         } catch (error) {
-            setAdmissionError(error.message || 'Admission submission failed');
+            setAdmissionError(error.message || 'আবেদন জমা দেওয়া যায়নি। আবার চেষ্টা করুন।');
         } finally {
             setAdmissionSubmitting(false);
         }
@@ -437,10 +461,8 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
     const selectedGuardianClass = guardianUpdates.classes.find((item) => item.id === selectedGuardianClassId) || guardianUpdates.classes[0] || null;
     const pagedClassSections = paginateRows(classSections, classesPage);
     const pagedTeachers = paginateRows(teachers, teachersPage);
-    const galleryItems = safeArray(extraSections.gallery, DEFAULT_EXTRA_SECTIONS.gallery).map((item, index) => ({
-        ...item,
-        image_url: item.image_url || DEFAULT_SLIDER_IMAGES[(index + 1) % DEFAULT_SLIDER_IMAGES.length]
-    }));
+    const galleryItems = safeArray(extraSections.gallery, DEFAULT_EXTRA_SECTIONS.gallery);
+    const pageHeroImage = page?.banner_image_url || sliderItems[0]?.image_url || galleryItems[0]?.image_url || '';
     const eventItems = safeArray(extraSections.events, DEFAULT_EXTRA_SECTIONS.events);
     const programItems = safeArray(extraSections.programs, DEFAULT_EXTRA_SECTIONS.programs);
     const pagedFacilities = paginateRows(facilities, facilitiesPage);
@@ -471,25 +493,24 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
     const sideGallery = galleryItems.slice(1, 4);
     const featuredProgram = programItems[0] || {};
     const sidePrograms = programItems.slice(1, 4);
-    const demoCards = [
-        {
-            title: 'School Demo',
-            description: 'Notice, class, teacher and guardian update focused layout',
-            accent: 'bg-sky-400',
-            template: 'School / Academy'
-        },
-        {
-            title: 'College Demo',
-            description: 'Department, result, admission and career guidance sections',
-            accent: 'bg-indigo-400',
-            template: 'College / HSC'
-        },
-        {
-            title: 'Madrasha Demo',
-            description: 'Deeni education, academic tracking and trust-based presentation',
-            accent: 'bg-emerald-400',
-            template: 'Dakhil / Alim'
-        }
+    const institutionKind = institution.category === 'college'
+        ? 'কলেজ'
+        : ['dakhil_madrasa', 'alim_madrasa'].includes(institution.category)
+            ? 'মাদ্রাসা'
+            : institution.category === 'kindergarten'
+                ? 'কিন্ডারগার্টেন'
+            : 'বিদ্যালয়';
+    const audienceCopy = institution.category === 'college'
+        ? { eyebrow: 'উচ্চশিক্ষার প্রস্তুতি', title: 'বিভাগ, ভর্তি ও ফলাফলের নির্ভরযোগ্য তথ্যকেন্দ্র' }
+        : ['dakhil_madrasa', 'alim_madrasa'].includes(institution.category)
+            ? { eyebrow: 'দ্বীনি ও সাধারণ শিক্ষা', title: 'ইলম, আদব ও আধুনিক শিক্ষার সমন্বিত পথচলা' }
+            : institution.category === 'kindergarten'
+                ? { eyebrow: 'আনন্দময় শৈশব শিক্ষা', title: 'খেলা, যত্ন ও কৌতূহলে শিশুর সুন্দর শুরু' }
+                : { eyebrow: 'শিক্ষা · শৃঙ্খলা · অগ্রগতি', title: 'প্রতিটি শিক্ষার্থীর সম্ভাবনা বিকাশের বিশ্বস্ত ঠিকানা' };
+    const quickLinks = [
+        { page: 'notices', label: 'নোটিশ বোর্ড', detail: 'সর্বশেষ ঘোষণা', icon: Megaphone },
+        { page: 'admission', label: 'ভর্তি তথ্য', detail: 'আবেদন ও প্রয়োজনীয় কাগজ', icon: ClipboardList },
+        { page: 'guardian', label: 'শিক্ষার্থী আপডেট', detail: 'পাঠ, হাজিরা ও ফলাফল', icon: GraduationCap }
     ];
     const goToSlide = (direction) => {
         setActiveSlide((current) => (current + direction + sliderItems.length) % sliderItems.length);
@@ -504,48 +525,51 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
                 fontFamily: cssFont(theme.font_family)
             }}
         >
-            <header className={`sticky top-0 z-40 shadow-sm ${template.headerClass}`}>
-                <div className="mx-auto flex max-w-7xl items-center justify-between gap-6 px-4 py-4">
-                    <div className="flex items-center gap-3">
+            <header className={`sticky top-0 z-40 border-b border-current/10 shadow-sm backdrop-blur-xl ${template.headerClass}`}>
+                <div className="mx-auto flex min-h-20 max-w-7xl items-center justify-between gap-6 px-4">
+                    <button type="button" onClick={() => navigatePage('home')} className="flex min-w-0 items-center gap-3 text-left" aria-label={`${siteName} হোম`}>
                         {page?.logo_url ? (
-                            <Image src={page.logo_url} alt="" width={44} height={44} sizes="44px" className="h-11 w-11 rounded-full object-cover" />
+                            <Image src={page.logo_url} alt={`${siteName} লোগো`} width={52} height={52} sizes="52px" className="h-12 w-12 shrink-0 rounded-2xl border border-white/20 object-cover shadow-sm" />
                         ) : (
-                            <div className={`flex h-11 w-11 items-center justify-center rounded-full font-black ${logoClass}`}>
+                            <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-xl font-black shadow-sm ${logoClass}`}>
                                 {siteName?.slice(0, 1)}
                             </div>
                         )}
-                        <div>
-                            <h1 className="text-lg font-black">{siteName}</h1>
-                            <p className={`text-xs font-bold ${isDarkTemplate || template.value === 'classic' ? 'text-white/70' : 'text-slate-500'}`}>{institution.village || design.eyebrow}</p>
+                        <div className="min-w-0">
+                            <h1 className="truncate text-base font-black sm:text-lg">{siteName}</h1>
+                            <p className={`truncate text-xs font-bold ${isDarkTemplate || template.value === 'classic' ? 'text-white/70' : 'text-slate-500'}`}>{institutionKind} · {institution.village || design.eyebrow}</p>
                         </div>
-                    </div>
-                    <nav className="hidden items-center gap-5 lg:flex">
+                    </button>
+                    <nav className="hidden items-center gap-1 lg:flex" aria-label="প্রধান নেভিগেশন">
                         {menuItems.map((item) => (
                             <button
                                 key={item.value}
                                 type="button"
                                 onClick={() => navigatePage(item.value)}
-                                className={`text-sm font-bold transition ${
+                                className={`rounded-full px-3 py-2 text-sm font-bold transition ${
                                     isDarkTemplate
-                                        ? `hover:text-cyan-200 ${activePage === item.value ? 'text-cyan-200' : 'text-white/75'}`
+                                        ? `hover:bg-white/10 hover:text-white ${activePage === item.value ? 'bg-white/10 text-white' : 'text-white/75'}`
                                         : template.value === 'classic'
-                                        ? `hover:text-amber-200 ${activePage === item.value ? 'text-amber-200' : 'text-white/85'}`
-                                        : `hover:text-[var(--school-primary)] ${activePage === item.value ? 'text-[var(--school-primary)]' : 'text-slate-600'}`
+                                        ? `hover:bg-white/10 hover:text-white ${activePage === item.value ? 'bg-white/10 text-white' : 'text-white/85'}`
+                                        : `hover:bg-slate-100 hover:text-[var(--school-primary)] ${activePage === item.value ? 'bg-slate-100 text-[var(--school-primary)]' : 'text-slate-600'}`
                                 }`}
                             >
                                 {item.label}
                             </button>
                         ))}
                     </nav>
+                    <button type="button" onClick={() => setMobileNavOpen((open) => !open)} className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border lg:hidden ${isDarkTemplate || template.value === 'classic' ? 'border-white/15 bg-white/10 text-white' : 'border-slate-200 bg-white text-slate-800'}`} aria-expanded={mobileNavOpen} aria-label="মেনু খুলুন">
+                        {mobileNavOpen ? <X size={21} /> : <Menu size={21} />}
+                    </button>
                 </div>
-                <div className="border-t border-current/10 px-4 pb-3 lg:hidden">
-                    <div className="flex gap-2 overflow-x-auto">
+                {mobileNavOpen && <div className="border-t border-current/10 px-4 py-3 lg:hidden">
+                    <nav className="mx-auto grid max-w-7xl grid-cols-2 gap-2" aria-label="মোবাইল নেভিগেশন">
                         {menuItems.map((item) => (
                             <button
                                 key={`mobile-${item.value}`}
                                 type="button"
                                 onClick={() => navigatePage(item.value)}
-                                className={`shrink-0 rounded-full px-4 py-2 text-xs font-black ${
+                                className={`rounded-xl px-4 py-3 text-left text-xs font-black ${
                                     activePage === item.value
                                         ? 'bg-[var(--school-primary)] text-white'
                                         : isDarkTemplate ? 'bg-white/10 text-white/70' : 'bg-slate-100 text-slate-600'
@@ -554,8 +578,8 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
                                 {item.label}
                             </button>
                         ))}
-                    </div>
-                </div>
+                    </nav>
+                </div>}
             </header>
 
             <div className={`border-b ${template.noticeClass}`}>
@@ -577,7 +601,7 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
             <div className="flex flex-col">
             {isSectionVisible('hero') && (
             <section
-                className={`relative min-h-[76vh] overflow-hidden bg-slate-950 text-white md:min-h-[82vh] ${isDarkTemplate ? template.heroClass : ''}`}
+                className={`relative min-h-[640px] overflow-hidden bg-slate-950 text-white ${isDarkTemplate ? template.heroClass : ''}`}
                 style={{ order: sectionOrder('hero') }}
             >
                 {currentSlide.image_url ? (
@@ -604,7 +628,7 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
                 <div
                     className="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/55 to-slate-950/20"
                     style={{
-                        background: `linear-gradient(90deg, rgba(2, 6, 23, 0.92), ${theme.primary_color}cc, rgba(15, 23, 42, 0.22))`
+                        background: `linear-gradient(90deg, rgba(2, 6, 23, 0.96) 0%, ${theme.primary_color}99 52%, rgba(2, 6, 23, 0.52) 100%)`
                     }}
                 />
                 {false && isDarkTemplate && (
@@ -620,13 +644,14 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
                         <div className="pointer-events-none absolute bottom-0 right-0 h-48 w-[42vw] border-l border-t border-white/20 bg-white/10" />
                     </>
                 )}
-                <div className="relative z-10 mx-auto grid min-h-[76vh] max-w-7xl gap-8 px-4 py-16 md:min-h-[82vh] lg:grid-cols-[1fr_420px] lg:items-center">
+                <div className="relative z-10 mx-auto grid min-h-[640px] max-w-7xl gap-10 px-4 py-14 md:py-20 lg:grid-cols-[minmax(0,1fr)_400px] lg:items-center">
                     <div className="max-w-3xl">
-                        <p className={`mb-4 inline-flex px-4 py-2 text-sm font-bold ${badgeClass}`}>
-                            {currentSlide.badge || institution.village || design.eyebrow} {page?.established_year ? `প্রতিষ্ঠিত ${page.established_year}` : ''}
+                        <p className={`mb-5 inline-flex px-4 py-2 text-xs font-black uppercase tracking-[0.14em] ${badgeClass}`}>
+                            {audienceCopy.eyebrow} {page?.established_year ? `· প্রতিষ্ঠিত ${page.established_year}` : ''}
                         </p>
-                        <h2 className="max-w-4xl text-4xl font-black leading-tight text-white drop-shadow-lg md:text-6xl lg:text-7xl">
-                            <span className={heroAccentClass}>{currentSlide.title || page?.hero_title || siteName}</span>
+                        <p className="mb-3 text-sm font-bold text-white/70">{siteName}</p>
+                        <h2 className="max-w-4xl text-4xl font-black leading-[1.12] text-white drop-shadow-lg md:text-6xl">
+                            <span className={heroAccentClass}>{page?.hero_title || audienceCopy.title}</span>
                         </h2>
                         <p className="mt-5 max-w-2xl text-lg font-medium leading-8 text-white/80 md:text-xl">
                             {currentSlide.subtitle || page?.hero_subtitle || experience.heroSubtitle || design.heroLine}
@@ -657,56 +682,28 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
                             </div>
                         )}
                     </div>
-                    <div className={`p-4 ${template.cardClass} ${heroFrameClass}`}>
-                        <div className={`grid gap-4 border p-5 ${template.cardClass} ${websitePatternClass}`}>
-                            <div className="relative h-52 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/15">
-                                {currentSlide.image_url || page?.banner_image_url ? (
-                                    <Image src={currentSlide.image_url || page.banner_image_url} alt="" fill sizes={CARD_IMAGE_SIZES} quality={60} className="object-cover" />
-                                ) : (
-                                    <div className="flex h-52 items-center justify-center bg-[var(--school-primary)]/20 text-5xl">🏫</div>
-                                )}
-                            </div>
+                    <aside className={`p-3 ${template.cardClass} ${heroFrameClass}`} aria-label="গুরুত্বপূর্ণ তথ্য ও সেবা">
+                        <div className={`grid gap-4 border p-5 md:p-6 ${template.cardClass} ${websitePatternClass}`}>
                             <div className="grid gap-3">
                                 <div className="flex items-center justify-between gap-3">
-                                    <p className={`text-xs font-black uppercase tracking-[0.22em] ${websiteAccentClass}`}>
-                                        Ready website demos
-                                    </p>
+                                    <div>
+                                        <p className={`text-xs font-black uppercase tracking-[0.18em] ${websiteAccentClass}`}>{institutionKind} তথ্যকেন্দ্র</p>
+                                        <h3 className={`mt-1 text-xl font-black ${isDarkTemplate ? 'text-white' : 'text-slate-950'}`}>প্রয়োজনীয় তথ্য দ্রুত খুঁজুন</h3>
+                                    </div>
                                     <span className={`rounded-full px-3 py-1 text-xs font-black ${isDarkTemplate ? 'bg-white/[0.07] text-white/70' : 'bg-slate-100 text-slate-500'}`}>
-                                        3 styles
+                                        অনলাইন
                                     </span>
                                 </div>
-                                {demoCards.map((item) => (
-                                    <article key={item.title} className={`grid grid-cols-[auto_1fr] gap-3 rounded-2xl border p-3 ${isDarkTemplate ? 'border-white/10 bg-white/[0.05]' : 'border-slate-100 bg-white'}`}>
-                                        <span className={`mt-1 h-3 w-3 rounded-full ${item.accent}`} />
+                                {quickLinks.map(({ page: targetPage, label, detail, icon: Icon }) => (
+                                    <button type="button" onClick={() => navigatePage(targetPage)} key={targetPage} className={`group grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-2xl border p-3 text-left transition hover:-translate-y-0.5 ${isDarkTemplate ? 'border-white/10 bg-white/[0.05] hover:bg-white/[0.09]' : 'border-slate-100 bg-white hover:border-[var(--school-primary)]/30 hover:shadow-md'}`}>
+                                        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--school-primary)]/10 text-[var(--school-primary)]"><Icon size={19} /></span>
                                         <div>
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                <h3 className={`text-sm font-black ${isDarkTemplate ? 'text-white' : 'text-slate-950'}`}>{item.title}</h3>
-                                                <span className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.12em] ${isDarkTemplate ? 'bg-white/[0.08] text-white/50' : 'bg-slate-100 text-slate-400'}`}>{item.template}</span>
-                                            </div>
-                                            <p className={`mt-1 text-xs font-medium leading-5 ${isDarkTemplate ? 'text-white/62' : 'text-slate-500'}`}>{item.description}</p>
+                                            <h3 className={`text-sm font-black ${isDarkTemplate ? 'text-white' : 'text-slate-950'}`}>{label}</h3>
+                                            <p className={`mt-0.5 text-xs font-medium ${isDarkTemplate ? 'text-white/60' : 'text-slate-500'}`}>{detail}</p>
                                         </div>
-                                    </article>
+                                        <ChevronRight size={18} className="opacity-50 transition group-hover:translate-x-1 group-hover:opacity-100" />
+                                    </button>
                                 ))}
-                            </div>
-                            <div className="flex flex-wrap items-center justify-between gap-3">
-                                <p className={`text-xs font-black uppercase tracking-[0.22em] ${websiteAccentClass}`}>
-                                    {design.websiteProofLabel || design.eyebrow}
-                                </p>
-                                <span className={`rounded-full border px-3 py-1 text-xs font-black ${isDarkTemplate ? 'border-white/15 text-white/70' : 'border-slate-200 text-slate-500'}`}>
-                                    {page?.office_hours || 'Office updates'}
-                                </span>
-                            </div>
-                            <div className={`p-4 ${template.cardClass} ${websiteFeatureClass}`}>
-                                <p className={`text-xs font-black uppercase tracking-[0.18em] ${isDarkTemplate ? 'text-white/45' : 'text-slate-400'}`}>
-                                    Institution desk
-                                </p>
-                                <p className={`mt-3 text-lg font-black leading-8 ${isDarkTemplate ? 'text-white' : 'text-slate-950'}`}>
-                                    {page?.principal_message || page?.approval_text || experience.heroSubtitle || design.heroLine}
-                                </p>
-                                <div className={`mt-4 flex flex-wrap gap-2 text-xs font-black ${isDarkTemplate ? 'text-white/70' : 'text-slate-600'}`}>
-                                    <span className={`rounded-full px-3 py-1 ${isDarkTemplate ? 'bg-white/[0.07]' : 'bg-white'}`}>{page?.contact_phone || 'Admission desk'}</span>
-                                    <span className={`rounded-full px-3 py-1 ${isDarkTemplate ? 'bg-white/[0.07]' : 'bg-white'}`}>{institution.village || design.eyebrow}</span>
-                                </div>
                             </div>
                             <div className={`grid gap-3 ${heroStatsClass}`}>
                                 {stats.map((stat, index) => (
@@ -716,8 +713,12 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
                                     </article>
                                 ))}
                             </div>
+                            <div className={`flex flex-wrap items-center gap-x-5 gap-y-2 border-t pt-4 text-xs font-bold ${isDarkTemplate ? 'border-white/10 text-white/65' : 'border-slate-200 text-slate-500'}`}>
+                                <span className="flex items-center gap-2"><Phone size={14} /> {page?.contact_phone || 'অফিসে যোগাযোগ করুন'}</span>
+                                <span className="flex items-center gap-2"><MapPin size={14} /> {institution.village || 'ঠিকানা'}</span>
+                            </div>
                         </div>
-                    </div>
+                    </aside>
                 </div>
             </section>
             )}
@@ -1013,7 +1014,7 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
                         </p>
                         <div className="mt-7 grid gap-3">
                             {admissionFeatures.slice(0, 3).map((item, index) => (
-                                <p key={`admission-feature-${item}-${index}`} className="rounded-2xl bg-white/10 px-4 py-3 text-sm font-bold text-white/85">{item}</p>
+                                <p key={`admission-feature-${itemText(item)}-${index}`} className="rounded-2xl bg-white/10 px-4 py-3 text-sm font-bold text-white/85">{itemText(item)}</p>
                             ))}
                         </div>
                         <button type="button" onClick={() => navigatePage('admission')} className="mt-8 rounded-full bg-white px-6 py-3 font-black text-slate-950 shadow-xl">ভর্তি তথ্য</button>
@@ -1258,20 +1259,24 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
             )}
 
             {activePage !== 'home' && (
-                <section className={`${isDarkTemplate ? template.sectionClass : 'bg-white'} border-b border-current/10 py-12`}>
-                    <div className="mx-auto max-w-7xl px-4">
-                        <button type="button" onClick={() => navigatePage('home')} className={`mb-5 text-sm font-black ${isDarkTemplate ? 'text-white/60 hover:text-white' : 'text-slate-400 hover:text-slate-900'}`}>
-                            ← Home
+                <section className="relative isolate min-h-[310px] overflow-hidden border-b border-slate-900 bg-slate-950 text-white">
+                    {pageHeroImage && <Image src={pageHeroImage} alt="" fill sizes="100vw" quality={55} className="-z-20 object-cover" />}
+                    <div className="absolute inset-0 -z-10 bg-gradient-to-r from-slate-950 via-slate-950/90 to-[var(--school-primary)]/55" />
+                    <div className="absolute inset-0 -z-10 opacity-20 [background-image:radial-gradient(circle_at_80%_20%,white_0,transparent_24%)]" />
+                    <div className="mx-auto flex min-h-[310px] max-w-7xl flex-col justify-center px-4 py-12">
+                        <button type="button" onClick={() => navigatePage('home')} className="mb-6 w-fit text-sm font-black text-white/65 transition hover:text-white">
+                            ← হোমে ফিরুন
                         </button>
-                        <p className="text-sm font-black uppercase tracking-[0.22em] text-[var(--school-primary)]">{siteName}</p>
-                        <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
+                        <p className="text-xs font-black uppercase tracking-[0.24em] text-amber-300">{institutionKind} · {siteName}</p>
+                        <div className="mt-3 flex flex-wrap items-end justify-between gap-6">
                             <div>
-                                <h2 className={`text-4xl font-black leading-tight ${isDarkTemplate ? 'text-white' : 'text-slate-950'}`}>{activeMenuItem?.label || activeMeta.title}</h2>
-                                <p className={`mt-3 max-w-2xl text-base font-bold leading-7 ${isDarkTemplate ? mutedTextClass : 'text-slate-500'}`}>{activeMeta.subtitle}</p>
+                                <h2 className="text-4xl font-black leading-tight text-white md:text-5xl">{activeMenuItem?.label || activeMeta.title}</h2>
+                                <p className="mt-4 max-w-2xl text-base font-bold leading-8 text-white/72">{activeMeta.subtitle}</p>
                             </div>
-                            <span className={`rounded-full px-4 py-2 text-xs font-black uppercase tracking-[0.16em] ${isDarkTemplate ? 'border border-white/10 text-white/60' : 'border border-slate-200 text-slate-400'}`}>
-                                {activeMeta.title}
-                            </span>
+                            <div className="flex flex-wrap gap-2">
+                                <button type="button" onClick={() => navigatePage('notices')} className="rounded-full border border-white/25 bg-white/10 px-4 py-2 text-xs font-black text-white backdrop-blur transition hover:bg-white/20">সর্বশেষ নোটিশ</button>
+                                <button type="button" onClick={() => navigatePage('admission')} className="rounded-full bg-amber-400 px-4 py-2 text-xs font-black text-slate-950 shadow-lg">ভর্তি তথ্য</button>
+                            </div>
                         </div>
                     </div>
                 </section>
@@ -1282,15 +1287,17 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
                 <section className={`${altSectionClass} py-16`}>
                     <div className="mx-auto grid max-w-7xl gap-8 px-4 lg:grid-cols-[0.8fr_1fr] lg:items-center">
                         <div className="relative">
-                            <div style={brandGradient} className="flex min-h-[340px] items-center justify-center rounded-3xl p-8 text-center text-white">
-                                <div>
-                                    <School className="mx-auto mb-6 h-16 w-16 text-amber-300" />
-                                    <p className="text-2xl font-black leading-10">{siteName}</p>
-                                    <p className="mt-3 text-sm font-bold text-white/70">{page?.approval_text || 'শিক্ষা ও মূল্যবোধের সমন্বিত পরিবেশ'}</p>
+                            <div style={!pageHeroImage ? brandGradient : undefined} className="relative min-h-[390px] overflow-hidden rounded-[2rem] bg-slate-900 text-white shadow-2xl">
+                                {pageHeroImage && <Image src={pageHeroImage} alt={`${siteName} ক্যাম্পাস`} fill sizes="(max-width: 1024px) 100vw, 45vw" quality={60} className="object-cover" />}
+                                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/10 to-transparent" />
+                                <div className="absolute inset-x-0 bottom-0 p-7">
+                                    <p className="text-xs font-black uppercase tracking-[0.2em] text-amber-300">আমাদের পরিচয়</p>
+                                    <p className="mt-2 text-2xl font-black leading-10">{siteName}</p>
+                                    <p className="mt-2 text-sm font-bold text-white/72">{page?.approval_text || 'শিক্ষা ও মূল্যবোধের সমন্বিত পরিবেশ'}</p>
                                 </div>
                             </div>
                             <div className="absolute -bottom-5 right-5 rounded-2xl bg-amber-400 px-5 py-4 font-black text-slate-900 shadow-lg">
-                                A+ ফলাফল
+                                {stats[2]?.value || 'সাফল্য'} · {stats[2]?.label || 'ফলাফল'}
                             </div>
                         </div>
                         <div>
@@ -1333,9 +1340,9 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
                                 </p>
                                 <div className="mt-5 space-y-3">
                                     {admissionFeatures.slice(0, 3).map((item, index) => (
-                                        <p key={`about-admission-${item}-${index}`} className={`flex items-start gap-2 rounded-2xl px-4 py-3 text-sm font-bold ${isDarkTemplate ? 'bg-white/[0.05] text-white/75' : 'bg-white text-slate-600'}`}>
+                                        <p key={`about-admission-${itemText(item)}-${index}`} className={`flex items-start gap-2 rounded-2xl px-4 py-3 text-sm font-bold ${isDarkTemplate ? 'bg-white/[0.05] text-white/75' : 'bg-white text-slate-600'}`}>
                                             <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[var(--school-primary)]" />
-                                            {item}
+                                            {itemText(item)}
                                         </p>
                                     ))}
                                 </div>
@@ -1478,7 +1485,7 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
                             {pagedTeachers.map((teacher, index) => (
                                 <article key={`${teacher.name}-${index}`} className={`rounded-2xl p-5 text-center ${panelClass}`}>
                                     {teacher.image_url ? (
-                                        <Image src={teacher.image_url} alt="" width={80} height={80} sizes="80px" className="mx-auto mb-4 h-20 w-20 rounded-full object-cover" />
+                                        <Image src={teacher.image_url} alt={teacher.name || `${profile.staffLabel} পরিচিতি`} width={96} height={96} sizes="96px" className="mx-auto mb-4 h-24 w-24 rounded-full border-4 border-white object-cover shadow-lg" />
                                     ) : (
                                         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[var(--school-primary)] text-lg font-black text-white">
                                             {teacher.name?.slice(0, 1)}
@@ -1815,10 +1822,18 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
                             {pagedFacilities.map((item, index) => {
                                 const Icon = [GraduationCap, LibraryBig, CalendarDays, Users][index % 4];
                                 return (
-                                    <article key={`${item.title}-${index}`} className={`rounded-2xl p-5 ${panelClass}`}>
-                                        <Icon className="mb-4 text-[var(--school-primary)]" />
-                                        <h3 className="font-black">{item.title}</h3>
-                                        <p className={`mt-2 text-sm font-medium leading-7 ${isDarkTemplate ? mutedTextClass : 'text-slate-500'}`}>{item.description}</p>
+                                    <article key={`${item.title}-${index}`} className={`group overflow-hidden rounded-2xl ${panelClass}`}>
+                                        {item.image_url && (
+                                            <div className="relative h-48 overflow-hidden">
+                                                <Image src={item.image_url} alt={item.title || 'প্রতিষ্ঠানের সুবিধা'} fill sizes="(max-width: 768px) 100vw, 33vw" quality={60} className="object-cover transition duration-500 group-hover:scale-105" />
+                                                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/45 to-transparent" />
+                                            </div>
+                                        )}
+                                        <div className="p-5">
+                                            <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--school-primary)]/10 text-[var(--school-primary)]"><Icon size={21} /></div>
+                                            <h3 className="font-black">{item.title}</h3>
+                                            <p className={`mt-2 text-sm font-medium leading-7 ${isDarkTemplate ? mutedTextClass : 'text-slate-500'}`}>{item.description}</p>
+                                        </div>
                                     </article>
                                 );
                             })}
@@ -1859,32 +1874,27 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
                             </p>
                             <div className="mt-6 space-y-3">
                                 {admissionFeatures.map((item, index) => (
-                                    <p key={`${item}-${index}`} className="flex items-center gap-2 font-bold text-white/85">
-                                        <CheckCircle2 className="h-4 w-4 text-amber-300" />
-                                        {item}
-                                    </p>
+                                    <div key={`${itemText(item)}-${index}`} className="flex items-start gap-3 rounded-2xl bg-white/10 p-4 text-white/85">
+                                        <CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-amber-300" />
+                                        <div><p className="font-black">{itemText(item)}</p>{item?.description && <p className="mt-1 text-sm font-medium leading-6 text-white/65">{item.description}</p>}</div>
+                                    </div>
                                 ))}
                             </div>
                         </div>
                         <form onSubmit={submitAdmission} className={`rounded-3xl p-6 shadow-sm ${isDarkTemplate ? panelClass : 'bg-white text-slate-900'}`}>
                             <h3 className="text-xl font-black">ভর্তি আবেদন ফর্ম</h3>
                             <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                                <input required value={admissionForm.student_name} onChange={(e) => setAdmissionForm({ ...admissionForm, student_name: e.target.value })} placeholder="শিক্ষার্থীর নাম" className={`rounded-xl border px-4 py-3 ${inputClass}`} />
-                                <input value={admissionForm.student_name_en} onChange={(e) => setAdmissionForm({ ...admissionForm, student_name_en: e.target.value })} placeholder="Student name in English" className={`rounded-xl border px-4 py-3 ${inputClass}`} />
-                                <input required value={admissionForm.guardian_name} onChange={(e) => setAdmissionForm({ ...admissionForm, guardian_name: e.target.value })} placeholder="অভিভাবকের নাম" className={`rounded-xl border px-4 py-3 ${inputClass}`} />
-                                <input required value={admissionForm.guardian_phone} onChange={(e) => setAdmissionForm({ ...admissionForm, guardian_phone: e.target.value })} placeholder="মোবাইল নম্বর" className={`rounded-xl border px-4 py-3 ${inputClass}`} />
-                                <input required value={admissionForm.desired_class} onChange={(e) => setAdmissionForm({ ...admissionForm, desired_class: e.target.value })} placeholder="ভর্তির শ্রেণি" className={`rounded-xl border px-4 py-3 ${inputClass}`} />
-                                <select value={admissionForm.gender} onChange={(e) => setAdmissionForm({ ...admissionForm, gender: e.target.value })} className={`rounded-xl border px-4 py-3 ${inputClass}`}>
-                                    <option value="">লিঙ্গ</option>
-                                    <option value="male">ছেলে</option>
-                                    <option value="female">মেয়ে</option>
-                                    <option value="other">অন্যান্য</option>
-                                </select>
-                                <input type="date" value={admissionForm.date_of_birth} onChange={(e) => setAdmissionForm({ ...admissionForm, date_of_birth: e.target.value })} className={`rounded-xl border px-4 py-3 ${inputClass}`} />
-                                <input value={admissionForm.previous_institution} onChange={(e) => setAdmissionForm({ ...admissionForm, previous_institution: e.target.value })} placeholder="আগের প্রতিষ্ঠান (থাকলে)" className={`rounded-xl border px-4 py-3 ${inputClass}`} />
-                                <input type="email" value={admissionForm.guardian_email} onChange={(e) => setAdmissionForm({ ...admissionForm, guardian_email: e.target.value })} placeholder="Guardian email (optional)" className={`rounded-xl border px-4 py-3 ${inputClass}`} />
-                                <input value={admissionForm.address} onChange={(e) => setAdmissionForm({ ...admissionForm, address: e.target.value })} placeholder="ঠিকানা" className={`rounded-xl border px-4 py-3 ${inputClass}`} />
-                                <textarea value={admissionForm.notes} onChange={(e) => setAdmissionForm({ ...admissionForm, notes: e.target.value })} placeholder="প্রয়োজনীয় নোট বা প্রশ্ন" className={`min-h-24 rounded-xl border px-4 py-3 sm:col-span-2 ${inputClass}`} />
+                                <label className="grid gap-1.5 text-xs font-black">শিক্ষার্থীর নাম<input required value={admissionForm.student_name} onChange={(e) => setAdmissionForm({ ...admissionForm, student_name: e.target.value })} placeholder="পূর্ণ নাম" className={`rounded-xl border px-4 py-3 text-sm ${inputClass}`} /></label>
+                                <label className="grid gap-1.5 text-xs font-black">নাম (ইংরেজি)<input value={admissionForm.student_name_en} onChange={(e) => setAdmissionForm({ ...admissionForm, student_name_en: e.target.value })} placeholder="Student name" className={`rounded-xl border px-4 py-3 text-sm ${inputClass}`} /></label>
+                                <label className="grid gap-1.5 text-xs font-black">অভিভাবকের নাম<input required value={admissionForm.guardian_name} onChange={(e) => setAdmissionForm({ ...admissionForm, guardian_name: e.target.value })} placeholder="পূর্ণ নাম" className={`rounded-xl border px-4 py-3 text-sm ${inputClass}`} /></label>
+                                <label className="grid gap-1.5 text-xs font-black">অভিভাবকের মোবাইল<input required inputMode="tel" autoComplete="tel" value={admissionForm.guardian_phone} onChange={(e) => setAdmissionForm({ ...admissionForm, guardian_phone: e.target.value })} placeholder="01XXXXXXXXX" className={`rounded-xl border px-4 py-3 text-sm ${inputClass}`} /></label>
+                                <label className="grid gap-1.5 text-xs font-black">ভর্তির {profile.portal.classLabel}<select required value={admissionForm.desired_class} onChange={(e) => setAdmissionForm({ ...admissionForm, desired_class: e.target.value })} className={`rounded-xl border px-4 py-3 text-sm ${inputClass}`}><option value="">নির্বাচন করুন</option>{classSections.map((item) => <option key={item.title} value={item.title}>{item.title}</option>)}</select></label>
+                                <label className="grid gap-1.5 text-xs font-black">লিঙ্গ<select value={admissionForm.gender} onChange={(e) => setAdmissionForm({ ...admissionForm, gender: e.target.value })} className={`rounded-xl border px-4 py-3 text-sm ${inputClass}`}><option value="">নির্বাচন করুন</option><option value="male">ছেলে</option><option value="female">মেয়ে</option><option value="other">অন্যান্য</option></select></label>
+                                <label className="grid gap-1.5 text-xs font-black">জন্মতারিখ<input type="date" value={admissionForm.date_of_birth} onChange={(e) => setAdmissionForm({ ...admissionForm, date_of_birth: e.target.value })} className={`rounded-xl border px-4 py-3 text-sm ${inputClass}`} /></label>
+                                <label className="grid gap-1.5 text-xs font-black">আগের প্রতিষ্ঠান<input value={admissionForm.previous_institution} onChange={(e) => setAdmissionForm({ ...admissionForm, previous_institution: e.target.value })} placeholder="থাকলে লিখুন" className={`rounded-xl border px-4 py-3 text-sm ${inputClass}`} /></label>
+                                <label className="grid gap-1.5 text-xs font-black">ইমেইল<input type="email" autoComplete="email" value={admissionForm.guardian_email} onChange={(e) => setAdmissionForm({ ...admissionForm, guardian_email: e.target.value })} placeholder="ঐচ্ছিক" className={`rounded-xl border px-4 py-3 text-sm ${inputClass}`} /></label>
+                                <label className="grid gap-1.5 text-xs font-black">ঠিকানা<input value={admissionForm.address} onChange={(e) => setAdmissionForm({ ...admissionForm, address: e.target.value })} placeholder="বর্তমান ঠিকানা" className={`rounded-xl border px-4 py-3 text-sm ${inputClass}`} /></label>
+                                <label className="grid gap-1.5 text-xs font-black sm:col-span-2">প্রশ্ন বা অতিরিক্ত তথ্য<textarea value={admissionForm.notes} onChange={(e) => setAdmissionForm({ ...admissionForm, notes: e.target.value })} placeholder="প্রয়োজন হলে লিখুন" className={`min-h-24 rounded-xl border px-4 py-3 text-sm ${inputClass}`} /></label>
                             </div>
                             <button disabled={admissionSubmitting} style={brandGradient} className="mt-4 w-full rounded-xl px-4 py-3 font-black text-white disabled:opacity-60">
                                 {admissionSubmitting ? 'জমা হচ্ছে...' : 'আবেদন জমা দিন'}
@@ -1908,13 +1918,18 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
                             <p className="text-sm font-black text-[var(--school-primary)]">সাম্প্রতিক</p>
                             <h2 className="mt-2 text-3xl font-black">নোটিশ বোর্ড</h2>
                         </div>
-                        <div className="grid gap-4 lg:grid-cols-3">
+                        <div className="grid gap-4 lg:grid-cols-2">
                             {pagedNotices.map((notice) => (
-                                <article key={notice.id} className={`rounded-2xl p-5 ${panelClass}`}>
-                                    <Megaphone className="mb-4 text-[var(--school-primary)]" />
-                                    {notice.is_pinned && <span className="mb-3 inline-flex rounded-full bg-[var(--school-accent)] px-3 py-1 text-xs font-black text-slate-950">Pinned update</span>}
-                                    <h3 className="font-black">{notice.title}</h3>
-                                    {notice.body && <p className={`mt-2 text-sm font-medium leading-7 ${isDarkTemplate ? mutedTextClass : 'text-slate-500'}`}>{notice.body}</p>}
+                                <article key={notice.id} className={`group flex gap-4 rounded-2xl p-5 transition hover:-translate-y-0.5 hover:shadow-lg ${panelClass}`}>
+                                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[var(--school-primary)]/10 text-[var(--school-primary)]"><Megaphone size={20} /></div>
+                                    <div className="min-w-0">
+                                        <div className="flex flex-wrap items-center gap-2 text-xs font-black">
+                                            <span className="text-[var(--school-primary)]">{formatDate(notice.published_at || notice.created_at)}</span>
+                                            {notice.is_pinned && <span className="rounded-full bg-amber-100 px-2.5 py-1 text-amber-800">গুরুত্বপূর্ণ</span>}
+                                        </div>
+                                        <h3 className="mt-2 text-lg font-black leading-7">{notice.title}</h3>
+                                        {notice.body && <p className={`mt-2 text-sm font-medium leading-7 ${isDarkTemplate ? mutedTextClass : 'text-slate-500'}`}>{notice.body}</p>}
+                                    </div>
                                 </article>
                             ))}
                         </div>
@@ -1934,8 +1949,8 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
                                 </p>
                             </div>
                             <div className={`grid gap-4 rounded-3xl p-6 sm:grid-cols-2 ${panelClass}`}>
-                                <p className={`flex items-center gap-3 font-bold ${isDarkTemplate ? 'text-white/75' : 'text-slate-700'}`}><Phone className="text-[var(--school-primary)]" /> {page?.contact_phone || 'ফোন নম্বর যোগ করা হয়নি'}</p>
-                                <p className={`flex items-center gap-3 font-bold ${isDarkTemplate ? 'text-white/75' : 'text-slate-700'}`}><Mail className="text-[var(--school-primary)]" /> {page?.contact_email || 'ইমেইল যোগ করা হয়নি'}</p>
+                                <a href={page?.contact_phone ? `tel:${page.contact_phone}` : undefined} className={`flex items-center gap-3 font-bold ${isDarkTemplate ? 'text-white/75' : 'text-slate-700'}`}><Phone className="text-[var(--school-primary)]" /> {page?.contact_phone || 'ফোন নম্বর যোগ করা হয়নি'}</a>
+                                <a href={page?.contact_email ? `mailto:${page.contact_email}` : undefined} className={`flex items-center gap-3 font-bold ${isDarkTemplate ? 'text-white/75' : 'text-slate-700'}`}><Mail className="text-[var(--school-primary)]" /> {page?.contact_email || 'ইমেইল যোগ করা হয়নি'}</a>
                                 <p className={`flex items-center gap-3 font-bold sm:col-span-2 ${isDarkTemplate ? 'text-white/75' : 'text-slate-700'}`}><MapPin className="text-[var(--school-primary)]" /> {page?.address || institution.village || '-'}</p>
                                 <p className={`font-bold sm:col-span-2 ${isDarkTemplate ? 'text-white/75' : 'text-slate-700'}`}>{page?.office_hours || 'অফিস সময় যোগ করা হয়নি'}</p>
                             </div>
@@ -1960,13 +1975,13 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
                     <div>
                         <h3 className="font-black text-amber-300">দ্রুত লিংক</h3>
                         <div className="mt-3 space-y-2 text-sm font-medium text-white/70">
-                            {safeArray(footerLinks.quick_links, ['আমাদের সম্পর্কে', 'শ্রেণি', 'নোটিশ']).map((item) => <p key={item}>{item}</p>)}
+                            {safeArray(footerLinks.quick_links, ['আমাদের সম্পর্কে', 'শ্রেণি', 'নোটিশ']).map((item) => <button type="button" onClick={() => navigatePage(inferWebsitePage(item))} className="block transition hover:text-white" key={item}>{item}</button>)}
                         </div>
                     </div>
                     <div>
                         <h3 className="font-black text-amber-300">একাডেমিক</h3>
                         <div className="mt-3 space-y-2 text-sm font-medium text-white/70">
-                            {safeArray(footerLinks.academic_links, ['ভর্তি', 'ফলাফল', 'পরীক্ষা']).map((item) => <p key={item}>{item}</p>)}
+                            {safeArray(footerLinks.academic_links, ['ভর্তি', 'ফলাফল', 'পরীক্ষা']).map((item) => <button type="button" onClick={() => navigatePage(inferWebsitePage(item))} className="block transition hover:text-white" key={item}>{item}</button>)}
                         </div>
                     </div>
                     <div className="space-y-3 text-sm font-medium text-white/70">

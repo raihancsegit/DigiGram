@@ -2,6 +2,7 @@
 import { requireRequestProfile } from '@/lib/utils/server-auth';
 import { supabaseAdmin } from '@/lib/utils/supabase-admin';
 import { repairMojibakeText } from '@/lib/utils/textEncoding';
+import { buildInstitutionStarterNotices, buildSchoolWebsiteDemoPage } from '@/lib/constants/schoolWebsiteDefaults';
 
 export const dynamic = 'force-dynamic';
 
@@ -195,14 +196,14 @@ async function seedSchool(batchId, scope, suffix) {
     }, 300, 'Demo school');
     let created = 1;
 
+    const schoolWebsite = buildSchoolWebsiteDemoPage(institution, `demo-school-${suffix}`);
+    schoolWebsite.contact_phone = DEMO_PHONE;
     await insertTracked(batchId, 'institution_pages', {
         institution_id: institution.id,
-        hero_title: institution.name,
-        hero_subtitle: 'Demo education, attendance, results and guardian updates in one place.',
-        about_text: 'Complete DigiGram demo school website content for testing.',
-        contact_phone: DEMO_PHONE,
-        contact_email: 'demo.school@example.com',
-        address: 'Demo Village A, Demo Union'
+        ...schoolWebsite,
+        draft_content: schoolWebsite,
+        published_content: schoolWebsite,
+        published_at: new Date().toISOString()
     }, 650, 'Demo school website');
     created += 1;
     const schoolClass = await insertTracked(batchId, 'school_classes', {
@@ -242,13 +243,10 @@ async function seedSchool(batchId, scope, suffix) {
         status: 'published'
     }, 800, 'Demo lesson topic');
     created += 1;
-    await insertTracked(batchId, 'institution_notices', {
-        institution_id: institution.id,
-        title: 'ডেমো: নতুন শিক্ষাবর্ষে ভর্তি চলছে',
-        body: 'Website admission page থেকে আবেদন করা যাবে।',
-        audience: 'public'
-    }, 750, 'Demo school notice');
-    created += 1;
+    for (const notice of buildInstitutionStarterNotices(institution)) {
+        await insertTracked(batchId, 'institution_notices', { institution_id: institution.id, ...notice }, 750, `Demo school notice: ${notice.title}`);
+        created += 1;
+    }
     await insertTracked(batchId, 'school_admission_applications', {
         institution_id: institution.id,
         student_name: 'ডেমো ভর্তি শিক্ষার্থী',
@@ -305,26 +303,36 @@ async function seedLocalInstitutions(batchId, scope, suffix) {
         }, 300, `Demo ${row.type}`);
         created += 1;
 
-        await insertTracked(batchId, 'institution_pages', {
-            institution_id: institution.id,
+        const educationWebsite = row.type === 'mosque' ? null : buildSchoolWebsiteDemoPage(institution, row.subdomain);
+        if (educationWebsite) educationWebsite.contact_phone = DEMO_PHONE;
+        const pageContent = educationWebsite || {
             hero_title: row.name,
-            hero_subtitle: row.type === 'mosque'
-                ? 'নামাজের সময়, ঘোষণা, অনুদান ও গ্রামের ধর্মীয় সেবা এক জায়গায়।'
-                : 'ভর্তি, নোটিশ, শিক্ষক, ক্লাস ও শিক্ষার্থীর তথ্য এক জায়গায়।',
+            hero_subtitle: 'নামাজের সময়, ঘোষণা, অনুদান ও গ্রামের ধর্মীয় সেবা এক জায়গায়।',
             about_text: `${row.name} এর পূর্ণ ডেমো ওয়েবসাইট। এখানে প্রকাশিত তথ্য ও অনলাইন সেবা পরীক্ষা করা যাবে।`,
             contact_phone: DEMO_PHONE,
             contact_email: `demo.${row.type}@example.com`,
-            address: row.type === 'college' ? 'ডেমো গ্রাম খ, ডেমো ইউনিয়ন' : 'ডেমো গ্রাম ক, ডেমো ইউনিয়ন'
+            address: 'ডেমো গ্রাম ক, ডেমো ইউনিয়ন'
+        };
+        await insertTracked(batchId, 'institution_pages', {
+            institution_id: institution.id,
+            ...pageContent,
+            ...(educationWebsite ? {
+                draft_content: pageContent,
+                published_content: pageContent,
+                published_at: new Date().toISOString()
+            } : {})
         }, 650, `${row.name} website`);
         created += 1;
 
-        await insertTracked(batchId, 'institution_notices', {
-            institution_id: institution.id,
-            title: row.type === 'mosque' ? 'ডেমো: জুমার নামাজ ও সাপ্তাহিক ঘোষণা' : 'ডেমো: ভর্তি ও নতুন শিক্ষাবর্ষের নোটিশ',
+        const notices = row.type === 'mosque' ? [{
+            title: 'ডেমো: জুমার নামাজ ও সাপ্তাহিক ঘোষণা',
             body: 'এই নোটিশটি public website-এর demo content যাচাই করার জন্য প্রকাশিত।',
             audience: 'public'
-        }, 750, `${row.name} notice`);
-        created += 1;
+        }] : buildInstitutionStarterNotices(institution);
+        for (const notice of notices) {
+            await insertTracked(batchId, 'institution_notices', { institution_id: institution.id, ...notice }, 750, `${row.name} notice: ${notice.title}`);
+            created += 1;
+        }
     }
 
     return created;

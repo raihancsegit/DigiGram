@@ -215,7 +215,11 @@ const WEBSITE_PRESETS = [
 ];
 
 function listValue(value, fallback) {
-    return Array.isArray(value) && value.length ? value : fallback;
+    return Array.isArray(value) ? value : fallback;
+}
+
+function normalizedFeature(item) {
+    return typeof item === 'string' ? { title: item, description: '' } : (item || { title: '', description: '' });
 }
 
 function snapshotFingerprint(content, theme) {
@@ -1083,14 +1087,15 @@ export default function InstitutionWebsiteManager({ institution, initialPage, on
                             <SectionCard title="সুযোগ-সুবিধা" defaultOpen>
                                 <div className="space-y-3">
                                     {content.facilities.map((item, index) => (
-                                        <div key={`facility-${index}`} className="grid gap-2 rounded-2xl bg-white p-3 md:grid-cols-[1fr_1.2fr_auto]">
+                                        <div key={`facility-${index}`} className="grid gap-2 rounded-2xl bg-white p-3 md:grid-cols-[0.8fr_1.2fr_1fr_auto]">
                                             <input value={item.title} onChange={(e) => updateList('facilities', index, 'title', e.target.value)} placeholder="শিরোনাম" className="rounded-xl border border-slate-200 px-3 py-2" />
                                             <input value={item.description} onChange={(e) => updateList('facilities', index, 'description', e.target.value)} placeholder="বর্ণনা" className="rounded-xl border border-slate-200 px-3 py-2" />
+                                            <input value={item.image_url || ''} onChange={(e) => updateList('facilities', index, 'image_url', e.target.value)} placeholder="Image URL" className="rounded-xl border border-slate-200 px-3 py-2" />
                                             <button type="button" onClick={() => removeListItem('facilities', index)} className="rounded-xl px-3 text-slate-400"><Trash2 size={16} /></button>
                                         </div>
                                     ))}
                                 </div>
-                                <button type="button" onClick={() => addListItem('facilities', { title: '', description: '' })} className="mt-3 inline-flex items-center gap-2 text-sm font-black text-slate-700">
+                                <button type="button" onClick={() => addListItem('facilities', { title: '', description: '', image_url: '' })} className="mt-3 inline-flex items-center gap-2 text-sm font-black text-slate-700">
                                     <Plus size={16} /> সুবিধা যোগ করুন
                                 </button>
                             </SectionCard>
@@ -1372,13 +1377,17 @@ export default function InstitutionWebsiteManager({ institution, initialPage, on
                         </div>
                         {schoolMode && (
                             <div className="mt-4 space-y-3">
-                                {content.admission_features.map((item, index) => (
-                                    <div key={`admission-${index}`} className="flex gap-2">
-                                        <input value={item} onChange={(e) => updateList('admission_features', index, null, e.target.value)} className="min-w-0 flex-1 rounded-2xl border border-slate-200 px-4 py-3" />
+                                {content.admission_features.map((item, index) => {
+                                    const feature = normalizedFeature(item);
+                                    return (
+                                    <div key={`admission-${index}`} className="grid gap-2 rounded-2xl border border-slate-100 bg-white p-3 md:grid-cols-[0.8fr_1.2fr_auto]">
+                                        <input value={feature.title} onChange={(e) => updateList('admission_features', index, null, { ...feature, title: e.target.value })} placeholder="শিরোনাম" className="min-w-0 rounded-xl border border-slate-200 px-4 py-3" />
+                                        <input value={feature.description} onChange={(e) => updateList('admission_features', index, null, { ...feature, description: e.target.value })} placeholder="সংক্ষিপ্ত নির্দেশনা" className="min-w-0 rounded-xl border border-slate-200 px-4 py-3" />
                                         <button type="button" onClick={() => removeListItem('admission_features', index)} className="rounded-2xl bg-white px-3 text-slate-400"><Trash2 size={16} /></button>
                                     </div>
-                                ))}
-                                <button type="button" onClick={() => addListItem('admission_features', '')} className="inline-flex items-center gap-2 text-sm font-black text-slate-700">
+                                    );
+                                })}
+                                <button type="button" onClick={() => addListItem('admission_features', { title: '', description: '' })} className="inline-flex items-center gap-2 text-sm font-black text-slate-700">
                                     <Plus size={16} /> ভর্তি সুবিধা যোগ করুন
                                 </button>
                             </div>
