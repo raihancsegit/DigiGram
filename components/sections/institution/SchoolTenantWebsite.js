@@ -26,6 +26,7 @@ import {
 } from '@/lib/constants/institutionDesignProfiles';
 import { getInstitutionProfile } from '@/lib/constants/institutionProfiles';
 import { getInstitutionWebsiteExperience } from '@/lib/constants/institutionWebsiteExperience';
+import InstitutionReferenceHome from '@/components/sections/institution/InstitutionReferenceHome';
 import {
     SCHOOL_WEBSITE_DEMO_CONTENT,
     SCHOOL_WEBSITE_EXTRA_SECTIONS,
@@ -526,7 +527,7 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
             }}
         >
             <header className={`sticky top-0 z-40 border-b border-current/10 shadow-sm backdrop-blur-xl ${template.headerClass}`}>
-                <div className="mx-auto flex min-h-20 max-w-7xl items-center justify-between gap-6 px-4">
+                <div className="mx-auto flex min-h-16 max-w-7xl items-center justify-between gap-4 px-4">
                     <button type="button" onClick={() => navigatePage('home')} className="flex min-w-0 items-center gap-3 text-left" aria-label={`${siteName} হোম`}>
                         {page?.logo_url ? (
                             <Image src={page.logo_url} alt={`${siteName} লোগো`} width={52} height={52} sizes="52px" className="h-12 w-12 shrink-0 rounded-2xl border border-white/20 object-cover shadow-sm" />
@@ -540,13 +541,13 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
                             <p className={`truncate text-xs font-bold ${isDarkTemplate || template.value === 'classic' ? 'text-white/70' : 'text-slate-500'}`}>{institutionKind} · {institution.village || design.eyebrow}</p>
                         </div>
                     </button>
-                    <nav className="hidden items-center gap-1 lg:flex" aria-label="প্রধান নেভিগেশন">
-                        {menuItems.map((item) => (
+                    <nav className="hidden items-center gap-0.5 lg:flex" aria-label="প্রধান নেভিগেশন">
+                        {menuItems.slice(0, 7).map((item) => (
                             <button
                                 key={item.value}
                                 type="button"
                                 onClick={() => navigatePage(item.value)}
-                                className={`rounded-full px-3 py-2 text-sm font-bold transition ${
+                                className={`rounded-full px-2.5 py-2 text-xs font-bold transition ${
                                     isDarkTemplate
                                         ? `hover:bg-white/10 hover:text-white ${activePage === item.value ? 'bg-white/10 text-white' : 'text-white/75'}`
                                         : template.value === 'classic'
@@ -557,6 +558,7 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
                                 {item.label}
                             </button>
                         ))}
+                        <button type="button" onClick={() => navigatePage('admission')} className={`ml-2 rounded px-4 py-2 text-xs font-black ${primaryButtonClass}`}>ভর্তি আবেদন</button>
                     </nav>
                     <button type="button" onClick={() => setMobileNavOpen((open) => !open)} className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border lg:hidden ${isDarkTemplate || template.value === 'classic' ? 'border-white/15 bg-white/10 text-white' : 'border-slate-200 bg-white text-slate-800'}`} aria-expanded={mobileNavOpen} aria-label="মেনু খুলুন">
                         {mobileNavOpen ? <X size={21} /> : <Menu size={21} />}
@@ -582,7 +584,7 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
                 </div>}
             </header>
 
-            <div className={`border-b ${template.noticeClass}`}>
+            {activePage !== 'home' && <div className={`border-b ${template.noticeClass}`}>
                 <div className="mx-auto flex max-w-7xl items-center gap-3 overflow-hidden px-4 py-3">
                     <span className={`shrink-0 rounded px-3 py-1 text-xs font-black ${noticeBadgeClass}`}>বিজ্ঞপ্তি</span>
                     <div className="school-notice-track min-w-0 overflow-hidden text-sm font-bold">
@@ -595,9 +597,23 @@ export default function SchoolTenantWebsite({ institution, page, notices }) {
                         </div>
                     </div>
                 </div>
-            </div>
+            </div>}
 
             {activePage === 'home' && (
+                <InstitutionReferenceHome
+                    institution={institution}
+                    page={page}
+                    slide={currentSlide}
+                    stats={stats}
+                    quickLinks={[...quickLinks, { page: 'classes', label: profile.portal.classLabel || 'একাডেমিক', detail: 'শ্রেণি ও পাঠ্যক্রম', icon: BookOpen }]}
+                    programs={programItems}
+                    gallery={galleryItems}
+                    notices={noticeRows}
+                    onNavigate={navigatePage}
+                    onSlide={goToSlide}
+                />
+            )}
+            {false && activePage === 'home' && (
             <div className="flex flex-col">
             {isSectionVisible('hero') && (
             <section
